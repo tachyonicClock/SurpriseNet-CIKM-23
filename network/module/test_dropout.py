@@ -18,7 +18,7 @@ class TestDropout(unittest.TestCase):
         input = torch.ones(n)
         probability = torch.rand(n)
         self.assertAlmostEqual(
-            dropout(input, probability, True).sum()/n, 1.0, delta=0.05)
+            dropout(input, probability).sum()/n, 1.0, delta=0.05)
 
     def test_dropout(self):
         """
@@ -28,16 +28,16 @@ class TestDropout(unittest.TestCase):
         input = torch.ones(n)
         probability = torch.rand(1)
         self.assertAlmostEqual(
-            dropout(input, torch.ones(n)*probability, True).count_nonzero()/n, 
+            dropout(input, torch.ones(n)*probability).count_nonzero()/n, 
             (1-probability), delta=0.05)
 
     def test_test_mode(self):
         """Test mode should leave the output unchanged"""
         input = torch.rand(10)
-        self.assertTrue(torch.equal(dropout(input, torch.ones(10), False), input))
+        self.assertTrue(torch.equal(dropout(input, torch.ones(10), 1, False), input))
 
     def test_conditioned(self):
-        n = 100_000
+        n = 10_000
         groups = 5
         p_active = 0.1
         p_inactive = 0.8
@@ -46,11 +46,11 @@ class TestDropout(unittest.TestCase):
         # Approximate Group Size
         group_size = n/groups
 
-        # Verify that they are assigned to roughly equal groups
+        # Verify that they are assigned to equal groups
         for i in range(groups):
-            self.assertAlmostEqual(cond_dropout.group_ids.eq(i).sum()/group_size, 1.0, delta=0.02)
+            self.assertEqual(cond_dropout.group_ids.eq(i).sum(), group_size)
 
-        output = cond_dropout.forward(torch.ones(n))
+        output = cond_dropout.forward(torch.ones([1, n]))
 
         # Frequency of active units in the active group
         mask = cond_dropout.group_ids.eq(cond_dropout.active_group)
@@ -58,9 +58,14 @@ class TestDropout(unittest.TestCase):
         freq_inactive = (output * ~mask).count_nonzero()
 
         # Assert that the expected number of active units matches the actual when n is large
-        self.assertAlmostEqual(float(freq_active/group_size), 1-p_active, delta=0.01)
-        self.assertAlmostEqual(float(freq_inactive)/(group_size*(groups-1)), 1-p_inactive, delta=0.01)
+        self.assertAlmostEqual(float(freq_active/group_size), 1-p_active, delta=0.1)
+        self.assertAlmostEqual(float(freq_inactive)/(group_size*(groups-1)), 1-p_inactive, delta=0.1)
 
+
+    def test_batch(self):
+        units = 5
+        batch = 10
+        print(dropout(torch.ones(batch, units), torch.ones(units)*0.8, batch))
 
 
 if __name__ == '__main__':

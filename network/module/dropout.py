@@ -1,8 +1,10 @@
+import array
 from torch import Tensor
+import random
 import torch
 
 
-def dropout(input: Tensor, probability: Tensor, training: bool = True) -> Tensor:
+def dropout(input: Tensor, probability: Tensor, batch_size: int = 1, training: bool = True) -> Tensor:
     """
     Apply dropout where elements are zeroed or scaled with a probability.
     Adaptation of https://stackoverflow.com/questions/54109617/implementing-dropout-from-scratch
@@ -11,12 +13,9 @@ def dropout(input: Tensor, probability: Tensor, training: bool = True) -> Tensor
         probability (Tensor): Probability of an element to be zeroed
         training (bool, optional): Is dropout in training or testing mode. Defaults to True.
     """
-    if probability.shape != input.shape:
-        raise ValueError("Input and probabilities should be the same shape")
-
     if training:
         binomial = torch.distributions.binomial.Binomial(probs=1.0-probability)
-        return input * binomial.sample() * (1.0/(1.0-probability))
+        return input * binomial.sample([batch_size]) * (1.0/(1.0-probability))
     return input
 
 
@@ -34,7 +33,7 @@ class NaiveDropout(torch.nn.Module):
         self.probability = probability
 
     def forward(self, input: Tensor) -> Tensor:
-        return dropout(input, torch.ones(input.shape) * self.probability, self.training)
+        return dropout(input, torch.ones(input.shape[1]) * self.probability, input.shape[0], self.training)
 
 class ConditionedDropout(torch.nn.Module):
     """Dropout conditioned on groups"""
@@ -48,8 +47,11 @@ class ConditionedDropout(torch.nn.Module):
 
     def __init__(self, in_features: int, n_groups: int, p_active: float, p_inactive: float) -> None:
 
-        # Assign to each group with probability 1/n_groups aka roughly equally
-        self.group_ids = torch.randint(n_groups, (in_features,))
+
+        # Randomly assign units to equally sized groups
+        group_size = int(in_features/n_groups)
+        self.group_ids = torch.tensor([x for x in range(n_groups) for _ in range(group_size)])
+        self.group_ids = self.group_ids[torch.randperm(self.group_ids.size(0))]
 
         self.p_active = p_active
         self.p_inactive = p_inactive
@@ -66,11 +68,11 @@ class ConditionedDropout(torch.nn.Module):
         self.active_group = active_group
 
     def forward(self, input: Tensor) -> Tensor:
-        if self.group_ids.shape != input.shape:
-            raise ValueError(f"Input a different shape then expected. Expected {self.group_ids.shape} got {input.shape}")
-        
         # Mask true if they are in the active group
+        if input.dim() != 2:
+            raise ValueError(f"Expected only 2D got {input.dim()}D")
+
         mask = self.group_ids.eq(self.active_group)
         probability = mask * self.p_active + ~mask * self.p_inactive
-        
-        return dropout(input, probability, self.training)
+    
+        return dropout(input, probability, input.shape[0], self.training)
