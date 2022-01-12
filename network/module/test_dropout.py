@@ -50,16 +50,18 @@ class TestDropout(unittest.TestCase):
         for i in range(groups):
             self.assertEqual(cond_dropout.group_ids.eq(i).sum(), group_size)
 
-        output = cond_dropout.forward(torch.ones([1, n]))
 
-        # Frequency of active units in the active group
-        mask = cond_dropout.group_ids.eq(cond_dropout.active_group)
-        freq_active = (output * mask).count_nonzero()
-        freq_inactive = (output * ~mask).count_nonzero()
+        for group in range(groups):
+            cond_dropout.set_active_group(group)
+            output = cond_dropout.forward(torch.ones([1, n]))
+            # Frequency of active units in the active group
+            mask = cond_dropout.group_ids.eq(group)
+            freq_active = (output * mask).count_nonzero()
+            freq_inactive = (output * ~mask).count_nonzero()
 
-        # Assert that the expected number of active units matches the actual when n is large
-        self.assertAlmostEqual(float(freq_active/group_size), 1-p_active, delta=0.1)
-        self.assertAlmostEqual(float(freq_inactive)/(group_size*(groups-1)), 1-p_inactive, delta=0.1)
+            # Assert that the expected number of active units matches the actual when n is large
+            self.assertAlmostEqual(float(freq_active/group_size), 1-p_active, delta=0.1)
+            self.assertAlmostEqual(float(freq_inactive)/(group_size*(groups-1)), 1-p_inactive, delta=0.1)
 
 
     def test_batch(self):

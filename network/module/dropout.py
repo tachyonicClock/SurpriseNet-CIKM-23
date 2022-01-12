@@ -33,7 +33,9 @@ class NaiveDropout(torch.nn.Module):
         self.probability = probability
 
     def forward(self, input: Tensor) -> Tensor:
-        return dropout(input, torch.ones(input.shape[1]) * self.probability, input.shape[0], self.training)
+        probabilities = torch.ones(input.shape[1], device=input.device) * self.probability
+        batch_size = input.shape[0]
+        return dropout(input, probabilities, batch_size, self.training)
 
 class ConditionedDropout(torch.nn.Module):
     """Dropout conditioned on groups"""
@@ -48,16 +50,21 @@ class ConditionedDropout(torch.nn.Module):
     def __init__(self, in_features: int, n_groups: int, p_active: float, p_inactive: float) -> None:
 
 
-        # Randomly assign units to equally sized groups
-        group_size = int(in_features/n_groups)
-        self.group_ids = torch.tensor([x for x in range(n_groups) for _ in range(group_size)])
-        self.group_ids = self.group_ids[torch.randperm(self.group_ids.size(0))]
+        group_ids = torch.zeros(in_features)
+        # Assign units to groups equally
+        for i, _ in enumerate(group_ids):
+            group_ids[i] = i % n_groups
+
+        # Randomize assignment by shuffling
+        group_ids = group_ids[torch.randperm(group_ids.size(0))]
 
         self.p_active = p_active
         self.p_inactive = p_inactive
         self.n_groups = n_groups
 
         super().__init__()
+        self.register_buffer("group_ids", group_ids)
+
 
     def set_active_group(self, active_group: int):
         """Set the active group"""
