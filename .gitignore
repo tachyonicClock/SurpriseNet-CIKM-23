@@ -7,6 +7,10 @@ __pycache__/
 *.so
 
 data/
+datasets/
+experiment_archive/
+experiment_logs/
+nohup.out
 
 # Distribution / packaging
 .Python
