@@ -65,8 +65,8 @@ class MyExperiment(Experiment):
     group: int = 0
 
     def __init__(self, hyper_params) -> None:
-        self.p_active = 0.5
-        self.p_inactive = 0.5
+        self.p_active = hyper_params["p_active"]
+        self.p_inactive = hyper_params["p_inactive"]
         self.hyper_params = hyper_params
 
         super().__init__()
@@ -109,10 +109,12 @@ class MyExperiment(Experiment):
 
 def random_params():
     return {
-        "lr": np.random.uniform(0.05, 0.001),
-        "epochs": np.random.randint(1,25),
-        "exponential_decay": np.random.uniform(0.5, 1.0),
-        "layer_size": np.random.randint(16,2000)
+        "lr": 0.02,
+        "epochs": 10,
+        "exponential_decay": 0.7,
+        "layer_size": 1024,
+        "p_active": np.random.uniform(0.0, 1.0),
+        "p_inactive": np.random.uniform(0.0, 1.0),
     }
 
 

@@ -46,10 +46,11 @@ class Experiment(StrategyPlugin):
             evaluator=evaluator
         )
 
-        exp, ssi, sei = hparams(self.parameters, {
-            "Accuracy_On_Trained_Experiences/eval_phase/test_stream/Task000": 0.0,
-            "StreamForgetting/eval_phase/test_stream": 0.0
-            })
+        hparam_metrics = {}
+        for x in self.make_dependent_variables():
+            hparam_metrics[x] = 0.0
+
+        exp, ssi, sei = hparams(self.parameters, hparam_metrics)
         self.logger.writer.file_writer.add_summary(exp)
         self.logger.writer.file_writer.add_summary(ssi)
         self.logger.writer.file_writer.add_summary(sei)
@@ -78,6 +79,14 @@ class Experiment(StrategyPlugin):
 
     def make_network(self) -> nn.Module:
         raise NotImplemented
+
+    def make_dependent_variables(self):
+        return [
+            "Accuracy_On_Trained_Experiences/eval_phase/test_stream/Task000",
+            "StreamForgetting/eval_phase/test_stream",
+            "Top1_Acc_Exp/eval_phase/test_stream/Task000/Exp000",
+            "Top1_Acc_Exp/eval_phase/test_stream/Task000/Exp001"
+        ]
 
     def make_optimizer(self, parameters) -> torch.optim.Optimizer:
         raise NotImplemented
