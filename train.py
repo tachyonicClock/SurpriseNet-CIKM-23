@@ -1,146 +1,80 @@
 import os
-from typing import Sequence
-from torch import nn, optim
-import torch
-from torch.functional import Tensor, norm
-from torch.utils.tensorboard.summary import hparams
-from torchvision import datasets
-import avalanche as av
-from avalanche.evaluation.metrics.confusion_matrix import confusion_matrix_metrics
-from avalanche.evaluation.metrics.loss import LossPluginMetric, loss_metrics
-from avalanche.evaluation.metrics.forgetting_bwt import forgetting_metrics
-from avalanche.evaluation.metrics.accuracy import accuracy_metrics
-from avalanche.logging.interactive_logging import InteractiveLogger
-from avalanche.training.plugins.evaluation import EvaluationPlugin
-from avalanche.training.plugins import StrategyPlugin, ReplayPlugin
-from avalanche.training.storage_policy import ClassBalancedBuffer, ExemplarsBuffer
-
-from avalanche.training.strategies.base_strategy import BaseStrategy
-from metrics import TrainExperienceLoss
-import numpy as np
 import random
+from typing import Sequence
 
-DATASETS = "./datasets"
-LOGDIR = "./experiment_logs"
+import avalanche as av
+import numpy as np
 
-class Experiment(StrategyPlugin):
-    strategy: BaseStrategy
-    network:  nn.Module
-    logger:   av.logging.TensorboardLogger
-    scenario: av.benchmarks.ScenarioStream
-    parameters: dict = {}
+import torch
+from torch import nn, Tensor
 
-    def _get_log_numbers(self):
-        for filename in os.listdir(LOGDIR):
-            name, _ = os.path.splitext(filename)
-            yield int(name[-4:])
-        yield 0
+from avalanche.benchmarks.classic.cmnist import RotatedMNIST
+from avalanche.evaluation.metrics.accuracy import accuracy_metrics
+from avalanche.evaluation.metrics.confusion_matrix import \
+    confusion_matrix_metrics
+from avalanche.evaluation.metrics.forgetting_bwt import forgetting_metrics
+from avalanche.evaluation.metrics.loss import LossPluginMetric, loss_metrics
+from avalanche.training.plugins import ReplayPlugin, StrategyPlugin
+from avalanche.training.plugins.evaluation import EvaluationPlugin
+from avalanche.training.storage_policy import (ClassBalancedBuffer,
+                                               ExemplarsBuffer)
 
-    def __init__(self) -> None:
+from conf import *
+from experiment import Experiment
+from metrics.metrics import TrainExperienceLoss
+from module.dropout import ConditionedDropout
+
+class ConditionedNetwork(nn.Module):
+
+    def __init__(self, p_active, p_inactive, n_groups, layer_size) -> None:
         super().__init__()
+        self.dropout_layers: Sequence[ConditionedDropout] = []
 
-        # Create a new logger with sequential names
-        self.logger = av.logging.TensorboardLogger(
-            LOGDIR+f"/experiment_{max(self._get_log_numbers())+1:04d}")
-
-        self.scenario = self.make_scenario()
-        self.network  = self.make_network()
-        evaluator     = self.make_evaluator([self.logger, InteractiveLogger()], self.scenario.n_classes)
-        optimizer     = self.make_optimizer(self.network.parameters())
-
-        self.strategy = BaseStrategy(
-            self.network,
-            optimizer,
-            **self.log_hparam(**self.configure_regime()),
-            device="cuda",
-            plugins=[self, *self.add_plugins()],
-            evaluator=evaluator
-        )
-
-        exp, ssi, sei = hparams(self.parameters, {
-            "Accuracy_On_Trained_Experiences/eval_phase/test_stream/Task000": 0.0,
-            "StreamForgetting/eval_phase/test_stream": 0.0
-            })
-        self.logger.writer.file_writer.add_summary(exp)
-        self.logger.writer.file_writer.add_summary(ssi)
-        self.logger.writer.file_writer.add_summary(sei)
-
-    def add_plugins(self) -> Sequence[StrategyPlugin]:
-        return []
-
-    def train(self):
-        results = []
-        for i, experience in enumerate(self.scenario.train_stream):
-
-            print("Start of experience: ", experience.current_experience)
-            print("Current Classes:     ", experience.classes_in_this_experience)
-            self.strategy.train(experience)
-            test_subset = self.scenario.test_stream[:i+1]
-            results.append(self.strategy.eval(test_subset))
-        return results
-
-    def log_hparam(self, **kwargs) -> dict:
-        """Log a hyper parameter"""
-        self.parameters.update(kwargs)
-        return kwargs
-
-    def make_evaluator(self, loggers, num_classes) -> EvaluationPlugin:
-        raise NotImplemented
-
-    def make_network(self) -> nn.Module:
-        raise NotImplemented
-
-    def make_optimizer(self, parameters) -> torch.optim.Optimizer:
-        raise NotImplemented
-
-    def make_scenario(self) -> av.benchmarks.ScenarioStream:
-        raise NotImplemented
-
-    def configure_regime(self) -> dict:
-        return {}
-
-
-
-class MyNetwork(nn.Module):
-
-    def __init__(self, dropout_rate=0.0) -> None:
-        super().__init__()
+        def make_dropout(in_features):
+            layer = ConditionedDropout(in_features, n_groups, p_active, p_inactive)
+            self.dropout_layers.append(layer)
+            return layer
 
         self.flatten = nn.Flatten()
         self.layers = nn.Sequential(
-            nn.Linear(28*28, 1024),
-            nn.Dropout(p=dropout_rate),
+            nn.Linear(28*28, layer_size),
+            make_dropout(layer_size),
             nn.ReLU(),
-            nn.Linear(1024, 1024),
-            nn.Dropout(p=dropout_rate),
+            nn.Linear(layer_size, layer_size),
+            make_dropout(layer_size),
             nn.ReLU(),
-            nn.Linear(1024, 1024),
-            nn.Dropout(p=dropout_rate),
-            nn.ReLU(),
-            nn.Linear(1024, 10),
+            nn.Linear(layer_size, 10),
         )
 
-    def forward(self, x: Tensor):
+    def set_active_group(self, group_id):
+        for layer in self.dropout_layers:
+            layer.set_active_group(group_id)
+
+    def forward(self, x: torch.Tensor):
         x = self.flatten(x)
         return self.layers(x)
 
 
-dataset = av.benchmarks.classic.cfashion_mnist.SplitFMNIST(
+dataset = av.benchmarks.classic.SplitFMNIST(
             dataset_root=DATASETS,
-            n_experiences=10,
-            first_batch_with_half_classes=False,
-            shuffle=False,
+            n_experiences=2,
         )
 
 class MyExperiment(Experiment):
 
-    def __init__(self, dropout_rate) -> None:
-        self.dropout_rate = dropout_rate
+    group: int = 0
+
+    def __init__(self, hyper_params) -> None:
+        self.p_active = 0.5
+        self.p_inactive = 0.5
+        self.hyper_params = hyper_params
 
         super().__init__()
 
     def make_network(self) -> nn.Module:
-        return MyNetwork(**self.log_hparam(dropout_rate=self.dropout_rate))
+        return ConditionedNetwork(
+            **self.log_hparam(p_inactive=self.p_inactive, p_active=self.p_active, layer_size=self.hyper_params["layer_size"]), 
+            n_groups=self.scenario.n_classes)
     
     def make_evaluator(self, loggers, num_classes) -> EvaluationPlugin:
         return EvaluationPlugin(
@@ -153,34 +87,35 @@ class MyExperiment(Experiment):
             suppress_warnings=True
         )
 
-    def add_plugins(self) -> Sequence[StrategyPlugin]:
-        return [
-            ReplayPlugin(**self.log_hparam(mem_size=100), storage_policy=
-                ClassBalancedBuffer(
-                    max_size=100, 
-                    adaptive_size=False, 
-                    total_num_classes=self.scenario.n_classes))
-        ]
-    # def before_training_epoch(self, strategy: 'BaseStrategy', **kwargs):
-    #     # Too much forgetting happens because we give it lots of epochs todo it
-    #     # in order to make dropouts effect more obvious we add this
-    #     if strategy.training_exp_counter > 0:
-    #         self.strategy.train_epochs = 1
+    def after_training_exp(self, _):
+        self.group += 1
+        self.network.set_active_group(self.group)
 
+    def after_training_epoch(self, strategy: 'BaseStrategy', **kwargs):
+        self.schedule.step()
+        self.log_scalar("lr", self.get_lr(), self.strategy.clock.total_iterations)
 
     def make_optimizer(self, parameters) -> torch.optim.Optimizer:
-        return torch.optim.SGD(parameters, **self.log_hparam(lr=0.01))
+        optimizer = torch.optim.SGD(parameters, **self.log_hparam(lr=self.hyper_params["lr"]))
+        self.schedule = torch.optim.lr_scheduler.ExponentialLR(optimizer,  **self.log_hparam(gamma=self.hyper_params["exponential_decay"]))
+        return optimizer
 
     def configure_regime(self) -> dict:
-        return dict(train_mb_size = 100, train_epochs = 5, eval_mb_size = 1000)
+        return dict(train_mb_size = 100, train_epochs = self.hyper_params["epochs"], eval_mb_size = 1000)
 
     def make_scenario(self):
         return dataset
 
 
-search_space = np.arange(0.0, 0.99, 0.01)
-print(search_space)
+def random_params():
+    return {
+        "lr": np.random.uniform(0.05, 0.001),
+        "epochs": np.random.randint(1,25),
+        "exponential_decay": np.random.uniform(0.5, 1.0),
+        "layer_size": np.random.randint(16,2000)
+    }
 
-random.shuffle(search_space)
-# for droprate in search_space:
-MyExperiment(0.5).train()
+
+for _ in range(1000):
+    MyExperiment(random_params()).train()
+

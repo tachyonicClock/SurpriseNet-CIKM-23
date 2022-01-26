@@ -1,5 +1,7 @@
 
 
+from torchmetrics import Accuracy
+
 from avalanche.evaluation.metrics.loss import LossPluginMetric
 
 class TrainExperienceLoss(LossPluginMetric):
