@@ -8,14 +8,19 @@ def dropout(input: Tensor, probability: Tensor, batch_size: int = 1, training: b
     """
     Apply dropout where elements are zeroed or scaled with a probability.
     Adaptation of https://stackoverflow.com/questions/54109617/implementing-dropout-from-scratch
-
     Args:
+
         probability (Tensor): Probability of an element to be zeroed
         training (bool, optional): Is dropout in training or testing mode. Defaults to True.
     """
     if training:
         binomial = torch.distributions.binomial.Binomial(probs=1.0-probability)
-        return input * binomial.sample([batch_size]) * (1.0/(1.0-probability))
+
+        # Either we scale each parameter in proportion to it own probability or 
+        # we scale the entire layer according to the mean probability.
+
+        # I went with mean probability since I think it makes a bit more sense
+        return input * binomial.sample([batch_size]) * (1.0/(1.0-probability.mean()))
     return input
 
 

@@ -15,6 +15,7 @@ from avalanche.evaluation.metrics.confusion_matrix import \
 from avalanche.evaluation.metrics.forgetting_bwt import forgetting_metrics
 from avalanche.evaluation.metrics.loss import LossPluginMetric, loss_metrics
 from avalanche.training.plugins import ReplayPlugin, StrategyPlugin
+from avalanche.training.plugins.synaptic_intelligence import SynapticIntelligencePlugin
 from avalanche.training.plugins.evaluation import EvaluationPlugin
 from avalanche.training.storage_policy import (ClassBalancedBuffer,
                                                ExemplarsBuffer)
@@ -58,6 +59,8 @@ class ConditionedNetwork(nn.Module):
 dataset = av.benchmarks.classic.SplitFMNIST(
             dataset_root=DATASETS,
             n_experiences=2,
+            shuffle=False,
+            fixed_class_order=[0,3,5,7,9,1,2,4,6,8]
         )
 
 class MyExperiment(Experiment):
@@ -103,6 +106,10 @@ class MyExperiment(Experiment):
     def configure_regime(self) -> dict:
         return dict(train_mb_size = 100, train_epochs = self.hyper_params["epochs"], eval_mb_size = 1000)
 
+
+    def add_plugins(self) -> Sequence[StrategyPlugin]:
+        return [SynapticIntelligencePlugin(**self.log_hparam(si_lambda=self.hyper_params["si_lambda"]))]
+
     def make_scenario(self):
         return dataset
 
@@ -117,7 +124,28 @@ def random_params():
         "p_inactive": np.random.uniform(0.0, 1.0),
     }
 
+# for _ in range(1000):
+# MyExperiment(
+#     {
+#         "lr": 0.02,
+#         "epochs": 10,
+#         "exponential_decay": 1.0,
+#         "layer_size": 1024,
+#         "p_active": 0.8,
+#         "p_inactive": 0.2,
+#         "si_lambda": 1000
+#     }
+#     ).train()
 
-for _ in range(1000):
-    MyExperiment(random_params()).train()
 
+MyExperiment(
+    {
+        "lr": 0.02,
+        "epochs": 10,
+        "exponential_decay": 1.0,
+        "layer_size": 1024,
+        "p_active": 0.0,
+        "p_inactive": 0.0,
+        "si_lambda": 1000
+    }
+    ).train()
