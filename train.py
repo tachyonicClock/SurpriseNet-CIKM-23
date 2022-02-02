@@ -1,12 +1,15 @@
+from dataclasses import dataclass
 import os
 import random
 from typing import Sequence
+
+from torchvision.transforms import transforms
 
 import avalanche as av
 import numpy as np
 
 import torch
-from torch import nn, Tensor
+from torch import device, nn, Tensor
 
 from avalanche.benchmarks.classic.cmnist import RotatedMNIST
 from avalanche.evaluation.metrics.accuracy import accuracy_metrics
@@ -16,68 +19,49 @@ from avalanche.evaluation.metrics.forgetting_bwt import forgetting_metrics
 from avalanche.evaluation.metrics.loss import LossPluginMetric, loss_metrics
 from avalanche.training.plugins import ReplayPlugin, StrategyPlugin
 from avalanche.training.plugins.synaptic_intelligence import SynapticIntelligencePlugin
+# from avalanche.training.plugins.lwf import LwFPlugin
+
 from avalanche.training.plugins.evaluation import EvaluationPlugin
-from avalanche.training.storage_policy import (ClassBalancedBuffer,
-                                               ExemplarsBuffer)
 
 from conf import *
-from experiment import Experiment
+from experiment import BaseHyperParameters, Experiment
+from metrics.featuremap import FeatureMap
 from metrics.metrics import TrainExperienceLoss
-from module.dropout import ConditionedDropout
-
-class ConditionedNetwork(nn.Module):
-
-    def __init__(self, p_active, p_inactive, n_groups, layer_size) -> None:
-        super().__init__()
-        self.dropout_layers: Sequence[ConditionedDropout] = []
-
-        def make_dropout(in_features):
-            layer = ConditionedDropout(in_features, n_groups, p_active, p_inactive)
-            self.dropout_layers.append(layer)
-            return layer
-
-        self.flatten = nn.Flatten()
-        self.layers = nn.Sequential(
-            nn.Linear(28*28, layer_size),
-            make_dropout(layer_size),
-            nn.ReLU(),
-            nn.Linear(layer_size, layer_size),
-            make_dropout(layer_size),
-            nn.ReLU(),
-            nn.Linear(layer_size, 10),
-        )
-
-    def set_active_group(self, group_id):
-        for layer in self.dropout_layers:
-            layer.set_active_group(group_id)
-
-    def forward(self, x: torch.Tensor):
-        x = self.flatten(x)
-        return self.layers(x)
-
+from network.bony_lwf import BonyLWF
+from plugins.BackboneLWF import BackboneLWF
 
 dataset = av.benchmarks.classic.SplitFMNIST(
             dataset_root=DATASETS,
-            n_experiences=2,
+            n_experiences=6,
+            first_batch_with_half_classes=True,
             shuffle=False,
-            fixed_class_order=[0,3,5,7,9,1,2,4,6,8]
+            fixed_class_order=[0,1,2,3,4,5,6,7,8,9],
         )
+
+@dataclass
+class HyperParams(BaseHyperParameters):
+    lr: float
+    train_mb_size: int
+    train_epochs: int
+    eval_mb_size: int
+    p_active: float
+    p_inactive: float
+    alpha: float
+    temperature: float
+    # freeze_backbone: bool
+    # weight_decay: float
+    # momentum: float
 
 class MyExperiment(Experiment):
 
-    group: int = 0
+    hp: HyperParams
+    network: BonyLWF
 
-    def __init__(self, hyper_params) -> None:
-        self.p_active = hyper_params["p_active"]
-        self.p_inactive = hyper_params["p_inactive"]
-        self.hyper_params = hyper_params
-
-        super().__init__()
+    def __init__(self, hp: HyperParams) -> None:
+        super().__init__(hp)
 
     def make_network(self) -> nn.Module:
-        return ConditionedNetwork(
-            **self.log_hparam(p_inactive=self.p_inactive, p_active=self.p_active, layer_size=self.hyper_params["layer_size"]), 
-            n_groups=self.scenario.n_classes)
+        return BonyLWF(self.n_experiences, self.hp.p_active, self.hp.p_inactive)
     
     def make_evaluator(self, loggers, num_classes) -> EvaluationPlugin:
         return EvaluationPlugin(
@@ -86,66 +70,46 @@ class MyExperiment(Experiment):
             confusion_matrix_metrics(num_classes=num_classes, stream=True),
             forgetting_metrics(experience=True, stream=True),
             TrainExperienceLoss(),
+            FeatureMap(),
             loggers=loggers,
             suppress_warnings=True
         )
 
-    def after_training_exp(self, _):
-        self.group += 1
-        self.network.set_active_group(self.group)
+    def add_plugins(self) -> Sequence[StrategyPlugin]:
+        return [BackboneLWF(alpha=self.hp.alpha, temperature=self.hp.temperature)]
 
-    def after_training_epoch(self, strategy: 'BaseStrategy', **kwargs):
-        self.schedule.step()
-        self.log_scalar("lr", self.get_lr(), self.strategy.clock.total_iterations)
+    def before_training_exp(self, strategy: 'BaseStrategy', **kwargs):
+        experience = self.strategy.clock.train_exp_counter
+        print("activating group", experience)
+        self.network.set_active_group(experience)
+
+    # def after_training_epoch(self, strategy: 'BaseStrategy', **kwargs):
+    #     # self.schedule.step()
+    #     self.log_scalar("lr", self.lr, self.strategy.clock.train_iterations)
 
     def make_optimizer(self, parameters) -> torch.optim.Optimizer:
-        optimizer = torch.optim.SGD(parameters, **self.log_hparam(lr=self.hyper_params["lr"]))
-        self.schedule = torch.optim.lr_scheduler.ExponentialLR(optimizer,  **self.log_hparam(gamma=self.hyper_params["exponential_decay"]))
+        optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, parameters), self.hp.lr)
+        # self.schedule = torch.optim.lr_scheduler.ExponentialLR(optimizer, 0.8)
         return optimizer
-
-    def configure_regime(self) -> dict:
-        return dict(train_mb_size = 100, train_epochs = self.hyper_params["epochs"], eval_mb_size = 1000)
-
-
-    def add_plugins(self) -> Sequence[StrategyPlugin]:
-        return [SynapticIntelligencePlugin(**self.log_hparam(si_lambda=self.hyper_params["si_lambda"]))]
 
     def make_scenario(self):
         return dataset
 
+def do_experiment():
+    hp = HyperParams(
+        lr=np.random.uniform(0.0001, 1),
+        train_mb_size=64,
+        eval_mb_size=2**11,
+        train_epochs=1,
+        eval_every=-1,
+        device="cuda",
+        p_active=np.random.uniform(0.0, 1.0),
+        p_inactive=np.random.uniform(0.0, 1.0),
+        temperature=np.random.uniform(0.0, 10.0),
+        alpha=np.random.uniform(0.0, 10.0)
+    )
 
-def random_params():
-    return {
-        "lr": 0.02,
-        "epochs": 10,
-        "exponential_decay": 0.7,
-        "layer_size": 1024,
-        "p_active": np.random.uniform(0.0, 1.0),
-        "p_inactive": np.random.uniform(0.0, 1.0),
-    }
+    MyExperiment(hp).train()
 
-# for _ in range(1000):
-# MyExperiment(
-#     {
-#         "lr": 0.02,
-#         "epochs": 10,
-#         "exponential_decay": 1.0,
-#         "layer_size": 1024,
-#         "p_active": 0.8,
-#         "p_inactive": 0.2,
-#         "si_lambda": 1000
-#     }
-#     ).train()
-
-
-MyExperiment(
-    {
-        "lr": 0.02,
-        "epochs": 10,
-        "exponential_decay": 1.0,
-        "layer_size": 1024,
-        "p_active": 0.0,
-        "p_inactive": 0.0,
-        "si_lambda": 1000
-    }
-    ).train()
+for _ in range(1000):
+    do_experiment()
