@@ -10,6 +10,8 @@ data/
 datasets/
 experiment_archive/
 experiment_logs/
+
+*/saved_models/**
 nohup.out
 
 # Distribution / packaging

@@ -30,6 +30,8 @@ from metrics.metrics import TrainExperienceLoss
 from network.bony_lwf import BonyLWF
 from plugins.BackboneLWF import BackboneLWF
 
+from enum import Enum
+
 dataset = av.benchmarks.classic.SplitFMNIST(
             dataset_root=DATASETS,
             n_experiences=6,
@@ -44,13 +46,10 @@ class HyperParams(BaseHyperParameters):
     train_mb_size: int
     train_epochs: int
     eval_mb_size: int
-    p_active: float
-    p_inactive: float
-    alpha: float
-    temperature: float
-    # freeze_backbone: bool
-    # weight_decay: float
-    # momentum: float
+
+    lwf_alpha: float
+    si_lambda: float
+    lfl_lambda: float
 
 class MyExperiment(Experiment):
 
@@ -63,17 +62,7 @@ class MyExperiment(Experiment):
     def make_network(self) -> nn.Module:
         return BonyLWF(self.n_experiences, self.hp.p_active, self.hp.p_inactive)
     
-    def make_evaluator(self, loggers, num_classes) -> EvaluationPlugin:
-        return EvaluationPlugin(
-            loss_metrics(minibatch=True, epoch=True, epoch_running=True, experience=True, stream=True),
-            accuracy_metrics(epoch=True, stream=True, experience=True, trained_experience=True),
-            confusion_matrix_metrics(num_classes=num_classes, stream=True),
-            forgetting_metrics(experience=True, stream=True),
-            TrainExperienceLoss(),
-            FeatureMap(),
-            loggers=loggers,
-            suppress_warnings=True
-        )
+
 
     def add_plugins(self) -> Sequence[StrategyPlugin]:
         return [BackboneLWF(alpha=self.hp.alpha, temperature=self.hp.temperature)]

@@ -1,17 +1,39 @@
 import os
+import random
 from dataclasses import dataclass
+from enum import Enum
 from typing import Sequence
 
 import avalanche as av
+import numpy as np
 import torch
+from avalanche.benchmarks.classic.cmnist import RotatedMNIST
+from avalanche.evaluation.metrics.accuracy import accuracy_metrics
+from avalanche.evaluation.metrics.confusion_matrix import \
+    confusion_matrix_metrics
+from avalanche.evaluation.metrics.forgetting_bwt import forgetting_metrics
+from avalanche.evaluation.metrics.loss import LossPluginMetric, loss_metrics
 from avalanche.logging.interactive_logging import InteractiveLogger
-from avalanche.training.plugins import StrategyPlugin
+from avalanche.training.plugins import ReplayPlugin, StrategyPlugin
 from avalanche.training.plugins.evaluation import EvaluationPlugin
+from avalanche.training.plugins.synaptic_intelligence import \
+    SynapticIntelligencePlugin
 from avalanche.training.strategies.base_strategy import BaseStrategy
-from torch import nn
+from torch import Tensor, device, nn
 from torch.utils.tensorboard.summary import hparams
+from torchvision.transforms import transforms
 
 from conf import *
+from metrics.featuremap import FeatureMap
+from metrics.metrics import TrainExperienceLoss
+from network.bony_lwf import BonyLWF
+from plugins.BackboneLWF import BackboneLWF
+from util import *
+
+# from avalanche.training.plugins.lwf import LwFPlugin
+
+
+
 
 @dataclass
 class BaseHyperParameters():
@@ -65,7 +87,13 @@ class Experiment(StrategyPlugin):
         for x in self.make_dependent_variables():
             hparam_metrics[x] = 0.0
 
-        exp, ssi, sei = hparams(self.hp.__dict__, hparam_metrics)
+        # Turn hyper-parameters into a format that plays nice with tensorboard
+        is_enum = lambda _, v : isinstance(v, Enum)
+        hparam_dict   = dict(filter(ho_not(is_enum), self.hp.__dict__))
+        discrete_dict =  dict(filter(is_enum, self.hp.__dict__))
+        discrete_dict = {k:[e for e in v] for (k,v) in discrete_dict.items()}
+
+        exp, ssi, sei = hparams(hparam_dict, hparam_metrics, discrete_dict)
         self.logger.writer.file_writer.add_summary(exp)
         self.logger.writer.file_writer.add_summary(ssi)
         self.logger.writer.file_writer.add_summary(sei)
@@ -89,7 +117,16 @@ class Experiment(StrategyPlugin):
 
     def make_evaluator(self, loggers, num_classes) -> EvaluationPlugin:
         """Overload to define the evaluation plugin"""
-        raise NotImplemented
+        return EvaluationPlugin(
+            loss_metrics(minibatch=True, epoch=True, epoch_running=True, experience=True, stream=True),
+            accuracy_metrics(epoch=True, stream=True, experience=True, trained_experience=True),
+            confusion_matrix_metrics(num_classes=num_classes, stream=True),
+            forgetting_metrics(experience=True, stream=True),
+            TrainExperienceLoss(),
+            FeatureMap(),
+            loggers=loggers,
+            suppress_warnings=True
+        )
 
     def make_network(self) -> nn.Module:
         raise NotImplemented
