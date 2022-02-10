@@ -68,32 +68,25 @@ class Experiment(StrategyPlugin):
         self.scenario = self.make_scenario()
         self.network = self.make_network()
         self.evaluator = self.make_evaluator(
-            [self.logger, InteractiveLogger()], self.scenario.n_classes)
+            [self.logger], self.scenario.n_classes)
         self.optimizer = self.make_optimizer(self.network.parameters())
 
-        self.strategy = BaseStrategy(
-            self.network,
-            self.optimizer,
-            device=hp.device,
-            train_mb_size=hp.train_mb_size,
-            train_epochs=hp.train_epochs,
-            eval_mb_size=hp.eval_mb_size,
-            eval_every=hp.eval_every,
-            plugins=[self, *self.add_plugins()],
-            evaluator=self.evaluator
-        )
+        self.strategy = self.make_strategy()
 
-        hparam_metrics = {}
+        dependent_var = {}
         for x in self.make_dependent_variables():
-            hparam_metrics[x] = 0.0
+            dependent_var[x] = 0.0
 
         # Turn hyper-parameters into a format that plays nice with tensorboard
-        is_enum = lambda _, v : isinstance(v, Enum)
-        hparam_dict   = dict(filter(ho_not(is_enum), self.hp.__dict__))
-        discrete_dict =  dict(filter(is_enum, self.hp.__dict__))
-        discrete_dict = {k:[e for e in v] for (k,v) in discrete_dict.items()}
+        hparam_dict   = {}
+        discrete_hparam =  {}
+        for key, value in self.hp.__dict__.items():
+            if isinstance(value, Enum):
+                discrete_hparam[key] = [e.value for e in value]
+            else:
+                hparam_dict[key] = value
 
-        exp, ssi, sei = hparams(hparam_dict, hparam_metrics, discrete_dict)
+        exp, ssi, sei = hparams(hparam_dict, dependent_var, discrete_hparam)
         self.logger.writer.file_writer.add_summary(exp)
         self.logger.writer.file_writer.add_summary(ssi)
         self.logger.writer.file_writer.add_summary(sei)
@@ -114,6 +107,26 @@ class Experiment(StrategyPlugin):
             test_subset = self.scenario.test_stream[:i+1]
             results.append(self.strategy.eval(test_subset))
         return results
+
+    def make_strategy_type(self):
+        return BaseStrategy
+
+    def make_strategy(self) -> BaseStrategy:
+        return self.make_strategy_type()(
+            self.network,
+            self.optimizer,
+            criterion=self.make_criterion(),
+            device=self.hp.device,
+            train_mb_size=self.hp.train_mb_size,
+            train_epochs=self.hp.train_epochs,
+            eval_mb_size=self.hp.eval_mb_size,
+            eval_every=self.hp.eval_every,
+            plugins=[self, *self.add_plugins()],
+            evaluator=self.evaluator
+        )
+
+    def make_criterion(self):
+        return torch.nn.CrossEntropyLoss()
 
     def make_evaluator(self, loggers, num_classes) -> EvaluationPlugin:
         """Overload to define the evaluation plugin"""

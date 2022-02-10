@@ -20,6 +20,8 @@ class HasConditionedDropout():
         assert self.n_groups == layer.n_groups, "Cannot register layers with different number of groups"
         self._callbacks.append(layer.set_active_group)
 
+        return layer
+
     def set_active_group(self, group: int):
         [f(group) for f in self._callbacks]
 
