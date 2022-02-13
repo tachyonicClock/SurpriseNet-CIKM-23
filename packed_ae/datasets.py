@@ -4,6 +4,7 @@ from __future__ import annotations
 import typing
 from random import shuffle
 
+import numpy as np
 import torch.utils.data
 from torchvision.datasets.cifar import CIFAR100
 
@@ -24,8 +25,8 @@ class TaskGroup:
 
         def __init__(self, task_id: int, classes: typing.Sequence[int]) -> None:
             """Define the classes present in the task"""
-            self.classes = classes
             self.task_id = task_id
+            self.classes = classes
 
     tasks: typing.Sequence[Task]
 
@@ -54,27 +55,56 @@ class TaskGroup:
                          val_set:   torch.utils.data.Dataset) -> TaskGroup:
         task_group = TaskGroup(n_classes, n_tasks)
 
-        for task in task_group:
-            def _in_task(set):
-                index_where(lambda x: x in task.classes, set.targets)
 
-            task.test_set = torch.utils.data.Subset(
-                train_set, _in_task(test_set))
+        def _split(dataset):
+            indices = [[] for _ in range(n_tasks)]
+            for i, instance in enumerate(dataset):
+                _, label = instance
+                for t in range(n_tasks):
+                    if label in task_group[t].classes:
+                        indices[t].append(i)
+            return indices
+        
+        train_indices = _split(train_set)
+        test_indices = _split(test_set)
+        val_indices = _split(val_set)
+
+        for task, train_ids, test_ids, val_ids in zip(task_group, train_indices, test_indices, val_indices):
             task.train_set = torch.utils.data.Subset(
-                train_set, _in_task(train_set))
+                train_set, train_ids)
+            task.test_set = torch.utils.data.Subset(
+                test_set, test_ids)
             task.val_set = torch.utils.data.Subset(
-                train_set, _in_task(val_set))
+                val_set, val_ids)
+
 
         return task_group
 
+class TaskLoader():
+    train_loader: torch.utils.data.DataLoader
+    val_loader:   torch.utils.data.DataLoader
+    test_loader:  torch.utils.data.DataLoader
+    task: TaskGroup.Task
 
-def split_cifar100(n_tasks) -> TaskGroup:
+    def __init__(self, task: TaskGroup.Task, batch_size: int, num_workers: int) -> None:
+        self.task = task
+        self.train_loader = torch.utils.data.DataLoader(task.train_set, batch_size, num_workers=num_workers)
+        self.val_loader  = torch.utils.data.DataLoader(task.val_set, batch_size, num_workers=num_workers)
+        self.test_loader = torch.utils.data.DataLoader(task.test_set, batch_size, num_workers=num_workers)
+
+def split_cifar100(n_tasks, transform=None) -> TaskGroup:
     """Split cifar100 into n_tasks"""
     train_set = CIFAR100(root=DATASET_ROOT, download=True, train=True)
     test_set = CIFAR100(root=DATASET_ROOT, download=True, train=False)
 
-    val_size = 30*100  # validation set size
-    val_set, test_set = torch.utils.data.random_split(
-        train_set, [val_size, len(test_set)-val_size])
+    # val_size = 30*100  # validation set size
+    # val_set, train_set = torch.utils.data.random_split(
+    #     train_set, [val_size, len(train_set)-val_size])
 
-    return TaskGroup.from_class_split(100, n_tasks, train_set, test_set, val_set)
+
+    task_group = TaskGroup.from_class_split(100, n_tasks, train_set, test_set, test_set)
+
+    # Add transforms
+    train_set.transform = transform
+    test_set.transform = transform
+    return task_group
