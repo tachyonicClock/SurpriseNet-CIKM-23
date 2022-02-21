@@ -1,16 +1,9 @@
 from dataclasses import dataclass
-import os
-import random
 from typing import Sequence
-
-from torchvision.transforms import transforms
 
 import avalanche as av
 import numpy as np
-
 import torch
-from torch import device, nn, Tensor
-
 from avalanche.benchmarks.classic.cmnist import RotatedMNIST
 from avalanche.evaluation.metrics.accuracy import accuracy_metrics
 from avalanche.evaluation.metrics.confusion_matrix import \
@@ -18,10 +11,11 @@ from avalanche.evaluation.metrics.confusion_matrix import \
 from avalanche.evaluation.metrics.forgetting_bwt import forgetting_metrics
 from avalanche.evaluation.metrics.loss import LossPluginMetric, loss_metrics
 from avalanche.training.plugins import ReplayPlugin, StrategyPlugin
-from avalanche.training.plugins.synaptic_intelligence import SynapticIntelligencePlugin
-# from avalanche.training.plugins.lwf import LwFPlugin
-
 from avalanche.training.plugins.evaluation import EvaluationPlugin
+from avalanche.training.plugins.synaptic_intelligence import \
+    SynapticIntelligencePlugin
+from torch import Tensor, device, nn
+from torchvision.transforms import transforms
 
 from conf import *
 from experiment import BaseHyperParameters, Experiment
@@ -30,7 +24,10 @@ from metrics.metrics import TrainExperienceLoss
 from network.bony_lwf import BonyLWF
 from plugins.BackboneLWF import BackboneLWF
 
-from enum import Enum
+# from avalanche.training.plugins.lwf import LwFPlugin
+
+
+
 
 dataset = av.benchmarks.classic.SplitFMNIST(
             dataset_root=DATASETS,

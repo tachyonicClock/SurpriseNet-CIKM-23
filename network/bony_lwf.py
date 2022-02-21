@@ -6,9 +6,8 @@ be used on a feature map instead. Called bony because it has a backbone
 from torch import Tensor
 import torch.nn as nn
 
-from network.nn_traits import HasConditionedDropout, HasFeatureMap
+from trait import HasConditionedDropout, HasFeatureMap
 from network.module.dropout import ConditionedDropout
-
 
 
 class BonyLWF(nn.Module, HasFeatureMap, HasConditionedDropout):

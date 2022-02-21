@@ -6,7 +6,7 @@ from avalanche.evaluation import PluginMetric
 from avalanche.evaluation.metric_definitions import MetricValue 
 
 from avalanche.training.strategies.base_strategy import BaseStrategy
-from network.nn_traits import HasFeatureMap
+from network.trait import HasFeatureMap
 import torchvision.transforms as T
 from PIL import Image
 

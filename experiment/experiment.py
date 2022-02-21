@@ -1,38 +1,24 @@
 import os
-import random
 from dataclasses import dataclass
 from enum import Enum
 from typing import Sequence
 
 import avalanche as av
-import numpy as np
-import torch
-from avalanche.benchmarks.classic.cmnist import RotatedMNIST
-from avalanche.evaluation.metrics.accuracy import accuracy_metrics
-from avalanche.evaluation.metrics.confusion_matrix import \
-    confusion_matrix_metrics
-from avalanche.evaluation.metrics.forgetting_bwt import forgetting_metrics
-from avalanche.evaluation.metrics.loss import LossPluginMetric, loss_metrics
-from avalanche.logging.interactive_logging import InteractiveLogger
-from avalanche.training.plugins import ReplayPlugin, StrategyPlugin
-from avalanche.training.plugins.evaluation import EvaluationPlugin
-from avalanche.training.plugins.synaptic_intelligence import \
-    SynapticIntelligencePlugin
+from avalanche.evaluation.metrics import loss_metrics, forgetting_metrics, confusion_matrix_metrics, accuracy_metrics
+from avalanche.training.plugins import StrategyPlugin, EvaluationPlugin
 from avalanche.training.strategies.base_strategy import BaseStrategy
-from torch import Tensor, device, nn
-from torch.utils.tensorboard.summary import hparams
-from torchvision.transforms import transforms
 
-from conf import *
+import torch
+from torch import nn
+from torch.utils.tensorboard.summary import hparams
+from experiment.experiment_strategy import ExperimentStrategy
+
 from metrics.featuremap import FeatureMap
 from metrics.metrics import TrainExperienceLoss
-from network.bony_lwf import BonyLWF
-from plugins.BackboneLWF import BackboneLWF
-from util import *
 
-# from avalanche.training.plugins.lwf import LwFPlugin
-
-
+from conf import *
+from metrics.reconstructions import GenerateReconstruction
+from network.trait import TraitPlugin
 
 
 @dataclass
@@ -44,12 +30,13 @@ class BaseHyperParameters():
     eval_every: int
     device: str
 
+
 class Experiment(StrategyPlugin):
     """
     Py-lightning style container for continual learning
     """
 
-    strategy: BaseStrategy
+    strategy: ExperimentStrategy
     network:  nn.Module
     logger:   av.logging.TensorboardLogger
     scenario: av.benchmarks.ScenarioStream
@@ -78,8 +65,8 @@ class Experiment(StrategyPlugin):
             dependent_var[x] = 0.0
 
         # Turn hyper-parameters into a format that plays nice with tensorboard
-        hparam_dict   = {}
-        discrete_hparam =  {}
+        hparam_dict = {}
+        discrete_hparam = {}
         for key, value in self.hp.__dict__.items():
             if isinstance(value, Enum):
                 discrete_hparam[key] = [e.value for e in value]
@@ -121,7 +108,7 @@ class Experiment(StrategyPlugin):
             train_epochs=self.hp.train_epochs,
             eval_mb_size=self.hp.eval_mb_size,
             eval_every=self.hp.eval_every,
-            plugins=[self, *self.add_plugins()],
+            plugins=[self, TraitPlugin(), *self.add_plugins()],
             evaluator=self.evaluator
         )
 
@@ -131,12 +118,15 @@ class Experiment(StrategyPlugin):
     def make_evaluator(self, loggers, num_classes) -> EvaluationPlugin:
         """Overload to define the evaluation plugin"""
         return EvaluationPlugin(
-            loss_metrics(minibatch=True, epoch=True, epoch_running=True, experience=True, stream=True),
-            accuracy_metrics(epoch=True, stream=True, experience=True, trained_experience=True),
+            loss_metrics(minibatch=True, epoch=True,
+                         epoch_running=True, experience=True, stream=True),
+            accuracy_metrics(epoch=True, stream=True,
+                             experience=True, trained_experience=True),
             confusion_matrix_metrics(num_classes=num_classes, stream=True),
             forgetting_metrics(experience=True, stream=True),
             TrainExperienceLoss(),
             FeatureMap(),
+            GenerateReconstruction(self.scenario, 1, 1),
             loggers=loggers,
             suppress_warnings=True
         )
