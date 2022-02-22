@@ -126,7 +126,7 @@ class Experiment(StrategyPlugin):
             forgetting_metrics(experience=True, stream=True),
             TrainExperienceLoss(),
             FeatureMap(),
-            GenerateReconstruction(self.scenario, 1, 1),
+            GenerateReconstruction(self.scenario, 2, 1),
             loggers=loggers,
             suppress_warnings=True
         )

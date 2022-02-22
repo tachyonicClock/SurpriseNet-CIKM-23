@@ -1,4 +1,8 @@
 from typing import Dict
+
+from matplotlib.figure import Figure
+from mltypes import *
+
 import typing
 from matplotlib.axes import Axes
 import torch
@@ -36,24 +40,53 @@ class GenerateReconstruction(PluginMetric):
     examples_per_experience: int
     metric_name = "ExperienceReconstruction"
 
-    def __init__(self, scenario, examples_per_experience=1, every_n_epochs=1):
-        self.examples_per_experience = examples_per_experience
+    def sample_class_exemplars(self, experience: NCExperience) -> typing.Sequence[LabeledExample]:
+        """Find an exemplar from each class in an experience"""
+        n_patterns = len(experience.classes_in_this_experience)
+        class_examples = {}
 
-        # Randomly save a sample of images to use to generate reconstructions
-        self.patterns = {}
-        for i, experience in enumerate(scenario.test_stream):
+        while True:
+            # Find each class in a monte carlo way
+            x, y, _ = experience.dataset[random.randint(
+                len(experience.dataset))]
+            class_examples[y] = (x, y)
+
+            # Exit when one of each class is found
+            if len(class_examples) >= n_patterns:
+                break
+
+        return list(class_examples.values())
+
+    def get_examples(self, test_stream, n_exemplars=1) -> typing.Dict[int, typing.Sequence[LabeledExample]]:
+        """Sample n_exemplars from each class.
+
+        Args:
+            test_stream (Any): An avalanche test_stream containing test data
+            n_exemplars (int, optional): Number of exemplars per class. 
+                Defaults to 1.
+        Returns:
+            typing.Dict[int, torch.Tensor]: Returns a dictionary mapping 
+                experience to a list of exemplars
+        """
+        assert n_exemplars >= 1, "n_exemplars should be positive and non-zero"
+
+        patterns = {}
+        for i, experience in enumerate(test_stream):
             experience: NCExperience = experience
-            self.patterns[i] = []
+            # Sample n_expempars from each class
+            patterns[i] = [x
+                           for _ in range(n_exemplars)
+                           for x in self.sample_class_exemplars(experience)
+                           ]
 
-            # Get a sample of images from each task
-            for _ in range(self.examples_per_experience):
-                x, y, _ = experience.dataset[random.randint(
-                    len(experience.dataset))]
-                self.patterns[i].append((x, y))
+        return patterns
 
-        self.n_experiences = len(scenario.test_stream)
 
     def add_image(self, axes: typing.Sequence[Axes], input: torch.Tensor, output: torch.Tensor, label: int, pred: int):
+        for axe in axes:
+            axe.get_xaxis().set_ticks([])
+            axe.get_yaxis().set_ticks([])
+
         axes[0].set_ylabel(f"Class: {label}")
         axes[1].set_ylabel(f"Prediction: {pred}")
         axes[0].set_title(f"Input")
@@ -64,30 +97,44 @@ class GenerateReconstruction(PluginMetric):
 
     @torch.no_grad()
     def after_eval_exp(self, strategy: 'BaseStrategy') -> 'MetricResult':
-        assert isinstance(strategy.model,
-                          IsGenerative), "Network must be generative"
+        # assert isinstance(strategy.model,
+        #                   IsGenerative), "Network must be generative"
 
-        plt.ioff()
-        fig = plt.figure(constrained_layout=True, figsize=(6, 20))
-        task_figs = fig.subfigures(self.n_experiences, 1)
+        n_tasks = len(self.patterns)
+        n_patterns_per_task = len(self.patterns[0])
 
-        for task_id, patterns in self.patterns.items():
+        scale = 2
+        fig, ax = plt.subplots(constrained_layout=False, figsize=(scale*n_tasks*2, scale*n_patterns_per_task))
+        ax.set_axis_off()
+        task_figs = fig.subfigures(1, self.n_experiences)
+
+        for task_id, task_patterns in self.patterns.items():
             sub_fig = task_figs[task_id]
-            img_figs = task_figs[task_id].subplots(
-                self.examples_per_experience, 2, squeeze=False)
-            sub_fig.suptitle(f"Experience {task_id}")
+            img_figs = task_figs[task_id].subplots(len(task_patterns), 2, squeeze=False)
 
-            for i, p in enumerate(patterns):
+            sub_fig.suptitle(f"Experience {task_id}")
+            for i, p in enumerate(task_patterns):
                 x, y = p
                 x: torch.Tensor = x.to(strategy.device)
-                
+
+                # Pass data through auto-encoder
                 x_hat, y_hat = strategy.model(x)
+
                 self.add_image(img_figs[i], x, x_hat, y, torch.argmax(y_hat))
-        plt.ion()
-        return MetricValue(self, "Reconstructions", fig2img(plt), x_plot=strategy.clock.train_exp_counter)
+
+        metric = MetricValue(self, "Reconstructions", fig2img(fig), x_plot=strategy.clock.train_exp_counter)
+        return metric
 
     def reset(self, **kwargs) -> None:
         pass
 
     def result(self, **kwargs):
         pass
+
+    def __init__(self, scenario, examples_per_class=1, seed=42, every_n_epochs=1):
+        # A sample of images to use to generate reconstructions with
+        state = random.get_state()
+        random.seed(seed)
+        self.patterns = self.get_examples(scenario.test_stream, examples_per_class)
+        self.n_experiences = len(scenario.test_stream)
+        random.set_state(state)
