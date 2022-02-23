@@ -87,8 +87,8 @@ class GenerateReconstruction(PluginMetric):
         axes[0].set_title(f"Input")
         axes[1].set_title(f"Reconstruction")
         input, output = input.cpu(), output.cpu()
-        axes[0].imshow(input.view(28, 28))
-        axes[1].imshow(output.view(28, 28))
+        axes[0].imshow(input.squeeze())
+        axes[1].imshow(output.squeeze())
 
     @torch.no_grad()
     def after_eval_exp(self, strategy: 'BaseStrategy') -> 'MetricResult':
@@ -115,12 +115,13 @@ class GenerateReconstruction(PluginMetric):
                 x: torch.Tensor = x.to(strategy.device)
 
                 # Pass data through auto-encoder
-                x_hat, y_hat = strategy.model(x)
+                x_hat, y_hat = strategy.model(x.unsqueeze(0))
 
                 self.add_image(img_figs[i], x, x_hat, y, torch.argmax(y_hat))
 
         metric = MetricValue(self, "Reconstructions", fig2img(
             fig), x_plot=strategy.clock.train_exp_counter)
+        plt.close(fig)
         return metric
 
     def reset(self, **kwargs) -> None:

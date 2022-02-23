@@ -1,7 +1,4 @@
-import typing
-from matplotlib.pyplot import cla
 from torch import Tensor, nn
-from network.module.dropout import ConditionedDropout
 from avalanche.core import BasePlugin, SupervisedPlugin
 
 
@@ -44,7 +41,7 @@ class TraitPlugin(BasePlugin):
     """
     The trait plugin implements the trait behaviors using avalanche
     """
+
     def before_eval_exp(self, strategy: SupervisedPlugin, **kwargs):
         if isinstance(strategy.model, TaskAware):
             strategy.model.on_task_change(strategy.clock.train_exp_counter)
-
