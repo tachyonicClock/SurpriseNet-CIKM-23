@@ -1,17 +1,21 @@
+from lib2to3.pytree import Base
 import os
 from dataclasses import dataclass
 from enum import Enum
 from typing import Sequence
 
 import avalanche as av
-from avalanche.evaluation.metrics import loss_metrics, forgetting_metrics, confusion_matrix_metrics, accuracy_metrics
-from avalanche.training.plugins import StrategyPlugin, EvaluationPlugin
-from avalanche.training.strategies.base_strategy import BaseStrategy
-
+from avalanche.evaluation.metrics import (
+    loss_metrics,
+    forgetting_metrics,
+    confusion_matrix_metrics,
+    accuracy_metrics)
+from avalanche.training.plugins import EvaluationPlugin
+from avalanche.core import BasePlugin, SupervisedPlugin
+from avalanche.training.templates.supervised import SupervisedTemplate
 import torch
 from torch import nn
 from torch.utils.tensorboard.summary import hparams
-from experiment.experiment_strategy import ExperimentStrategy
 
 from metrics.featuremap import FeatureMap
 from metrics.metrics import TrainExperienceLoss
@@ -31,12 +35,12 @@ class BaseHyperParameters():
     device: str
 
 
-class Experiment(StrategyPlugin):
+class Experiment(SupervisedPlugin):
     """
     Py-lightning style container for continual learning
     """
 
-    strategy: ExperimentStrategy
+    strategy: SupervisedTemplate
     network:  nn.Module
     logger:   av.logging.TensorboardLogger
     scenario: av.benchmarks.ScenarioStream
@@ -78,27 +82,28 @@ class Experiment(StrategyPlugin):
         self.logger.writer.file_writer.add_summary(ssi)
         self.logger.writer.file_writer.add_summary(sei)
 
-    def add_plugins(self) -> Sequence[StrategyPlugin]:
+    def add_plugins(self) -> Sequence[BasePlugin]:
         """
-        Overload to define a sequence of plugins that will be added to the strategy
+        Overload to define a sequence of plugins that will be added to the 
+        strategy
         """
         return []
 
     def train(self):
         results = []
-        for i, experience in enumerate(self.scenario.train_stream):
+        for i, exp in enumerate(self.scenario.train_stream):
 
-            print("Start of experience: ", experience.current_experience)
-            print("Current Classes:     ", experience.classes_in_this_experience)
-            self.strategy.train(experience)
+            print(f"Start of experience:{exp.current_experience}")
+            print(f"Current Classes:    {exp.classes_in_this_experience}")
+            self.strategy.train(exp)
             test_subset = self.scenario.test_stream[:i+1]
             results.append(self.strategy.eval(test_subset))
         return results
 
     def make_strategy_type(self):
-        return BaseStrategy
+        return SupervisedTemplate
 
-    def make_strategy(self) -> BaseStrategy:
+    def make_strategy(self) -> SupervisedPlugin:
         return self.make_strategy_type()(
             self.network,
             self.optimizer,
@@ -150,7 +155,9 @@ class Experiment(StrategyPlugin):
 
     def log_scalar(self, name, value, step=None):
         self.logger.log_single_metric(
-            name, value, step if step else self.strategy.clock.total_iterations)
+            name,
+            value,
+            step if step else self.strategy.clock.total_iterations)
 
     @property
     def lr(self) -> float:

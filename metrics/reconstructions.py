@@ -1,29 +1,16 @@
-from typing import Dict
-
-from matplotlib.figure import Figure
-from mltypes import *
-
+import io
 import typing
-from matplotlib.axes import Axes
+
+import matplotlib.pyplot as plt
+import numpy.random as random
 import torch
-from avalanche.training.plugins import StrategyPlugin
+from avalanche.benchmarks.scenarios.new_classes.nc_scenario import NCExperience
 from avalanche.evaluation import PluginMetric
 from avalanche.evaluation.metric_definitions import MetricValue
-
-from avalanche.training.strategies.base_strategy import BaseStrategy
-from network.trait import HasFeatureMap, IsGenerative
-import torchvision.transforms as T
-from PIL import Image
-
 from matplotlib.axes import Axes
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-
-
-from avalanche.benchmarks.scenarios.new_classes.nc_scenario import NCExperience
-from torchvision import transforms
-import numpy.random as random
-import io
+from mltypes import *
+from network.trait import IsGenerative
+from PIL import Image
 
 
 def fig2img(fig):
@@ -36,11 +23,11 @@ def fig2img(fig):
 
 
 class GenerateReconstruction(PluginMetric):
-    to_img = T.ToPILImage()
     examples_per_experience: int
     metric_name = "ExperienceReconstruction"
 
-    def sample_class_exemplars(self, experience: NCExperience) -> typing.Sequence[LabeledExample]:
+    def sample_class_exemplars(self, experience: NCExperience) \
+            -> typing.Sequence[LabeledExample]:
         """Find an exemplar from each class in an experience"""
         n_patterns = len(experience.classes_in_this_experience)
         class_examples = {}
@@ -57,15 +44,16 @@ class GenerateReconstruction(PluginMetric):
 
         return list(class_examples.values())
 
-    def get_examples(self, test_stream, n_exemplars=1) -> typing.Dict[int, typing.Sequence[LabeledExample]]:
+    def get_examples(self, test_stream, n_exemplars=1) \
+            -> typing.Dict[int, typing.Sequence[LabeledExample]]:
         """Sample n_exemplars from each class.
 
         Args:
             test_stream (Any): An avalanche test_stream containing test data
-            n_exemplars (int, optional): Number of exemplars per class. 
+            n_exemplars (int, optional): Number of exemplars per class.
                 Defaults to 1.
         Returns:
-            typing.Dict[int, torch.Tensor]: Returns a dictionary mapping 
+            typing.Dict[int, torch.Tensor]: Returns a dictionary mapping
                 experience to a list of exemplars
         """
         assert n_exemplars >= 1, "n_exemplars should be positive and non-zero"
@@ -81,8 +69,15 @@ class GenerateReconstruction(PluginMetric):
 
         return patterns
 
+    def add_image(
+            self,
+            axes:   typing.Sequence[Axes],
+            input:  torch.Tensor,
+            output: torch.Tensor,
+            label:  int,
+            pred:   int):
 
-    def add_image(self, axes: typing.Sequence[Axes], input: torch.Tensor, output: torch.Tensor, label: int, pred: int):
+        # Hide axis
         for axe in axes:
             axe.get_xaxis().set_ticks([])
             axe.get_yaxis().set_ticks([])
@@ -97,20 +92,22 @@ class GenerateReconstruction(PluginMetric):
 
     @torch.no_grad()
     def after_eval_exp(self, strategy: 'BaseStrategy') -> 'MetricResult':
-        # assert isinstance(strategy.model,
-        #                   IsGenerative), "Network must be generative"
+        assert isinstance(strategy.model,
+                          IsGenerative), "Network must be generative"
 
         n_tasks = len(self.patterns)
         n_patterns_per_task = len(self.patterns[0])
 
         scale = 2
-        fig, ax = plt.subplots(constrained_layout=False, figsize=(scale*n_tasks*2, scale*n_patterns_per_task))
+        fig, ax = plt.subplots(constrained_layout=False, figsize=(
+            scale*n_tasks*2, scale*n_patterns_per_task))
         ax.set_axis_off()
         task_figs = fig.subfigures(1, self.n_experiences)
 
         for task_id, task_patterns in self.patterns.items():
             sub_fig = task_figs[task_id]
-            img_figs = task_figs[task_id].subplots(len(task_patterns), 2, squeeze=False)
+            img_figs = task_figs[task_id].subplots(
+                len(task_patterns), 2, squeeze=False)
 
             sub_fig.suptitle(f"Experience {task_id}")
             for i, p in enumerate(task_patterns):
@@ -122,7 +119,8 @@ class GenerateReconstruction(PluginMetric):
 
                 self.add_image(img_figs[i], x, x_hat, y, torch.argmax(y_hat))
 
-        metric = MetricValue(self, "Reconstructions", fig2img(fig), x_plot=strategy.clock.train_exp_counter)
+        metric = MetricValue(self, "Reconstructions", fig2img(
+            fig), x_plot=strategy.clock.train_exp_counter)
         return metric
 
     def reset(self, **kwargs) -> None:
@@ -135,6 +133,7 @@ class GenerateReconstruction(PluginMetric):
         # A sample of images to use to generate reconstructions with
         state = random.get_state()
         random.seed(seed)
-        self.patterns = self.get_examples(scenario.test_stream, examples_per_class)
+        self.patterns = self.get_examples(
+            scenario.test_stream, examples_per_class)
         self.n_experiences = len(scenario.test_stream)
         random.set_state(state)
