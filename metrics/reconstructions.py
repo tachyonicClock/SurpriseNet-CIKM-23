@@ -9,7 +9,7 @@ from avalanche.evaluation import PluginMetric
 from avalanche.evaluation.metric_definitions import MetricValue
 from matplotlib.axes import Axes
 from mltypes import *
-from network.trait import IsGenerative
+from network.trait import Generative
 from PIL import Image
 
 
@@ -44,6 +44,25 @@ class GenerateReconstruction(PluginMetric):
 
         return list(class_examples.values())
 
+    def add_image(
+            self,
+            axes:   typing.Sequence[Axes],
+            input:  torch.Tensor, output: torch.Tensor,
+            label:  int, pred:   int):
+
+        # Hide axis
+        for axe in axes:
+            axe.get_xaxis().set_ticks([])
+            axe.get_yaxis().set_ticks([])
+
+        axes[0].set_ylabel(f"Class: {label}")
+        axes[1].set_ylabel(f"Prediction: {pred}")
+        axes[0].set_title(f"Input")
+        axes[1].set_title(f"Reconstruction")
+        input, output = input.cpu(), output.cpu()
+        axes[0].imshow(input.squeeze())
+        axes[1].imshow(output.squeeze())
+
     def get_examples(self, test_stream, n_exemplars=1) \
             -> typing.Dict[int, typing.Sequence[LabeledExample]]:
         """Sample n_exemplars from each class.
@@ -69,31 +88,10 @@ class GenerateReconstruction(PluginMetric):
 
         return patterns
 
-    def add_image(
-            self,
-            axes:   typing.Sequence[Axes],
-            input:  torch.Tensor,
-            output: torch.Tensor,
-            label:  int,
-            pred:   int):
-
-        # Hide axis
-        for axe in axes:
-            axe.get_xaxis().set_ticks([])
-            axe.get_yaxis().set_ticks([])
-
-        axes[0].set_ylabel(f"Class: {label}")
-        axes[1].set_ylabel(f"Prediction: {pred}")
-        axes[0].set_title(f"Input")
-        axes[1].set_title(f"Reconstruction")
-        input, output = input.cpu(), output.cpu()
-        axes[0].imshow(input.squeeze())
-        axes[1].imshow(output.squeeze())
-
     @torch.no_grad()
     def after_eval_exp(self, strategy: 'BaseStrategy') -> 'MetricResult':
         assert isinstance(strategy.model,
-                          IsGenerative), "Network must be generative"
+                          Generative), "Network must be generative"
 
         n_tasks = len(self.patterns)
         n_patterns_per_task = len(self.patterns[0])
@@ -104,24 +102,25 @@ class GenerateReconstruction(PluginMetric):
         ax.set_axis_off()
         task_figs = fig.subfigures(1, self.n_experiences)
 
+        # For each 
         for task_id, task_patterns in self.patterns.items():
-            sub_fig = task_figs[task_id]
-            img_figs = task_figs[task_id].subplots(
-                len(task_patterns), 2, squeeze=False)
+            task_fig = task_figs[task_id]
+            task_fig.suptitle(f"Experience {task_id}")
 
-            sub_fig.suptitle(f"Experience {task_id}")
-            for i, p in enumerate(task_patterns):
-                x, y = p
+            task_plots = task_fig.subplots(len(task_patterns), 2, squeeze=False)
+            for pattern, pattern_plot in zip(task_patterns, task_plots):
+                x, y = pattern
                 x: torch.Tensor = x.to(strategy.device)
 
                 # Pass data through auto-encoder
-                x_hat, y_hat = strategy.model(x.unsqueeze(0))
+                out = strategy.model.forward(x.unsqueeze(0))
 
-                self.add_image(img_figs[i], x, x_hat, y, torch.argmax(y_hat))
+                self.add_image(pattern_plot, x, out.x_hat, y, torch.argmax(out.y_hat))
 
-        metric = MetricValue(self, "Reconstructions", fig2img(
-            fig), x_plot=strategy.clock.train_exp_counter)
-        plt.close(fig)
+        x_plot = strategy.clock.train_exp_counter
+        metric = MetricValue(self, "Reconstructions", fig2img(fig), x_plot)
+
+        plt.close("all")
         return metric
 
     def reset(self, **kwargs) -> None:
@@ -138,3 +137,54 @@ class GenerateReconstruction(PluginMetric):
             scenario.test_stream, examples_per_class)
         self.n_experiences = len(scenario.test_stream)
         random.set_state(state)
+
+class GenerateSamples(PluginMetric):
+    rows: int # How may columns to generate
+    cols: int # How many rows to generate
+
+    img_size: float = 2.0 # How big each image should be matplotlib units
+
+    def add_image(self, axes: Axes, model: Generative):
+        # Randomly generate the latent dimension
+        gen_z = model.sample_z().to(self.device)
+        # print("add_image", gen_z)
+        # Use the generated z to generate a pattern
+        gen_x: Tensor = model.decode(gen_z)
+        # Use the generated pattern to classify the instance
+        gen_y = torch.argmax(model.classify(gen_x))
+
+        axes.imshow(gen_x.cpu().squeeze())
+        axes.set_axis_off()
+        axes.set_title(f"Prediction {gen_y}")
+
+    @torch.no_grad()
+    def after_eval_exp(self, strategy: 'BaseStrategy') -> 'MetricResult':
+        assert isinstance(strategy.model,
+                          Generative), "Network must be generative"
+        self.device = strategy.device
+        plt.ioff()
+        fig, axes = plt.subplots(
+            nrows=self.rows, ncols=self.cols,
+            constrained_layout=True,
+            figsize=(self.cols*self.img_size, self.rows*self.img_size))
+
+        # Add image by sampling for each row and column
+        for rows in axes:
+            for ax in rows:
+                self.add_image(ax, strategy.model)
+
+        metric = MetricValue(self, "Sample", fig2img(fig), x_plot=strategy.clock.train_exp_counter)
+        plt.close(fig)
+        plt.ion()
+        return metric
+
+    def reset(self, **kwargs) -> None:
+        pass
+
+    def result(self, **kwargs):
+        pass
+
+    def __init__(self, rows, cols, img_size=2.0):
+        self.rows = rows
+        self.cols = cols
+        self.img_size = img_size

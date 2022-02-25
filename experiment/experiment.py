@@ -21,7 +21,7 @@ from metrics.featuremap import FeatureMap
 from metrics.metrics import TrainExperienceLoss
 
 from conf import *
-from metrics.reconstructions import GenerateReconstruction
+from metrics.reconstructions import GenerateReconstruction, GenerateSamples
 from network.trait import TraitPlugin
 
 
@@ -132,6 +132,7 @@ class Experiment(SupervisedPlugin):
             TrainExperienceLoss(),
             FeatureMap(),
             GenerateReconstruction(self.scenario, 2, 1),
+            GenerateSamples(2, 4, img_size=2.0),
             loggers=loggers,
             suppress_warnings=True
         )

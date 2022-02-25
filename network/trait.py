@@ -1,5 +1,7 @@
+from abc import ABC, abstractclassmethod
+from dataclasses import dataclass
 from torch import Tensor, nn
-from avalanche.core import BasePlugin, SupervisedPlugin
+from avalanche.core import SupervisedPlugin
 
 
 class HasFeatureMap():
@@ -8,7 +10,6 @@ class HasFeatureMap():
 
     def get_backbone(self) -> nn.Module:
         raise NotImplemented
-
 
 class TaskAware():
     """
@@ -26,22 +27,39 @@ class TaskAware():
         """
         pass
 
+class Generative(ABC, nn.Module):
+    '''Generative algorithms with classification capability'''
 
-class IsGenerative():
-    '''ML algorithms with a generative component can inherit from this class'''
+    @dataclass
+    class ForwardOutput():
+        y_hat: Tensor   # classification
+        x_hat: Tensor   # reconstruction
 
-    def encode(self, x: Tensor):
+    @abstractclassmethod
+    def encode(self, x: Tensor) -> Tensor:
         pass
 
-    def decode(self, z: Tensor):
+    @abstractclassmethod
+    def decode(self, z: Tensor) -> Tensor:
         pass
 
+    @abstractclassmethod
+    def sample_z(self, n: int=0) -> Tensor:
+        """Sample the latent dimension and generate `n` encodings"""
+        pass
 
-class TraitPlugin(BasePlugin):
+    @abstractclassmethod
+    def classify(self, x: Tensor) -> Tensor:
+        pass
+
+    def forward(self, input: Tensor) -> ForwardOutput:
+        pass
+
+class TraitPlugin(SupervisedPlugin):
     """
     The trait plugin implements the trait behaviors using avalanche
     """
 
-    def before_eval_exp(self, strategy: SupervisedPlugin, **kwargs):
+    def before_eval_exp(self, strategy, **kwargs):
         if isinstance(strategy.model, TaskAware):
             strategy.model.on_task_change(strategy.clock.train_exp_counter)
