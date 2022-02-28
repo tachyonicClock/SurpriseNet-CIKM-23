@@ -99,7 +99,7 @@ class Experiment(SupervisedPlugin):
         for i, exp in enumerate(self.scenario.train_stream):
             self._experience_log(exp)
             self.strategy.train(exp)
-            test_subset = self.scenario.test_stream[:i+1]
+            test_subset = self.scenario.test_stream
             results.append(self.strategy.eval(test_subset))
         return results
 
