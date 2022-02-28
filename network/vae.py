@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
-from torch import Tensor, long
+from torch import Tensor, long, tensor
 from network.coders import MLP_Encoder, MLP_Decoder
 
 from network.trait import Generative
@@ -19,7 +19,9 @@ def kl_divergence():
 
 class VAE(Generative, nn.Module):
 
-    kld_weight = 0.005
+    kld_weight = 0.0001
+    classifier_weight = 1.0
+    cross_entropy = nn.CrossEntropyLoss()
 
     def __init__(self) -> None:
         super().__init__()
@@ -33,6 +35,7 @@ class VAE(Generative, nn.Module):
         # Fully connected layer which representing variances
         self.fc_var = nn.Linear(self.latent_adjacent_dims, self.latent_dims)
 
+        self.fc_classifier = nn.Linear(self.latent_dims, 10)
 
         self.decoder_adapter = nn.Linear(self.latent_dims, self.latent_adjacent_dims)
 
@@ -70,11 +73,11 @@ class VAE(Generative, nn.Module):
         z = self.reparameterise(mu, log_var)
         recons = self.decode(z)
 
-        y_hat = torch.zeros(len(input), dtype=torch.int).cuda()
+        y_hat = self.fc_classifier(z)
         return VAE.ForwardOutput(y_hat, recons, input, mu, log_var)
 
     def classify(self, x: Tensor) -> Tensor:
-        return torch.zeros(len(x), dtype=torch.int).cuda()
+        return self.forward(x).y_hat
 
     def sample_z(self, n:int=1) -> Tensor:
         return torch.randn(n, self.latent_dims)
@@ -84,12 +87,14 @@ class VAE(Generative, nn.Module):
         return next(self.parameters()).device
 
 
-    def loss_function(self, recons: Tensor, input: Tensor, mu: Tensor, log_var: Tensor, y=None):
+    def loss_function(self, out: ForwardOutput, y: Tensor):
 
-        recons_loss = F.mse_loss(recons, input)
+        recons_loss = F.mse_loss(out.x_hat, out.x)
 
         # Kullback–Leibler divergence how similar is the sample distribution to a normal distribution
-        kld_loss = torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim = 1), dim = 0)
+        kld_loss = torch.mean(-0.5 * torch.sum(1 + out.log_var - out.mu ** 2 - out.log_var.exp(), dim = 1), dim = 0)
 
-        return recons_loss + self.kld_weight * kld_loss
+        
+
+        return recons_loss + self.kld_weight * kld_loss +  self.cross_entropy(out.y_hat, y)* self.classifier_weight
 

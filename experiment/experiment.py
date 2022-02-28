@@ -22,7 +22,7 @@ from metrics.metrics import TrainExperienceLoss
 
 from conf import *
 from metrics.reconstructions import GenerateReconstruction, GenerateSamples
-from network.trait import TraitPlugin
+from network.trait import Generative, TraitPlugin
 
 
 @dataclass
@@ -89,12 +89,15 @@ class Experiment(SupervisedPlugin):
         """
         return []
 
+    def _experience_log(self, exp: av.benchmarks.NCExperience):
+        print(f"Start of experience: {exp.current_experience}")
+        print(f"Current Classes:     {exp.classes_in_this_experience}")
+        print(f"Experience size:     {len(exp.dataset)}")
+
     def train(self):
         results = []
         for i, exp in enumerate(self.scenario.train_stream):
-
-            print(f"Start of experience:{exp.current_experience}")
-            print(f"Current Classes:    {exp.classes_in_this_experience}")
+            self._experience_log(exp)
             self.strategy.train(exp)
             test_subset = self.scenario.test_stream[:i+1]
             results.append(self.strategy.eval(test_subset))
@@ -122,6 +125,12 @@ class Experiment(SupervisedPlugin):
 
     def make_evaluator(self, loggers, num_classes) -> EvaluationPlugin:
         """Overload to define the evaluation plugin"""
+
+        generative = [
+            GenerateReconstruction(self.scenario, 2, 1),
+            GenerateSamples(2, 4, img_size=2.0)] \
+            if isinstance(self.network, Generative) else []
+
         return EvaluationPlugin(
             loss_metrics(minibatch=True, epoch=True,
                          epoch_running=True, experience=True, stream=True),
@@ -131,8 +140,7 @@ class Experiment(SupervisedPlugin):
             forgetting_metrics(experience=True, stream=True),
             TrainExperienceLoss(),
             FeatureMap(),
-            GenerateReconstruction(self.scenario, 2, 1),
-            GenerateSamples(2, 4, img_size=2.0),
+            *generative,
             loggers=loggers,
             suppress_warnings=True
         )
