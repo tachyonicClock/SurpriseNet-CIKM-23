@@ -32,8 +32,10 @@ class Generative(ABC, nn.Module):
 
     @dataclass
     class ForwardOutput():
-        y_hat: Tensor   # classification
-        x_hat: Tensor   # reconstruction
+        y_hat: Tensor
+        """The models classification predictions"""
+        x_hat: Tensor
+        """The generative models reconstruction"""
 
     @abstractclassmethod
     def encode(self, x: Tensor) -> Tensor:
@@ -53,6 +55,13 @@ class Generative(ABC, nn.Module):
         pass
 
     def forward(self, input: Tensor) -> ForwardOutput:
+        pass
+
+
+class SpecialLoss(ABC):
+
+    @abstractclassmethod
+    def loss_function(self, *args, **kwargs):
         pass
 
 class TraitPlugin(SupervisedPlugin):

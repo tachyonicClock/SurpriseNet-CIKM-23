@@ -1,7 +1,9 @@
+from collections import OrderedDict
 import typing
 from torch import Tensor, nn
 import torch
-from .trait import Generative, TaskAware
+import torch.nn.functional as F
+from .trait import Generative, SpecialLoss, TaskAware
 import torchvision.transforms as transforms
 from .coders import *
 
@@ -13,20 +15,23 @@ def MLP_AE_Head(latent_dims, output_size):
     )
 
 
-class D_AE(Generative):
+class D_AE(Generative, SpecialLoss):
     # Discriminative auto-encoder
 
     def __init__(self,
                  latent_dim: int,
+                 classifier_weight: float,
                  encoder: nn.Module,
                  decoder: nn.Module,
                  head: nn.Module) -> None:
         super().__init__()
 
         self.latent_dim = latent_dim
+        self.classifier_weight = classifier_weight
         self.encoder: nn.Module = encoder
         self.decoder: nn.Module = decoder
         self.head: nn.Module = head
+        self.cross_entropy = nn.CrossEntropyLoss()
 
     # Overload trait.IsGenerative functions
     def encode(self, x: Tensor):
@@ -51,15 +56,27 @@ class D_AE(Generative):
         z = self.encoder(x)      # Latent codes
         x_hat = self.decoder(z)  # Reconstruction
         y_hat = self.head(z)     # Classification head
-        return Generative.ForwardOutput(y_hat, x_hat)
+        return D_AE.ForwardOutput(y_hat, x_hat)
+
+    def _reconstruction_loss(self, x: Tensor, x_hat: Tensor) -> Tensor:
+        loss = F.mse_loss(x, x_hat, reduction="none")
+        loss = loss.sum(dim=[1, 2, 3]).mean(dim=[0])
+        return loss
+
+    def _classifier_loss(self, y: Tensor, y_hat: Tensor) -> Tensor:
+        return self.cross_entropy(y_hat, y)
+    
+    def loss_function(self, x, y, x_hat, y_hat):
+        return self._reconstruction_loss(x, x_hat) + \
+               self._classifier_loss(y, y_hat) * self.classifier_weight
 
 
-class AEGroup(Generative, TaskAware):
+class AEGroup(Generative, TaskAware, SpecialLoss):
     """A group of autoencoders"""
     current_task: int = 0
-    encoders: typing.Dict[int, nn.Module] = {}
+    encoders: typing.Dict[int, Generative] = {}
 
-    def __init__(self, make_auto_encoder: typing.Callable[[], nn.Module]):
+    def __init__(self, make_auto_encoder: typing.Callable[[], Generative]):
         self.encoders[0] = make_auto_encoder()
         self.make_auto_encoder = make_auto_encoder
 
@@ -72,10 +89,45 @@ class AEGroup(Generative, TaskAware):
     def forward(self, x: Tensor) -> typing.Tuple[Tensor, Tensor]:
         # If training we know the task
         if self.training:
-            return self.get_encoder()(x)
+            return self.get_encoder().forward(x)
 
-        # TODO use task with lowest reconstruction loss
-        raise NotImplemented("WIP ae_group:85")
+
+        raise NotImplemented
+
+
+    def _training_forward(self, x: Tensor) -> Generative.ForwardOutput:
+        return self.get_encoder().forward(x)
+
+    def best_reduce(metric: Tensor, values: Tensor) -> Tensor:
+        """
+        Using an at least 2D metric array we want to return a tensor concatinating
+        all the best results
+        """
+        best = metric.argmax(dim=(1))
+        tensors = Tensor([x[i] for i, x in zip(best, values)])
+        return tensors
+
+    @torch.no_grad()
+    def _eval_forward(self, x: Tensor) -> Generative.ForwardOutput:
+
+        # Loop over all encoders
+        metric, x_hats, y_hats = [], [], []
+        for task, encoder in self.encoders.items():
+            out = encoder.forward(x)
+
+            loss = F.mse_loss(x, out.x_hat, reduction="none") \
+                    .sum(dim=[1, 2, 3])
+
+            metric.append(loss)
+            y_hats.append(out.y_hat)
+            x_hats.append(out.x_hat)
+
+        metric = Tensor(metric)
+        x_hat = self.best_reduce(metric, Tensor(x_hats))
+        y_hat = self.best_reduce(metric, Tensor(y_hats))
 
     def get_encoder(self):
         return self.encoders[self.current_task]
+
+    def loss(self, forward_output: Generative.ForwardOutput, target):
+        raise NotImplemented

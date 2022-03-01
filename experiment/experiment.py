@@ -22,7 +22,7 @@ from metrics.metrics import TrainExperienceLoss
 
 from conf import *
 from metrics.reconstructions import GenerateReconstruction, GenerateSamples
-from network.trait import Generative, TraitPlugin
+from network.trait import Generative, TaskAware, TraitPlugin
 
 
 @dataclass
@@ -95,6 +95,7 @@ class Experiment(SupervisedPlugin):
         print(f"Experience size:     {len(exp.dataset)}")
 
     def train(self):
+        self.preflight()
         results = []
         for i, exp in enumerate(self.scenario.train_stream):
             self._experience_log(exp)
@@ -132,7 +133,7 @@ class Experiment(SupervisedPlugin):
             if isinstance(self.network, Generative) else []
 
         return EvaluationPlugin(
-            loss_metrics(minibatch=True, epoch=True,
+            loss_metrics(epoch=True,
                          epoch_running=True, experience=True, stream=True),
             accuracy_metrics(epoch=True, stream=True,
                              experience=True, trained_experience=True),
@@ -144,6 +145,12 @@ class Experiment(SupervisedPlugin):
             loggers=loggers,
             suppress_warnings=True
         )
+
+    def preflight(self):
+        print(f"Network: {type(self.network)}")
+        for trait in [Generative, TaskAware]:
+            if isinstance(self.network, trait):
+                print(f" * Has the {trait} trait")
 
     def make_network(self) -> nn.Module:
         raise NotImplemented
