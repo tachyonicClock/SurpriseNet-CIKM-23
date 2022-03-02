@@ -22,7 +22,7 @@ from metrics.metrics import TrainExperienceLoss
 
 from conf import *
 from metrics.reconstructions import GenerateReconstruction, GenerateSamples
-from network.trait import Generative, TaskAware, TraitPlugin
+from network.trait import Generative, SpecialLoss, TaskAware, TraitPlugin
 
 
 @dataclass
@@ -102,6 +102,8 @@ class Experiment(SupervisedPlugin):
             self.strategy.train(exp)
             test_subset = self.scenario.test_stream
             results.append(self.strategy.eval(test_subset))
+
+        self.logger.writer.flush()
         return results
 
     def make_strategy_type(self):
@@ -129,8 +131,8 @@ class Experiment(SupervisedPlugin):
 
         generative = [
             GenerateReconstruction(self.scenario, 2, 1),
-            GenerateSamples(2, 4, img_size=2.0)] \
-            if isinstance(self.network, Generative) else []
+            # GenerateSamples(2, 4, img_size=2.0)
+        ] if isinstance(self.network, Generative) else []
 
         return EvaluationPlugin(
             loss_metrics(epoch=True,
@@ -148,7 +150,7 @@ class Experiment(SupervisedPlugin):
 
     def preflight(self):
         print(f"Network: {type(self.network)}")
-        for trait in [Generative, TaskAware]:
+        for trait in [Generative, TaskAware, SpecialLoss]:
             if isinstance(self.network, trait):
                 print(f" * Has the {trait} trait")
 

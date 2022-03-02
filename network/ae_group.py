@@ -15,7 +15,7 @@ def MLP_AE_Head(latent_dims, output_size):
     )
 
 
-class D_AE(Generative, SpecialLoss):
+class D_AE(Generative, SpecialLoss, nn.Module):
     # Discriminative auto-encoder
 
     def __init__(self,
@@ -43,9 +43,9 @@ class D_AE(Generative, SpecialLoss):
     def classify(self, x: Tensor) -> Tensor:
         return self.forward(x).y_hat
 
-    def sample_z(self) -> Tensor:
+    def sample_z(self, n) -> Tensor:
         dist  = torch.distributions.Uniform(0.0, 1.0)
-        return dist.sample((1, self.latent_dim))
+        return dist.sample((n, self.latent_dim))
 
     def forward(self, x: Tensor) -> typing.Tuple[Tensor, Tensor]:
         """ Forward through the neural network
@@ -56,7 +56,7 @@ class D_AE(Generative, SpecialLoss):
         z = self.encoder(x)      # Latent codes
         x_hat = self.decoder(z)  # Reconstruction
         y_hat = self.head(z)     # Classification head
-        return D_AE.ForwardOutput(y_hat, x_hat)
+        return D_AE.ForwardOutput(y_hat, x_hat, z)
 
     def _reconstruction_loss(self, x: Tensor, x_hat: Tensor) -> Tensor:
         loss = F.mse_loss(x, x_hat, reduction="none")
@@ -71,48 +71,51 @@ class D_AE(Generative, SpecialLoss):
                self._classifier_loss(y, y_hat) * self.classifier_weight
 
 
-class AEGroup(Generative, TaskAware, SpecialLoss):
+class AEGroup(Generative, TaskAware, SpecialLoss, nn.Module):
     """A group of autoencoders"""
     current_task: int = 0
-    encoders: typing.Dict[int, Generative] = {}
+    encoders: typing.Sequence[Generative] = {}
 
-    def __init__(self, make_auto_encoder: typing.Callable[[], Generative]):
-        self.encoders[0] = make_auto_encoder()
+    def __init__(self, 
+        make_auto_encoder: typing.Callable[[], Generative],
+        n: int):
+        super().__init__()
+        self.n_encoders = n
+        self.encoders = [make_auto_encoder() for _ in range(n)]
+        self._encoders = nn.ModuleList(self.encoders)
         self.make_auto_encoder = make_auto_encoder
 
     def on_task_change(self, new_task_id: int):
+        assert new_task_id < self.n_encoders, \
+            f"Got new task id {new_task_id} while only having {self.n_encoders}"
         self.current_task = new_task_id
 
-        if new_task_id not in self.encoders.keys():
-            self.encoders[new_task_id] = self.make_auto_encoder()
-
-    def forward(self, x: Tensor) -> typing.Tuple[Tensor, Tensor]:
+    def forward(self, x: Tensor) -> Generative.ForwardOutput:
         # If training we know the task
         if self.training:
             return self.get_encoder().forward(x)
-
-
-        raise NotImplemented
+        return self._eval_forward(x)
 
 
     def _training_forward(self, x: Tensor) -> Generative.ForwardOutput:
         return self.get_encoder().forward(x)
 
-    def best_reduce(metric: Tensor, values: Tensor) -> Tensor:
+    def best_reduce(self, metric: Tensor, values: Tensor) -> Tensor:
         """
         Using an at least 2D metric array we want to return a tensor concatinating
         all the best results
         """
-        best = metric.argmax(dim=(1))
-        tensors = Tensor([x[i] for i, x in zip(best, values)])
+        best = metric.T.argmin(dim=(1))
+        tensors = torch.stack([values[b][i] for i, b in enumerate(best)])
         return tensors
 
     @torch.no_grad()
     def _eval_forward(self, x: Tensor) -> Generative.ForwardOutput:
+        # print(x)
 
         # Loop over all encoders
-        metric, x_hats, y_hats = [], [], []
-        for task, encoder in self.encoders.items():
+        metric, x_hats, y_hats, z_codes = [], [], [], []
+        for task, encoder in enumerate(self.encoders):
             out = encoder.forward(x)
 
             loss = F.mse_loss(x, out.x_hat, reduction="none") \
@@ -121,13 +124,35 @@ class AEGroup(Generative, TaskAware, SpecialLoss):
             metric.append(loss)
             y_hats.append(out.y_hat)
             x_hats.append(out.x_hat)
+            z_codes.append(out.z_code)
 
-        metric = Tensor(metric)
-        x_hat = self.best_reduce(metric, Tensor(x_hats))
-        y_hat = self.best_reduce(metric, Tensor(y_hats))
+        metric = torch.stack(metric)
+        # print(x.shape)
+        x_hat  = self.best_reduce(metric, torch.stack(x_hats))
+        y_hat  = self.best_reduce(metric, torch.stack(y_hats))
+        z_code = self.best_reduce(metric, torch.stack(z_codes))
 
-    def get_encoder(self):
+
+        return self.ForwardOutput(y_hat, x_hat, z_code)
+
+    def get_encoder(self) -> typing.TypeVar("T", SpecialLoss, Generative):
         return self.encoders[self.current_task]
 
-    def loss(self, forward_output: Generative.ForwardOutput, target):
-        raise NotImplemented
+    def loss_function(self, *args, **kwargs):
+        return self.get_encoder().loss_function(*args, **kwargs)
+
+    def sample_z(self, n: int=0) -> Tensor:
+        """Sample the latent dimension and generate `n` encodings"""
+        return self.get_encoder().sample_z(n)
+
+    def encode(self, x: Tensor) -> Tensor:
+        return self.forward(x).z_code
+
+    def decode(self, z: Tensor) -> Tensor:
+        return self.get_encoder().decode(z)
+
+    def classify(self, x: Tensor) -> Tensor:
+        return self.forward(x).y_hat
+
+    # def parameters(self, recurse: bool = True) -> typing.Iterator[torch.Parameter]:
+    #     for x in self.

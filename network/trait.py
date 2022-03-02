@@ -27,7 +27,7 @@ class TaskAware():
         """
         pass
 
-class Generative(ABC, nn.Module):
+class Generative(ABC):
     '''Generative algorithms with classification capability'''
 
     @dataclass
@@ -36,6 +36,9 @@ class Generative(ABC, nn.Module):
         """The models classification predictions"""
         x_hat: Tensor
         """The generative models reconstruction"""
+
+        z_code: Tensor
+        """The generative models internal representation"""
 
     @abstractclassmethod
     def encode(self, x: Tensor) -> Tensor:
@@ -54,10 +57,6 @@ class Generative(ABC, nn.Module):
     def classify(self, x: Tensor) -> Tensor:
         pass
 
-    def forward(self, input: Tensor) -> ForwardOutput:
-        pass
-
-
 class SpecialLoss(ABC):
 
     @abstractclassmethod
@@ -69,6 +68,7 @@ class TraitPlugin(SupervisedPlugin):
     The trait plugin implements the trait behaviors using avalanche
     """
 
-    def before_eval_exp(self, strategy, **kwargs):
+    def before_training_exp(self, strategy, **kwargs):
         if isinstance(strategy.model, TaskAware):
+            print("ON TASK CHANGE", strategy.clock.train_exp_counter)
             strategy.model.on_task_change(strategy.clock.train_exp_counter)
