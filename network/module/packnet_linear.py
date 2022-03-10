@@ -1,29 +1,25 @@
 import math
-from unicodedata import decimal
 
 import torch
 import torch.nn as nn
-from torch import Tensor
+from torch import ByteTensor, Tensor
 from torch.nn import functional as F
 
+from network.trait import PackNetModule
 
-class PackNetLinear(nn.Module):
+class PackNetLinear(PackNetModule):
     """
     Implementation of linear module to implement PackNet functionality. You
     can think about a PackNet as a Stack of networks overlayed on top of each other
     where each layer is only connected to those below additionally only the
-    top of the stack can be modified.
+    top of the stack can be trained.
 
-    In order to grow the stack the top must be pruned to make way for it.
+    In order to grow the stack the top must be pruned `PackNetLinear.prune` to
+    free up parameters. The pruned parameters then need to pushed to the top of
+    the stack with `PackNetLinear.push_pruned()`
 
-
-    Notes:
-    "We did not find it necessary to learn task-specific biases similar to EWC,
-    and keep the biases of all the layers fixed after the network is pruned and
-    re-trained for the first time." (Mallya & Lazebnik, 2018)
 
     Bib:
-
     Mallya, A., & Lazebnik, S. (2018). PackNet: Adding Multiple Tasks to a 
     Single Network by Iterative Pruning. 2018 IEEE/CVF Conference on Computer 
     Vision and Pattern Recognition, 7765-7773. 
@@ -35,16 +31,29 @@ class PackNetLinear(nn.Module):
     ArXiv:1607.04381 [Cs]. http://arxiv.org/abs/1607.04381
     """
 
-    stack_z: Tensor
+    z_mask: Tensor
     """
-    Stack z is a depth index of each neuron in an imaginary "stack"
+    Z mask is a depth index of each neuron in an imaginary "stack" which makes
+    up the PackNet
 
     A stack consists of:
-     * `z = -1` Represents pruned weights reserved for future use
-     * `z = 0`  Represents the top of the stack where a weight can be trained
-     * `z > 0`  Represents a weight within the stack that cannot be trained
-
+     * `z = 0`  Represents pruned weights reserved for future use
+     * `z = 1`  Represents the top of the stack where a weight can be trained
+     * `z > 1`  Represents a weight within the stack that cannot be trained
     """
+    Z_PRUNED = 0
+    Z_TOP = 1
+
+    @property
+    def top_mask(self) -> Tensor:
+        """Return a mask of weights at the top of the `stack`"""
+        return self.z_mask.eq(self.Z_TOP)
+
+    @property
+    def pruned_mask(self) -> Tensor:
+        """Return a mask of weights that have been pruned"""
+        return self.z_mask.eq(self.Z_PRUNED)
+
 
     in_features: int
     out_features: int
@@ -52,27 +61,25 @@ class PackNetLinear(nn.Module):
 
     weight: Tensor
     bias: Tensor
-    
 
-    def __init__(self, in_features: int, out_features: int, device=None) -> None:
+    def __init__(self, in_features: int, out_features: int) -> None:
         super().__init__()
-
-        self.training_task = 0
-
         self.in_features = in_features
         self.out_features = out_features
         self.weight_count = in_features * out_features
+
         # Initialize stack z index
-        self.stack_z = torch.zeros((out_features, in_features))
+        self.register_buffer("z_mask", torch.ones((out_features, in_features)).byte() * self.Z_TOP)
 
         # Initialize tunable parameters
         self.weight = nn.parameter.Parameter(
-            torch.empty((out_features, in_features), device=device))
+            torch.empty((out_features, in_features)))
         self.bias = nn.parameter.Parameter(
-            torch.empty(out_features, device=device)
+            torch.empty(out_features)
         )
 
         self.reset_parameters()
+        self.weight.register_hook(self._backward_hook)
 
     def reset_parameters(self) -> None:
         # Kaiming initialization
@@ -85,19 +92,34 @@ class PackNetLinear(nn.Module):
         bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
         nn.init.uniform_(self.bias, -bound, bound)
 
-    def forward(self, input: Tensor) -> Tensor:
-        return F.linear(input, self.weight, self.bias)
+    def forward(self, input: Tensor, z_index=1) -> Tensor:
+        weights = self._available_weights(z_index)
+        return F.linear(input, weights, self.bias)
 
-    def _prunable_mask(self) -> Tensor:
-        """Return a mask of prunable neurons"""
-        return self.stack_z.eq(0)
+    def _backward_hook(self, grad: Tensor) -> Tensor:
+        """
+        Only the top layer should be trained. Todo so all other gradients
+        are zeroed. Caution should be taken when optimizers with momentum are 
+        used, since they can cause parameters to be modified even when no 
+        gradient exists
+        """
+        grad[~self.top_mask] = 0.0
+        return grad
+
+    def _available_weights(self, z_index: int) -> Tensor:
+        weight = self.weight
+        # Mask of the weights that are above the supplied z_index. Used to zero
+        # them 
+        mask = self.z_mask.less(z_index)
+        with torch.no_grad(): weight[mask] = 0.0
+        return weight
 
     def _prunable_count(self) -> int:
-        return self._prunable_mask().count_nonzero()
+        return self.top_mask.count_nonzero()
 
     def _rank_prunable(self) -> Tensor:
 
-        prunable_mask = self._prunable_mask()
+        prunable_mask = self.top_mask
         prunable_count = self._prunable_count()
 
         # "We use the simple heuristic to quantify the importance of the 
@@ -109,15 +131,27 @@ class PackNetLinear(nn.Module):
         return rank[:prunable_count]
 
     def _prune_weights(self, indices: Tensor):
-        self.stack_z.flatten()[indices] = -1.0
-    
-    # def _prune_percentage(self, ranked: Tensor) -> Tensor:
+        self.z_mask.flatten()[indices] = 0
+        with torch.no_grad(): self.weight.flatten()[indices] = 0.0
 
-    #     self.weight.flatten().scatter(0, ranked, Tensor(-1))
-    #     pass
+    def prune(self, to_prune_proportion: float):
+        print("PRUNE!")
+        ranked = self._rank_prunable()
+        prune_count = int(len(ranked) * to_prune_proportion)
+        self._prune_weights(ranked[:prune_count])
+
+    def push_pruned(self):
+        if self.pruned_mask.count_nonzero() == 0:
+            raise RuntimeError("No pruned parameters exist to be pushed. Try pruning first")
+        self.z_mask += 1
+        
+        """
+        Freezing bias parameters
+        "We did not find it necessary to learn task-specific biases similar to EWC,
+        and keep the biases of all the layers fixed after the network is pruned and
+        re-trained for the first time." (Mallya & Lazebnik, 2018)
+        """
+        self.bias.requires_grad = False
 
 
-
-
-    pass
 
