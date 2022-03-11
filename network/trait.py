@@ -30,7 +30,7 @@ class TaskAware():
 
 class PackNetModule(nn.Module):
 
-    layer_count: int = 0
+    layer_count: int = 1
 
     def prune(self, to_prune_proportion: float) -> None:
         """Prune a proportion of the prunable parameters using the absolute value
@@ -57,18 +57,20 @@ class PackNetModule(nn.Module):
         self.apply(_push_pruned)
         self.layer_count += 1
 
-    def task_id_to_z_index(self, task_id) -> int:
-        return self.layer_count - task_id
+    def set_z_index(self, z_index):
+        def _set_z_index(module: nn.Module):
+            if isinstance(module, PackNetModule) and module != self:
+                module.set_z_index(z_index)
+        self.apply(_set_z_index)
 
-    def task_forward(self, input: Tensor, z_index: int) -> Tensor:
-        """Forward using a specified subnetwork
+    def set_task_id(self, task_id: int):
+        z_index = self.layer_count - task_id
+        print(f"z_index <- {z_index}")
+        self.set_z_index(z_index)
 
-        :param z_index: Specify a subnetwork
-        :param input: Activations that propagate forward
-        :return: The output layer activations
-        """
-        return self.forward(input, z_index)
- 
+    def reset_task_id(self):
+        self.set_z_index(1)
+
 
 class Generative(ABC):
     '''Generative algorithms with classification capability'''

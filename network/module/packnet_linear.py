@@ -62,6 +62,8 @@ class PackNetLinear(PackNetModule):
     weight: Tensor
     bias: Tensor
 
+    z_index = Z_TOP
+
     def __init__(self, in_features: int, out_features: int) -> None:
         super().__init__()
         self.in_features = in_features
@@ -92,8 +94,8 @@ class PackNetLinear(PackNetModule):
         bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
         nn.init.uniform_(self.bias, -bound, bound)
 
-    def forward(self, input: Tensor, z_index=1) -> Tensor:
-        weights = self._available_weights(z_index)
+    def forward(self, input: Tensor) -> Tensor:
+        weights = self._available_weights(self.z_index)
         return F.linear(input, weights, self.bias)
 
     def _backward_hook(self, grad: Tensor) -> Tensor:
@@ -107,7 +109,7 @@ class PackNetLinear(PackNetModule):
         return grad
 
     def _available_weights(self, z_index: int) -> Tensor:
-        weight = self.weight
+        weight = self.weight.clone()
         # Mask of the weights that are above the supplied z_index. Used to zero
         # them 
         mask = self.z_mask.less(z_index)
@@ -118,24 +120,29 @@ class PackNetLinear(PackNetModule):
         return self.top_mask.count_nonzero()
 
     def _rank_prunable(self) -> Tensor:
-
-        prunable_mask = self.top_mask
-        prunable_count = self._prunable_count()
-
+        """
+        Returns a 1D tensor of the weights ranked based on their absolute value.
+        Sorted to be in ascending order.
+        """
         # "We use the simple heuristic to quantify the importance of the 
         # weights using their absolute value." (Han et al., 2017)
-        importance = self.weight.abs() * prunable_mask
-        
+        importance = self.weight.abs()
+
+        # All weights that are not on top of the stack are un_prunable
+        un_prunable = ~self.top_mask
+        # Mark un-prunable weights using -1.0 so they can be cutout after sort
+        importance[un_prunable] = -1.0
+    
         # Rank the importance
-        rank = torch.argsort(importance.flatten(), descending=True)
-        return rank[:prunable_count]
+        rank = torch.argsort(importance.flatten())
+        # Cut out un-prunable weights
+        return rank[un_prunable.count_nonzero():]
 
     def _prune_weights(self, indices: Tensor):
         self.z_mask.flatten()[indices] = 0
         with torch.no_grad(): self.weight.flatten()[indices] = 0.0
 
     def prune(self, to_prune_proportion: float):
-        print("PRUNE!")
         ranked = self._rank_prunable()
         prune_count = int(len(ranked) * to_prune_proportion)
         self._prune_weights(ranked[:prune_count])
@@ -153,5 +160,7 @@ class PackNetLinear(PackNetModule):
         """
         self.bias.requires_grad = False
 
+    def set_z_index(self, z_index):
+        self.z_index = z_index
 
 
