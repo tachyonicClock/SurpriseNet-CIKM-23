@@ -1,5 +1,6 @@
 from abc import ABC, abstractclassmethod
 from dataclasses import dataclass
+from typing import Callable
 from torch import Tensor, nn
 import torch
 from avalanche.core import SupervisedPlugin
@@ -30,7 +31,14 @@ class TaskAware():
 
 class PackNetModule(nn.Module):
 
-    layer_count: int = 1
+    def _pn_apply(self, func: Callable[['PackNetModule'], None]):
+        """Apply only to child PackNetModule"""
+        @torch.no_grad()
+        def __pn_apply(module):
+            if isinstance(module, PackNetModule) and module != self:
+                func(module)
+        self.apply(__pn_apply)
+
 
     def prune(self, to_prune_proportion: float) -> None:
         """Prune a proportion of the prunable parameters using the absolute value
@@ -38,38 +46,22 @@ class PackNetModule(nn.Module):
 
         :param to_prune_proportion: A proportion of the prunable parameters to prune
         """
-
-        @torch.no_grad()
-        def _prune(module: nn.Module):
-            if isinstance(module, PackNetModule) and module != self:
-                module.prune(to_prune_proportion)
-        self.apply(_prune)
+        self._pn_apply(lambda x : x.prune(to_prune_proportion))
 
     def push_pruned(self) -> None:
         """
         Moves pruned parameters to the top of the stack. Note that biases are 
         frozen as a side-effect.
         """
-        @torch.no_grad()
-        def _push_pruned(module: nn.Module):
-            if isinstance(module, PackNetModule) and module != self:
-                module.push_pruned()
-        self.apply(_push_pruned)
-        self.layer_count += 1
+        self._pn_apply(lambda x : x.push_pruned())
 
-    def set_z_index(self, z_index):
-        def _set_z_index(module: nn.Module):
-            if isinstance(module, PackNetModule) and module != self:
-                module.set_z_index(z_index)
-        self.apply(_set_z_index)
+    def use_task_subset(self, task_id):
+        self._pn_apply(lambda x : x.use_task_subset(task_id))
 
-    def set_task_id(self, task_id: int):
-        z_index = self.layer_count - task_id
-        print(f"z_index <- {z_index}")
-        self.set_z_index(z_index)
+    def use_top_subset(self):
+        self._pn_apply(lambda x : x.use_top_subset())
 
-    def reset_task_id(self):
-        self.set_z_index(1)
+
 
 
 class Generative(ABC):

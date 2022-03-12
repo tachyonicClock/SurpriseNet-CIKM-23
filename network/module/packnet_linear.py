@@ -35,25 +35,15 @@ class PackNetLinear(PackNetModule):
     """
     Z mask is a depth index of each neuron in an imaginary "stack" which makes
     up the PackNet
-
-    A stack consists of:
-     * `z = 0`  Represents pruned weights reserved for future use
-     * `z = 1`  Represents the top of the stack where a weight can be trained
-     * `z > 1`  Represents a weight within the stack that cannot be trained
     """
-    Z_PRUNED = 0
-    Z_TOP = 1
-
-    @property
-    def top_mask(self) -> Tensor:
-        """Return a mask of weights at the top of the `stack`"""
-        return self.z_mask.eq(self.Z_TOP)
-
-    @property
-    def pruned_mask(self) -> Tensor:
-        """Return a mask of weights that have been pruned"""
-        return self.z_mask.eq(self.Z_PRUNED)
-
+    _Z_PRUNED = 255
+    """Index tracking if a weight has been pruned"""
+    _z_top: int = 0 
+    """Index top of the 'stack'. Should only increase"""
+    _z_active: int = 0
+    """
+    Index defining which subset is used for a forward pass
+    """
 
     in_features: int
     out_features: int
@@ -62,7 +52,15 @@ class PackNetLinear(PackNetModule):
     weight: Tensor
     bias: Tensor
 
-    z_index = Z_TOP
+    @property
+    def top_mask(self) -> Tensor:
+        """Return a mask of weights at the top of the `stack`"""
+        return self.z_mask.eq(self._z_top)
+
+    @property
+    def pruned_mask(self) -> Tensor:
+        """Return a mask of weights that have been pruned"""
+        return self.z_mask.eq(self._Z_PRUNED)
 
     def __init__(self, in_features: int, out_features: int) -> None:
         super().__init__()
@@ -71,7 +69,7 @@ class PackNetLinear(PackNetModule):
         self.weight_count = in_features * out_features
 
         # Initialize stack z index
-        self.register_buffer("z_mask", torch.ones((out_features, in_features)).byte() * self.Z_TOP)
+        self.register_buffer("z_mask", torch.ones((out_features, in_features)).byte() * self._z_top)
 
         # Initialize tunable parameters
         self.weight = nn.parameter.Parameter(
@@ -80,10 +78,11 @@ class PackNetLinear(PackNetModule):
             torch.empty(out_features)
         )
 
-        self.reset_parameters()
+        self._reset_parameters()
         self.weight.register_hook(self._backward_hook)
 
-    def reset_parameters(self) -> None:
+
+    def _reset_parameters(self) -> None:
         # Kaiming initialization
         # Reused `nn.Linear` initialization code
         # See https://github.com/pytorch/pytorch/issues/57109 or
@@ -94,10 +93,6 @@ class PackNetLinear(PackNetModule):
         bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
         nn.init.uniform_(self.bias, -bound, bound)
 
-    def forward(self, input: Tensor) -> Tensor:
-        weights = self._available_weights(self.z_index)
-        return F.linear(input, weights, self.bias)
-
     def _backward_hook(self, grad: Tensor) -> Tensor:
         """
         Only the top layer should be trained. Todo so all other gradients
@@ -105,6 +100,8 @@ class PackNetLinear(PackNetModule):
         used, since they can cause parameters to be modified even when no 
         gradient exists
         """
+        assert self._z_active == self._z_top, \
+            "Backward not possible, only the top can be trained"
         grad[~self.top_mask] = 0.0
         return grad
 
@@ -112,7 +109,7 @@ class PackNetLinear(PackNetModule):
         weight = self.weight.clone()
         # Mask of the weights that are above the supplied z_index. Used to zero
         # them 
-        mask = self.z_mask.less(z_index)
+        mask = self.z_mask.greater(z_index)
         with torch.no_grad(): weight[mask] = 0.0
         return weight
 
@@ -139,7 +136,7 @@ class PackNetLinear(PackNetModule):
         return rank[un_prunable.count_nonzero():]
 
     def _prune_weights(self, indices: Tensor):
-        self.z_mask.flatten()[indices] = 0
+        self.z_mask.flatten()[indices] = self._Z_PRUNED
         with torch.no_grad(): self.weight.flatten()[indices] = 0.0
 
     def prune(self, to_prune_proportion: float):
@@ -147,10 +144,24 @@ class PackNetLinear(PackNetModule):
         prune_count = int(len(ranked) * to_prune_proportion)
         self._prune_weights(ranked[:prune_count])
 
+    def use_task_subset(self, task_id):
+        """Setter to set the sub-set of the network to be used on forward pass"""
+        assert 0 <= task_id <= self._z_top
+        self._z_active = task_id
+
+    def use_top_subset(self):
+        """Forward should use the top subset"""
+        self.use_task_subset(self._z_top)
+
     def push_pruned(self):
         if self.pruned_mask.count_nonzero() == 0:
             raise RuntimeError("No pruned parameters exist to be pushed. Try pruning first")
-        self.z_mask += 1
+        # The top is now one higher up
+        self._z_top += 1
+        # Move pruned weights to the top
+        self.z_mask[self.pruned_mask] = self._z_top
+        # Change the active z_index
+        self.use_top_subset()
         
         """
         Freezing bias parameters
@@ -160,7 +171,8 @@ class PackNetLinear(PackNetModule):
         """
         self.bias.requires_grad = False
 
-    def set_z_index(self, z_index):
-        self.z_index = z_index
+    def forward(self, input: Tensor) -> Tensor:
+        weights = self._available_weights(self._z_active)
+        return F.linear(input, weights, self.bias)
 
 

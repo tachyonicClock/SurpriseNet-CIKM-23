@@ -60,23 +60,6 @@ def test_equivalence(packnet_linear: PackNetLinear, torch_linear: nn.Linear, dev
     assert torch_linear.forward(x).equal(packnet_linear.forward(x)), \
         "Forward should be equivalent"
 
-def test__prunable_mask(packnet_linear: PackNetLinear, device):
-    """Test that prunable mask works"""
-    packnet_linear.to(device)
-    z_stack_shape = packnet_linear.z_mask.shape
-    n_weights = packnet_linear.out_features * packnet_linear.in_features
-
-    prunable = n_weights // 2
-    not_prunable = n_weights - prunable
-
-    packnet_linear.z_mask = \
-        torch.cat((torch.ones(prunable), torch.randint(2, 10, (not_prunable,)))) \
-        .reshape(z_stack_shape).to(device)
-
-    top_layer_count  = packnet_linear.top_mask.count_nonzero().sum()
-    assert top_layer_count == prunable
-
-
 def test__rank_prunable(packnet_linear_random_z: PackNetLinear, device):
 
     packnet_linear_random_z.to(device)
@@ -94,7 +77,7 @@ def test__rank_prunable(packnet_linear_random_z: PackNetLinear, device):
 
 def test__prune_weights(packnet_linear: PackNetLinear, device):
     packnet_linear.to(device)
-    prune_count = packnet_linear.weight_count//3
+    prune_count = packnet_linear.weight_count//2
     to_prune = list(range(packnet_linear.weight_count))
     random.shuffle(to_prune)
     to_prune = to_prune[:prune_count]
@@ -170,7 +153,7 @@ def test_toy_end_to_end():
     model = XORNet()
     loss_func = nn.MSELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
-    steps = 2*1000
+    steps = 1000
     prune_proportion = 0.75
 
     @torch.no_grad()
@@ -237,9 +220,10 @@ def test_toy_end_to_end():
     
     print("Task a")
     # By setting the task id we recreate the conditions after it relearns
-    model.set_task_id(0)
+    model.use_task_subset(0)
+    print(lin.z_mask)
     assert a_relearn_loss == validate(0, task_a), "Should perform identical to before task_b was trained"
 
-    model.reset_task_id()
+    model.use_top_subset()
     print("Task b")
     assert validate(0, task_b) == b_loss, "Should not have changed performance"
