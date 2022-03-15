@@ -31,11 +31,16 @@ class PackNetLinear(PackNetModule):
     ArXiv:1607.04381 [Cs]. http://arxiv.org/abs/1607.04381
     """
 
+    weight: Tensor
+    """Weights of each connection"""
+    bias: Tensor
+    """Biases for each neuron"""
     z_mask: Tensor
     """
-    Z mask is a depth index of each neuron in an imaginary "stack" which makes
-    up the PackNet
+    Z mask is a depth index of weights in an imaginary "stack" that makes up the
+    PackNet. The masks values corresponds to each task.
     """
+
     _Z_PRUNED = 255
     """Index tracking if a weight has been pruned"""
     _z_top: int = 0 
@@ -48,9 +53,6 @@ class PackNetLinear(PackNetModule):
     in_features: int
     out_features: int
     weight_count: int
-
-    weight: Tensor
-    bias: Tensor
 
     @property
     def top_mask(self) -> Tensor:
@@ -137,6 +139,14 @@ class PackNetLinear(PackNetModule):
 
     def _prune_weights(self, indices: Tensor):
         self.z_mask.flatten()[indices] = self._Z_PRUNED
+
+        # "Weight initialization plays a big role in deep learning (Mishkin &
+        # Matas (2015)). Conventional training has only one chance of
+        # initialization. DSD gives the optimization a second (or more) chance
+        # during the training process to re-initialize from more robust sparse
+        # training solution. We re-dense the network from the sparse solution
+        # which can be seen as a zero initialization for pruned weights. Other
+        # initialization methods are also worth trying." (Han et al., 2017)
         with torch.no_grad(): self.weight.flatten()[indices] = 0.0
 
     def prune(self, to_prune_proportion: float):

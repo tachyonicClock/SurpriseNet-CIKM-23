@@ -37,10 +37,7 @@ class SimplePackNet(PackNetModule):
         )
 
     def forward(self, input: Tensor) -> Tensor:
-
-        z_index = 1
-        return self.net(input, z_index)
-
+        return self.net(input)
 
 
 @dataclass
@@ -92,10 +89,26 @@ class MyExperiment(Experiment):
         print("Push Pruned")
         self.network.push_pruned()
 
+
+    def before_eval_exp(self, strategy, *args, **kwargs):
+        experience: av.benchmarks.Experience = self.strategy.experience
+        task_id = experience.task_label
+
+        if self.hp.prune:
+            print(f"task_id={task_id}, experience={self.clock.train_exp_counter}")
+            if task_id >= self.clock.train_exp_counter:
+                self.network.use_top_subset()
+            else:
+                self.network.use_task_subset(task_id)
+    
+    def after_eval(self, strategy, *args, **kwargs):
+        self.network.use_top_subset()
+
     def make_scenario(self):
         scenario = SplitFMNIST(
             n_experiences=5,
             fixed_class_order=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+            return_task_id=True,
             dataset_root=DATASETS)
         return scenario
 
@@ -107,12 +120,12 @@ experiment = MyExperiment(
     HyperParams(
             lr=0.005,
             train_mb_size=64,
-            train_epochs=5,
+            train_epochs=1,
             eval_mb_size=128,
             eval_every=-1,
-            post_prune_epochs=10,
+            post_prune_epochs=5,
             prune_proportion=0.5,
-            prune=False,
+            prune=True,
             device="cuda",
     )
 )

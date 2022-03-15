@@ -8,3 +8,6 @@ run:
 
 dash:
 	tensorboard --logdir experiment_logs
+
+clean:
+	rm -r experiment_logs/*

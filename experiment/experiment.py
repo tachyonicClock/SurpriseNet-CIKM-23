@@ -94,15 +94,17 @@ class Experiment(SupervisedPlugin):
         print(f"Current Classes:     {exp.classes_in_this_experience}")
         print(f"Experience size:     {len(exp.dataset)}")
 
+    def train_experience(self, experience: av.benchmarks.NCExperience):
+        self.strategy.train(experience)
+
     def train(self):
         self.preflight()
         results = []
-        for i, exp in enumerate(self.scenario.train_stream):
+        for exp in self.scenario.train_stream:
             self._experience_log(exp)
-            self.strategy.train(exp)
+            self.train_experience(exp)
             test_subset = self.scenario.test_stream
             results.append(self.strategy.eval(test_subset))
-
         self.logger.writer.flush()
         return results
 
@@ -136,7 +138,7 @@ class Experiment(SupervisedPlugin):
 
         return EvaluationPlugin(
             loss_metrics(epoch=True,
-                         epoch_running=True, experience=True, stream=True),
+                         epoch_running=True, experience=True, stream=True, minibatch=True),
             accuracy_metrics(epoch=True, stream=True,
                              experience=True, trained_experience=True),
             confusion_matrix_metrics(num_classes=num_classes, stream=True),
@@ -185,6 +187,10 @@ class Experiment(SupervisedPlugin):
     @property
     def n_experiences(self) -> int:
         return len(self.scenario.train_stream)
+
+    @property
+    def clock(self):
+        return self.strategy.clock
 
     def _get_log_numbers(self):
         for filename in os.listdir(LOGDIR):
