@@ -41,8 +41,9 @@ class PackNetModule(nn.Module):
 
 
     def prune(self, to_prune_proportion: float) -> None:
-        """Prune a proportion of the prunable parameters using the absolute value
-        of the weights as a heuristic for importance (Han et al., 2017)
+        """Prune a proportion of the prunable parameters (parameters on the 
+        top of the stack) using the absolute value of the weights as a 
+        heuristic for importance (Han et al., 2017)
 
         :param to_prune_proportion: A proportion of the prunable parameters to prune
         """
@@ -50,8 +51,8 @@ class PackNetModule(nn.Module):
 
     def push_pruned(self) -> None:
         """
-        Moves pruned parameters to the top of the stack. Note that biases are 
-        frozen as a side-effect.
+        Commits the layer by incrementing counters and moving pruned parameters
+        to the top of the stack. Biases are frozen as a side-effect.
         """
         self._pn_apply(lambda x : x.push_pruned())
 
@@ -73,7 +74,6 @@ class Generative(ABC):
         """The models classification predictions"""
         x_hat: Tensor
         """The generative models reconstruction"""
-
         z_code: Tensor
         """The generative models internal representation"""
 

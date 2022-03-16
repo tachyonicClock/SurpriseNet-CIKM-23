@@ -1,4 +1,5 @@
 import math
+import typing
 
 import torch
 import torch.nn as nn
@@ -156,7 +157,7 @@ class PackNetLinear(PackNetModule):
 
     def use_task_subset(self, task_id):
         """Setter to set the sub-set of the network to be used on forward pass"""
-        assert 0 <= task_id <= self._z_top
+        task_id = min(max(task_id, 0), self._z_top)
         self._z_active = task_id
 
     def use_top_subset(self):
@@ -165,7 +166,7 @@ class PackNetLinear(PackNetModule):
 
     def push_pruned(self):
         if self.pruned_mask.count_nonzero() == 0:
-            raise RuntimeError("No pruned parameters exist to be pushed. Try pruning first")
+            raise RuntimeError(f"No pruned parameters exist to be pushed. Try pruning first. Weight count: {self.weight_count}")
         # The top is now one higher up
         self._z_top += 1
         # Move pruned weights to the top
@@ -185,4 +186,61 @@ class PackNetLinear(PackNetModule):
         weights = self._available_weights(self._z_active)
         return F.linear(input, weights, self.bias)
 
+    def extra_repr(self) -> str:
+        return 'in_features={}, out_features={}'.format(
+            self.in_features, self.out_features
+        )
 
+
+def PN_Layer(input_features, output_features):
+    return nn.Sequential(
+        PackNetLinear(input_features, output_features),
+        nn.ReLU()
+    )
+
+class PackNetDenseEncoder(PackNetModule):
+
+    def __init__(self,
+        pattern_shape: torch.Size,
+        latent_dim: int,
+        layer_sizes: typing.Sequence[int]
+        ) -> None:
+        super().__init__()
+
+        input_size = math.prod(pattern_shape)
+        self.net = nn.Sequential(
+            PN_Layer(input_size, layer_sizes[0]),
+            *[PN_Layer(i_feat, o_feat) 
+                for i_feat, o_feat in zip(layer_sizes, layer_sizes[1:])],
+            PackNetLinear(layer_sizes[-1], latent_dim),
+            nn.Sigmoid()
+        )
+
+    def forward(self, input: Tensor) -> Tensor:
+        x = torch.flatten(input, 1)
+        x = self.net(x)
+        return x
+
+class PackNetDenseDecoder(PackNetModule):
+
+    def __init__(self,
+        pattern_shape: torch.Size,
+        latent_dim: int,
+        layer_sizes: typing.Sequence[int]
+        ) -> None:
+        super().__init__()
+
+        output_size = math.prod(pattern_shape)
+        self.net = nn.Sequential(
+            PN_Layer(latent_dim, layer_sizes[0]),
+            *[PN_Layer(i_feat, o_feat) 
+                for i_feat, o_feat in zip(layer_sizes, layer_sizes[1:])],
+            PackNetLinear(layer_sizes[-1], output_size),
+        )
+        self.pattern_shape = pattern_shape
+
+    def forward(self, input: Tensor) -> Tensor:
+        x: Tensor = torch.flatten(input, 1)
+        x = self.net(x)
+        x = x.view(-1, *self.pattern_shape)
+        return x

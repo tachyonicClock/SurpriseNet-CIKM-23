@@ -9,7 +9,7 @@ from avalanche.evaluation import PluginMetric
 from avalanche.evaluation.metric_definitions import MetricValue
 from matplotlib.axes import Axes
 from mltypes import *
-from network.trait import Generative
+from network.trait import Generative, PackNetModule
 from PIL import Image
 
 
@@ -90,8 +90,8 @@ class GenerateReconstruction(PluginMetric):
 
     @torch.no_grad()
     def after_eval_exp(self, strategy: 'BaseStrategy') -> 'MetricResult':
-        assert isinstance(strategy.model,
-                          Generative), "Network must be generative"
+        model = strategy.model
+        assert isinstance(model, Generative), "Network must be generative"
 
         n_tasks = len(self.patterns)
         n_patterns_per_task = len(self.patterns[0])
@@ -107,6 +107,10 @@ class GenerateReconstruction(PluginMetric):
             task_fig = task_figs[task_id]
             task_fig.suptitle(f"Experience {task_id}")
 
+            if isinstance(model, PackNetModule):
+                print("USING SUBSET")
+                model.use_task_subset(task_id)
+
             task_plots = task_fig.subplots(len(task_patterns), 2, squeeze=False)
             for pattern, pattern_plot in zip(task_patterns, task_plots):
                 x, y = pattern
@@ -116,6 +120,9 @@ class GenerateReconstruction(PluginMetric):
                 out = strategy.model.forward(x.unsqueeze(0))
 
                 self.add_image(pattern_plot, x, out.x_hat, y, torch.argmax(out.y_hat))
+
+        if isinstance(model, PackNetModule):
+            model.use_top_subset()
 
         x_plot = strategy.clock.train_exp_counter
         metric = MetricValue(self, "Reconstructions", fig2img(fig), x_plot)

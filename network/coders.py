@@ -92,35 +92,6 @@ class CNN_Decoder(nn.Module):
         x = self.net(x)
         return x
 
-def MLP_Encoder(latent_dims: int):
-    """3 Layer multi-layer perceptron encoder"""
-    act_fn = nn.ReLU
-
-    return nn.Sequential(
-        nn.Flatten(),
-        nn.Linear(28*28, 512),
-        act_fn(),
-        nn.Linear(512, 256),
-        act_fn(),
-        nn.Linear(256, 128),
-        act_fn(),
-        nn.Linear(128, latent_dims),
-    )
 
 
-def MLP_Decoder(latent_dims: int):
-    """3 Layer multi-layer perceptron decoder"""
-    act_fn = nn.ReLU
-
-    return nn.Sequential(
-        nn.Linear(latent_dims, 128),
-        act_fn(),
-        nn.Linear(128, 256),
-        act_fn(),
-        nn.Linear(256, 512),
-        act_fn(),
-        nn.Linear(512, 28*28),
-        nn.Tanh(),  # Scale output between -1 and +1
-        nn.Unflatten(1, (1, 28, 28)),
-    )
 

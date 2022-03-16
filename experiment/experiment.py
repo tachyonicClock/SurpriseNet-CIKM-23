@@ -174,7 +174,7 @@ class Experiment(SupervisedPlugin):
         raise NotImplemented
 
     def log_scalar(self, name, value, step=None):
-        self.logger.log_single_metric(
+        self.logger.writer.add_scalar(
             name,
             value,
             step if step else self.strategy.clock.total_iterations)
