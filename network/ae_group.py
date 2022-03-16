@@ -1,4 +1,5 @@
 from collections import OrderedDict
+import copy
 import typing
 from torch import Tensor, nn
 import torch
@@ -15,19 +16,17 @@ def MLP_AE_Head(latent_dims, output_size):
     )
 
 
-class D_AE(Generative, SpecialLoss, nn.Module):
+class D_AE(Generative, nn.Module):
     # Discriminative auto-encoder
 
     def __init__(self,
                  latent_dim: int,
-                 classifier_weight: float,
                  encoder: nn.Module,
                  decoder: nn.Module,
                  head: nn.Module) -> None:
         super().__init__()
 
         self.latent_dim = latent_dim
-        self.classifier_weight = classifier_weight
         self.encoder: nn.Module = encoder
         self.decoder: nn.Module = decoder
         self.head: nn.Module = head
@@ -58,18 +57,6 @@ class D_AE(Generative, SpecialLoss, nn.Module):
         y_hat = self.head(z)     # Classification head
         return D_AE.ForwardOutput(y_hat, x_hat, z)
 
-    def _reconstruction_loss(self, x: Tensor, x_hat: Tensor) -> Tensor:
-        loss = F.mse_loss(x, x_hat, reduction="none")
-        loss = loss.sum(dim=[1, 2, 3]).mean(dim=[0])
-        return loss
-
-    def _classifier_loss(self, y: Tensor, y_hat: Tensor) -> Tensor:
-        return self.cross_entropy(y_hat, y)
-    
-    def loss_function(self, x, y, x_hat, y_hat):
-        return self._reconstruction_loss(x, x_hat) + \
-               self._classifier_loss(y, y_hat) * self.classifier_weight
-
 
 class AEGroup(Generative, TaskAware, SpecialLoss, nn.Module):
     """A group of autoencoders"""
@@ -78,14 +65,23 @@ class AEGroup(Generative, TaskAware, SpecialLoss, nn.Module):
 
     def __init__(self, 
         make_auto_encoder: typing.Callable[[], Generative],
-        n: int):
+        n: int,
+        copy_network: bool = False):
         super().__init__()
         self.n_encoders = n
         self.encoders = [make_auto_encoder() for _ in range(n)]
         self._encoders = nn.ModuleList(self.encoders)
         self.make_auto_encoder = make_auto_encoder
+        self.copy_network = copy_network
 
     def on_task_change(self, new_task_id: int):
+
+        if self.copy_network:
+            print("COPY NETWORK")
+            old = self.encoders[self.current_task]
+            new = self.encoders[new_task_id]
+            new.load_state_dict(copy.deepcopy(old.state_dict()))
+
         assert new_task_id < self.n_encoders, \
             f"Got new task id {new_task_id} while only having {self.n_encoders}"
         self.current_task = new_task_id
