@@ -137,8 +137,6 @@ class Experiment(SupervisedPlugin):
         if isinstance(self.network, Samplable):
             plugins.append(GenerateSamples(3, 4))
 
-        GenerateSamples(3, 4)
-
         return EvaluationPlugin(
             loss_metrics(epoch=True,
                          epoch_running=True, experience=True, stream=True, minibatch=True),

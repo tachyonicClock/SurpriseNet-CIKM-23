@@ -8,16 +8,17 @@ import torch.nn as nn
 from torch.nn import functional as F
 
 from torch import Tensor, long, tensor
-from network.coders import MLP_Encoder, MLP_Decoder
+from functional import vae_kl_loss
+from network.module.packnet_linear import PackNetDenseDecoder, PackNetDenseEncoder
 
-from network.trait import Generative
+from network.trait import AutoEncoder, Classifier, Samplable
 
 
 def kl_divergence():
     torch.kl_div()
 
 
-class VAE(Generative, nn.Module):
+class VAE(Classifier, Samplable, AutoEncoder, nn.Module):
 
     kld_weight = 0.0001
     classifier_weight = 1.0
@@ -39,8 +40,8 @@ class VAE(Generative, nn.Module):
 
         self.decoder_adapter = nn.Linear(self.latent_dims, self.latent_adjacent_dims)
 
-        self.encoder = MLP_Encoder(self.latent_adjacent_dims)
-        self.decoder = MLP_Decoder(self.latent_adjacent_dims)
+        self.encoder = PackNetDenseEncoder((1, 28, 28), 64, [512, 256, 128])
+        self.decoder = PackNetDenseDecoder((1, 28, 28), 64, [128, 256, 512])
 
 
     def encode(self, x: Tensor) -> Tuple[Tensor, Tensor]:
@@ -62,7 +63,7 @@ class VAE(Generative, nn.Module):
         return z
 
     @dataclass
-    class ForwardOutput(Generative.ForwardOutput):
+    class ForwardOutput(AutoEncoder.ForwardOutput):
         x: Tensor       # input
         mu: Tensor      # means
         log_var: Tensor # log(variance)
@@ -71,10 +72,10 @@ class VAE(Generative, nn.Module):
     def forward(self, input: Tensor, **kwargs) -> ForwardOutput:
         mu, log_var = self.encode(input)
         z = self.reparameterise(mu, log_var)
-        recons = self.decode(z)
+        x_hat = self.decode(z)
 
         y_hat = self.fc_classifier(z)
-        return VAE.ForwardOutput(y_hat, recons, input, mu, log_var)
+        return VAE.ForwardOutput(y_hat, x_hat, z, input, mu, log_var)
 
     def classify(self, x: Tensor) -> Tensor:
         return self.forward(x).y_hat
@@ -86,15 +87,30 @@ class VAE(Generative, nn.Module):
     def device(self):
         return next(self.parameters()).device
 
+class VAE_Loss():
 
-    def loss_function(self, out: ForwardOutput, y: Tensor):
+    def __init__(self,
+        kld_weight: float,
+        recon_weight: float,
+        classifier_weight: float) -> None:
+        self.kld_weight = kld_weight
+        self.recon_weight = recon_weight
+        self.classifier_weight = classifier_weight 
 
-        recons_loss = F.mse_loss(out.x_hat, out.x)
+    def _recon_loss(self, x, x_hat):
+        # per-pixel mse
+        recon_loss = F.mse_loss(x, x_hat, reduction="none")
+        # Use the batch mean sum of the per-pixel mse 
+        recon_loss = recon_loss.sum(dim=[1, 2, 3]).mean(dim=[0])
+        return self.recon_weight * recon_loss
 
-        # Kullback–Leibler divergence how similar is the sample distribution to a normal distribution
-        kld_loss = torch.mean(-0.5 * torch.sum(1 + out.log_var - out.mu ** 2 - out.log_var.exp(), dim = 1), dim = 0)
+    def _kl_loss(self, mu, log_var):
+        return self.kld_weight * vae_kl_loss(mu, log_var)
 
-        
+    def _classifier_loss(self, y, y_hat):
+        return self.classifier_weight * F.cross_entropy(y_hat, y)
 
-        return recons_loss + self.kld_weight * kld_loss +  self.cross_entropy(out.y_hat, y)* self.classifier_weight
-
+    def loss(self, out: VAE.ForwardOutput, y: Tensor) -> Tensor:
+        return self._recon_loss(out.x, out.x_hat) + \
+               self._kl_loss(out.mu, out.log_var) + \
+               self._classifier_loss(y, out.y_hat)

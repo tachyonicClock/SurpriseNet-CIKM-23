@@ -213,7 +213,7 @@ class PackNetDenseEncoder(PackNetModule):
             *[PN_Layer(i_feat, o_feat) 
                 for i_feat, o_feat in zip(layer_sizes, layer_sizes[1:])],
             PackNetLinear(layer_sizes[-1], latent_dim),
-            nn.Sigmoid()
+            nn.Tanh()
         )
 
     def forward(self, input: Tensor) -> Tensor:

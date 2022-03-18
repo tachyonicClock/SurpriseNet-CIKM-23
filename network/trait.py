@@ -6,9 +6,6 @@ import torch
 from experiment.strategy import Strategy
 
 
-class AutoAssociative():
-    pass
-
 class PackNetModule(nn.Module):
 
     def _pn_apply(self, func: Callable[['PackNetModule'], None]):
@@ -70,7 +67,7 @@ class Classifier(ABC):
 class Samplable(ABC):
 
     @abstractmethod
-    def sample(self, n: int = 1) -> Tensor:
+    def sample_z(self, n: int = 1) -> Tensor:
         pass
 
 
