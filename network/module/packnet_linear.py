@@ -3,7 +3,7 @@ import typing
 
 import torch
 import torch.nn as nn
-from torch import ByteTensor, Tensor
+from torch import Tensor
 from torch.nn import functional as F
 
 from network.trait import PackNetModule
@@ -244,3 +244,15 @@ class PackNetDenseDecoder(PackNetModule):
         x = self.net(x)
         x = x.view(-1, *self.pattern_shape)
         return x
+
+class PackNetDenseHead(PackNetModule):
+    def __init__(self, latent_dims, output_size):
+        super().__init__()
+
+        self.net = nn.Sequential(
+            PackNetLinear(latent_dims, output_size),
+            nn.ReLU()
+        )
+    
+    def forward(self, input: Tensor) -> Tensor:
+        return self.net(input)

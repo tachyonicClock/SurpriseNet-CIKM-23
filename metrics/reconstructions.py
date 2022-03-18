@@ -9,7 +9,7 @@ from avalanche.evaluation import PluginMetric
 from avalanche.evaluation.metric_definitions import MetricValue
 from matplotlib.axes import Axes
 from mltypes import *
-from network.trait import Generative, PackNetModule
+from network.trait import AutoEncoder, PackNetModule, Samplable
 from PIL import Image
 
 
@@ -91,7 +91,7 @@ class GenerateReconstruction(PluginMetric):
     @torch.no_grad()
     def after_eval_exp(self, strategy: 'BaseStrategy') -> 'MetricResult':
         model = strategy.model
-        assert isinstance(model, Generative), "Network must be generative"
+        assert isinstance(model, AutoEncoder), "Network must be generative"
 
         n_tasks = len(self.patterns)
         n_patterns_per_task = len(self.patterns[0])
@@ -108,7 +108,6 @@ class GenerateReconstruction(PluginMetric):
             task_fig.suptitle(f"Experience {task_id}")
 
             if isinstance(model, PackNetModule):
-                print("USING SUBSET")
                 model.use_task_subset(task_id)
 
             task_plots = task_fig.subplots(len(task_patterns), 2, squeeze=False)
@@ -151,7 +150,7 @@ class GenerateSamples(PluginMetric):
 
     img_size: float = 2.0 # How big each image should be matplotlib units
 
-    def add_image(self, axes: Axes, model: Generative):
+    def add_image(self, axes: Axes, model: AutoEncoder):
         # Randomly generate the latent dimension
         gen_z = model.sample_z().to(self.device)
         # print("add_image", gen_z)
@@ -166,8 +165,9 @@ class GenerateSamples(PluginMetric):
 
     @torch.no_grad()
     def after_eval_exp(self, strategy: 'BaseStrategy') -> 'MetricResult':
-        assert isinstance(strategy.model,
-                          Generative), "Network must be generative"
+        assert isinstance(strategy.model, AutoEncoder), "Network must be `AutoEncoder`"
+        assert isinstance(strategy.model, Samplable), "Network must be `Samplable`"
+
         self.device = strategy.device
         plt.ioff()
         fig, axes = plt.subplots(

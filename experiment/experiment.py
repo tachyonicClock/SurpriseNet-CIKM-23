@@ -16,13 +16,14 @@ from avalanche.training.templates.supervised import SupervisedTemplate
 import torch
 from torch import nn
 from torch.utils.tensorboard.summary import hparams
+from experiment.strategy import Strategy
 
-from metrics.featuremap import FeatureMap
-from metrics.metrics import TrainExperienceLoss
+from metrics.metrics import EpochClock
 
 from conf import *
 from metrics.reconstructions import GenerateReconstruction, GenerateSamples
-from network.trait import Generative, SpecialLoss, TaskAware, TraitPlugin
+
+from network.trait import AutoEncoder, PackNetModule, Samplable, get_all_trait_types
 
 
 @dataclass
@@ -40,7 +41,7 @@ class Experiment(SupervisedPlugin):
     Py-lightning style container for continual learning
     """
 
-    strategy: SupervisedTemplate
+    strategy: Strategy
     network:  nn.Module
     logger:   av.logging.TensorboardLogger
     scenario: av.benchmarks.ScenarioStream
@@ -121,7 +122,7 @@ class Experiment(SupervisedPlugin):
             train_epochs=self.hp.train_epochs,
             eval_mb_size=self.hp.eval_mb_size,
             eval_every=self.hp.eval_every,
-            plugins=[self, TraitPlugin(), *self.add_plugins()],
+            plugins=[self, *self.add_plugins()],
             evaluator=self.evaluator
         )
 
@@ -130,11 +131,13 @@ class Experiment(SupervisedPlugin):
 
     def make_evaluator(self, loggers, num_classes) -> EvaluationPlugin:
         """Overload to define the evaluation plugin"""
+        plugins = []
+        if isinstance(self.network, AutoEncoder):
+            plugins.append(GenerateReconstruction(self.scenario, 2, 1))
+        if isinstance(self.network, Samplable):
+            plugins.append(GenerateSamples(3, 4))
 
-        generative = [
-            GenerateReconstruction(self.scenario, 2, 1),
-            # GenerateSamples(2, 4, img_size=2.0)
-        ] if isinstance(self.network, Generative) else []
+        GenerateSamples(3, 4)
 
         return EvaluationPlugin(
             loss_metrics(epoch=True,
@@ -143,18 +146,17 @@ class Experiment(SupervisedPlugin):
                              experience=True, trained_experience=True),
             confusion_matrix_metrics(num_classes=num_classes, stream=True),
             forgetting_metrics(experience=True, stream=True),
-            TrainExperienceLoss(),
-            FeatureMap(),
-            *generative,
+            EpochClock(),
+            *plugins,
             loggers=loggers,
             suppress_warnings=True
         )
 
     def preflight(self):
         print(f"Network: {type(self.network)}")
-        for trait in [Generative, TaskAware, SpecialLoss]:
+        for trait in get_all_trait_types():
             if isinstance(self.network, trait):
-                print(f" * Has the {trait} trait")
+                print(f" > Has the {trait} trait")
 
     def make_network(self) -> nn.Module:
         raise NotImplemented
@@ -187,6 +189,10 @@ class Experiment(SupervisedPlugin):
     @property
     def n_experiences(self) -> int:
         return len(self.scenario.train_stream)
+
+    @property
+    def last_mb_output(self) -> Strategy.ForwardOutput:
+        return self.strategy.last_forward_output
 
     @property
     def clock(self):

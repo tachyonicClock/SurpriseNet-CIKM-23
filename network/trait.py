@@ -1,33 +1,13 @@
-from abc import ABC, abstractclassmethod
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Callable
 from torch import Tensor, nn
 import torch
-from avalanche.core import SupervisedPlugin
+from experiment.strategy import Strategy
 
 
-class HasFeatureMap():
-    def forward_to_featuremap(self, input: Tensor) -> Tensor:
-        raise NotImplemented
-
-    def get_backbone(self) -> nn.Module:
-        raise NotImplemented
-
-class TaskAware():
-    """
-    ML algorthims that should be told about the task they are in during
-    training
-    """
-
-    def on_task_change(self, new_task_id: int):
-        """
-        on_task_change is called before new task data starts being fed to 
-        the network
-
-        Args:
-            new_task_id (int): An id that uniquely represents the task.
-        """
-        pass
+class AutoAssociative():
+    pass
 
 class PackNetModule(nn.Module):
 
@@ -38,7 +18,6 @@ class PackNetModule(nn.Module):
             if isinstance(module, PackNetModule) and module != self:
                 func(module)
         self.apply(__pn_apply)
-
 
     def prune(self, to_prune_proportion: float) -> None:
         """Prune a proportion of the prunable parameters (parameters on the 
@@ -62,50 +41,44 @@ class PackNetModule(nn.Module):
     def use_top_subset(self):
         self._pn_apply(lambda x : x.use_top_subset())
 
-
-
-
-class Generative(ABC):
+class AutoEncoder(ABC):
     '''Generative algorithms with classification capability'''
 
     @dataclass
-    class ForwardOutput():
-        y_hat: Tensor
-        """The models classification predictions"""
+    class ForwardOutput(Strategy.ForwardOutput):
         x_hat: Tensor
         """The generative models reconstruction"""
         z_code: Tensor
         """The generative models internal representation"""
 
-    @abstractclassmethod
+    @abstractmethod
     def encode(self, x: Tensor) -> Tensor:
         pass
 
-    @abstractclassmethod
+    @abstractmethod
     def decode(self, z: Tensor) -> Tensor:
         pass
 
-    @abstractclassmethod
-    def sample_z(self, n: int=0) -> Tensor:
-        """Sample the latent dimension and generate `n` encodings"""
-        pass
 
-    @abstractclassmethod
+class Classifier(ABC):
+
+    @abstractmethod
     def classify(self, x: Tensor) -> Tensor:
         pass
 
-class SpecialLoss(ABC):
 
-    @abstractclassmethod
-    def loss_function(self, *args, **kwargs):
+class Samplable(ABC):
+
+    @abstractmethod
+    def sample(self, n: int = 1) -> Tensor:
         pass
 
-class TraitPlugin(SupervisedPlugin):
-    """
-    The trait plugin implements the trait behaviors using avalanche
-    """
 
-    def before_training_exp(self, strategy, **kwargs):
-        if isinstance(strategy.model, TaskAware):
-            print("ON TASK CHANGE", strategy.clock.train_exp_counter)
-            strategy.model.on_task_change(strategy.clock.train_exp_counter)
+
+def get_all_trait_types():
+    return [
+        PackNetModule,
+        AutoEncoder,
+        Classifier,
+        Samplable
+    ]
