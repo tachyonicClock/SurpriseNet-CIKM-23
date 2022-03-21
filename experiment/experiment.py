@@ -110,7 +110,7 @@ class Experiment(SupervisedPlugin):
         return results
 
     def make_strategy_type(self):
-        return SupervisedTemplate
+        return Strategy
 
     def make_strategy(self) -> SupervisedPlugin:
         return self.make_strategy_type()(

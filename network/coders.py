@@ -1,7 +1,13 @@
 """
 `coders.py` contains encoder and decoder architectures
 """
+import math
+import typing
 from torch import Tensor, nn
+import torch
+from network.module.packnet_linear import PackNetLinear
+
+from network.trait import PackNetModule
 
 class CNN_Encoder(nn.Module):
     def __init__(self,
@@ -92,6 +98,100 @@ class CNN_Decoder(nn.Module):
         x = self.net(x)
         return x
 
+def _new_layer(
+    input_features: int,
+    output_features: int,
+    linear: typing.Type[nn.Module] = nn.Linear,
+    act_fn: typing.Type[nn.Module] = nn.ReLU,
+    ):
+    return nn.Sequential(
+        linear(input_features, output_features),
+        act_fn()
+    )
 
+
+class DenseEncoder(nn.Module):
+    def __init__(self,
+        pattern_shape: torch.Size,
+        latent_dim: int,
+        layer_sizes: typing.Sequence[int],
+        linear: typing.Type[nn.Module] = nn.Linear,
+        act_fn: typing.Type[nn.Module] = nn.ReLU
+        ) -> None:
+        super().__init__()
+        new_layer = lambda x, y : _new_layer(x, y, linear, act_fn)
+        input_size = math.prod(pattern_shape)
+
+        self.net = nn.Sequential(
+            new_layer(input_size, layer_sizes[0]),
+            *[new_layer(i_feat, o_feat) 
+                for i_feat, o_feat in zip(layer_sizes, layer_sizes[1:])],
+            PackNetLinear(layer_sizes[-1], latent_dim),
+            nn.Tanh()
+        )
+
+    def forward(self, input: Tensor) -> Tensor:
+        x = torch.flatten(input, 1)
+        x = self.net(x)
+        return x
+
+class DenseDecoder(PackNetModule):
+
+    def __init__(self,
+        pattern_shape: torch.Size,
+        latent_dim: int,
+        layer_sizes: typing.Sequence[int],
+        linear: typing.Type[nn.Module] = nn.Linear,
+        act_fn: typing.Type[nn.Module] = nn.ReLU
+        ) -> None:
+        super().__init__()
+
+        new_layer = lambda x, y : _new_layer(x, y, linear, act_fn)
+        output_size = math.prod(pattern_shape)
+
+        self.net = nn.Sequential(
+            new_layer(latent_dim, layer_sizes[0]),
+            *[new_layer(i_feat, o_feat) 
+                for i_feat, o_feat in zip(layer_sizes, layer_sizes[1:])],
+            PackNetLinear(layer_sizes[-1], output_size),
+        )
+        self.pattern_shape = pattern_shape
+
+    def forward(self, input: Tensor) -> Tensor:
+        x: Tensor = torch.flatten(input, 1)
+        x = self.net(x)
+        x = x.view(-1, *self.pattern_shape)
+        return x
+
+class PackNetDenseEncoder(DenseEncoder, PackNetModule):
+    def __init__(self,
+        pattern_shape: torch.Size,
+        latent_dim: int,
+        layer_sizes: typing.Sequence[int]
+        ) -> None:
+        super().__init__(pattern_shape, latent_dim, layer_sizes, PackNetLinear)
+
+
+
+class PackNetDenseDecoder(DenseDecoder, PackNetModule):
+    def __init__(self,
+        pattern_shape: torch.Size,
+        latent_dim: int,
+        layer_sizes: typing.Sequence[int]
+        ) -> None:
+        super().__init__(pattern_shape, latent_dim, layer_sizes, PackNetLinear)
+
+
+class PackNetDenseHead(PackNetModule):
+    def __init__(self, latent_dims, output_size):
+        super().__init__()
+
+        self.net = nn.Sequential(
+            PackNetLinear(latent_dims, output_size),
+            nn.ReLU()
+        )
+    
+    def forward(self, input: Tensor) -> Tensor:
+        return self.net(input)
 
 

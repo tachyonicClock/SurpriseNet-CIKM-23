@@ -5,7 +5,6 @@ from torch import Tensor, nn
 import torch
 from experiment.strategy import Strategy
 
-
 class PackNetModule(nn.Module):
 
     def _pn_apply(self, func: Callable[['PackNetModule'], None]):
@@ -69,8 +68,6 @@ class Samplable(ABC):
     @abstractmethod
     def sample_z(self, n: int = 1) -> Tensor:
         pass
-
-
 
 def get_all_trait_types():
     return [
