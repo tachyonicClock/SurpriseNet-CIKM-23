@@ -42,6 +42,8 @@ class AutoEncoder(ABC):
 
     @dataclass
     class ForwardOutput(Strategy.ForwardOutput):
+        x: Tensor
+        """The original input"""
         x_hat: Tensor
         """The generative models reconstruction"""
         z_code: Tensor

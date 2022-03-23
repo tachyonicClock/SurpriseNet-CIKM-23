@@ -176,7 +176,10 @@ class GenerateSamples(PluginMetric):
             figsize=(self.cols*self.img_size, self.rows*self.img_size))
 
         # Add image by sampling for each row and column
-        for rows in axes:
+        for task_id, rows in enumerate(axes):
+            if self.rows_are_experiences:
+                assert isinstance(strategy.model, PackNetModule)
+                strategy.model.use_task_subset(task_id)
             for ax in rows:
                 self.add_image(ax, strategy.model)
 
@@ -191,7 +194,15 @@ class GenerateSamples(PluginMetric):
     def result(self, **kwargs):
         pass
 
-    def __init__(self, rows, cols, img_size=2.0):
+    def __init__(self, rows, cols, img_size=2.0, rows_are_experiences=False):
+        """_summary_
+
+        :param rows: _description_
+        :param cols: _description_
+        :param img_size: _description_, defaults to 2.0
+        :param rows_are_experiences: Should rows be experiences, defaults to False
+        """
         self.rows = rows
         self.cols = cols
         self.img_size = img_size
+        self.rows_are_experiences = rows_are_experiences

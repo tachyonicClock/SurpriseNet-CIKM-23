@@ -35,15 +35,13 @@ class DAE(AutoEncoder, Classifier, nn.Module):
         z = self.encoder(x)      # Latent codes
         x_hat = self.decoder(z)  # Reconstruction
         y_hat = self.head(z)     # Classification head
-        return AutoEncoder.ForwardOutput(y_hat, x_hat, z)
+        return AutoEncoder.ForwardOutput(y_hat, x, x_hat, z)
 
 class DVAE(Classifier, Samplable, AutoEncoder, nn.Module):
     """
     Discriminative Variational Auto-Encoder
 
     Based on https://github.com/AntixK/PyTorch-VAE/blob/master/models/vanilla_vae.py
-    TODO: https://towardsdatascience.com/variational-autoencoder-demystified-with-pytorch-implementation-3a06bee395ed
-    Change to based off of ^ the other implementation does some weird stuff
     """
 
     def __init__(self,
@@ -90,7 +88,6 @@ class DVAE(Classifier, Samplable, AutoEncoder, nn.Module):
 
     @dataclass
     class ForwardOutput(AutoEncoder.ForwardOutput):
-        x: Tensor       # input
         mu: Tensor      # means
         log_var: Tensor # log(variance)
 
@@ -101,7 +98,8 @@ class DVAE(Classifier, Samplable, AutoEncoder, nn.Module):
         x_hat = self.decode(z)
 
         y_hat = self.class_head(z)
-        return DVAE.ForwardOutput(y_hat, x_hat, z, input, mu, log_var)
+        return DVAE.ForwardOutput(
+            y_hat, input, x_hat, z, mu, log_var)
 
     def classify(self, x: Tensor) -> Tensor:
         return self.forward(x).y_hat
@@ -128,18 +126,17 @@ class DAE_Loss():
         self.recon_weight = recon_weight
         self.classifier_weight = classifier_weight 
 
-    def _recon_loss(self, x, x_hat):
-        # per-pixel mse
-        # recon_loss = F.mse_loss(x, x_hat, reduction="none")
-        # # Use the batch mean sum of the per-pixel mse 
-        # recon_loss = recon_loss.sum(dim=[1, 2, 3]).mean(dim=[0])
-        return self.recon_weight * F.mse_loss(x, x_hat)
+    def _recon_loss(self, x_hat, x):
+        loss = F.mse_loss(x_hat, x, reduction="none")
+        # Mean sum of pixel differences
+        loss = loss.sum(dim=[1,2,3]).mean(dim=[0])
+        return self.recon_weight * loss
 
     def _classifier_loss(self, y, y_hat):
         return self.classifier_weight * F.cross_entropy(y_hat, y)
     
     def loss(self, out: DAE.ForwardOutput, y: Tensor):
-        return self._recon_loss(out.x, out.x_hat) + \
+        return self._recon_loss(out.x_hat, out.x) + \
                self._classifier_loss(y, out.y_hat)
 
 
@@ -163,11 +160,11 @@ class DVAE_Loss(DAE_Loss):
 
     def _kl_loss(self, mu, log_var):
         # KL loss if we assume a normal distribution!
-        return torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim = 1), dim = 0)
+        return self.kld_weight * torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim = 1), dim = 0)
 
     def loss(self, out: DVAE.ForwardOutput, y: Tensor) -> Tensor:
         kl = self._kl_loss(out.mu, out.log_var)
-        recon = self._recon_loss(out.x, out.x_hat)
+        recon = self._recon_loss(out.x_hat, out.x)
         classifier = self._classifier_loss(y, out.y_hat)
 
         # print(f"kl: {kl}, recon: {recon}, classifier: {classifier}")

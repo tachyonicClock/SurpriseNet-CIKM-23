@@ -25,6 +25,7 @@ from metrics.reconstructions import GenerateReconstruction, GenerateSamples
 
 from network.trait import AutoEncoder, PackNetModule, Samplable, get_all_trait_types
 
+import logging
 
 @dataclass
 class BaseHyperParameters():
@@ -51,6 +52,9 @@ class Experiment(SupervisedPlugin):
 
     def __init__(self, hp: BaseHyperParameters) -> None:
         super().__init__()
+
+        logging.basicConfig(level=logging.INFO)
+
         self.hp = hp
 
         # Create a new logger with sequential names
@@ -135,7 +139,7 @@ class Experiment(SupervisedPlugin):
         if isinstance(self.network, AutoEncoder):
             plugins.append(GenerateReconstruction(self.scenario, 2, 1))
         if isinstance(self.network, Samplable):
-            plugins.append(GenerateSamples(3, 4))
+            plugins.append(GenerateSamples(5, 4, rows_are_experiences=True))
 
         return EvaluationPlugin(
             loss_metrics(epoch=True,
