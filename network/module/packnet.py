@@ -9,6 +9,7 @@ from torch import Tensor
 from torch.nn import functional as F
 
 from enum import Enum
+
 from network.trait import PackNet
 
 class ModuleDecorator(nn.Module):
@@ -20,6 +21,7 @@ class ModuleDecorator(nn.Module):
     def __init__(self, wrappee: nn.Module):
         super().__init__()
         self.add_module('wrappee', wrappee)
+
 
 class PackNetDecorator(PackNet, ModuleDecorator):
     """
@@ -44,7 +46,6 @@ class PackNetDecorator(PackNet, ModuleDecorator):
     DSD: Dense-Sparse-Dense Training for Deep Neural Networks. 
     ArXiv:1607.04381 [Cs]. http://arxiv.org/abs/1607.04381
     """
-
 
     class State(Enum):
         """
@@ -103,6 +104,13 @@ class PackNetDecorator(PackNet, ModuleDecorator):
         super().__init__(wrappee)
         self.register_buffer("z_mask", torch.ones(self.weight.shape).byte() * self._z_top)
         self.state = self.State.MUTABLE_TOP
+
+        assert self.weight != NotImplemented, "Concrete decorator must implement self.weight"
+        assert self.bias != NotImplemented, "Concrete decorator must implement self.bias"
+        self.weight.register_hook(self._remove_gradient_hook)
+
+        self.bias.requires_grad = False
+
 
     def _remove_gradient_hook(self, grad: Tensor) -> Tensor:
         """
@@ -183,13 +191,12 @@ class PackNetDecorator(PackNet, ModuleDecorator):
         if self.bias != None:
             self.bias.requires_grad = False
 
-class Linear(PackNetDecorator):
+class _PnLinear(PackNetDecorator):
     wrappee: nn.Linear
 
-    def __init__(self, in_features: int, out_features: int, bias: bool = True, device = None, dtype = None) -> None:
-        super().__init__(nn.Linear(in_features, out_features, bias, device, dtype))
-        self.weight_count = in_features * out_features
-        self.weight.register_hook(self._remove_gradient_hook)
+    def __init__(self, wrappee: nn.Linear) -> None:
+        super().__init__(wrappee)
+        self.weight_count = self.wrappee.in_features * self.wrappee.out_features
 
     @property
     def bias(self) -> Tensor:
@@ -205,4 +212,73 @@ class Linear(PackNetDecorator):
 
     def forward(self, input: Tensor) -> Tensor:
         return F.linear(input, self.available_weights(), self.bias)
+
+
+class _PnConv2d(PackNetDecorator):
+
+    wrappee: nn.Conv2d
+
+    def __init__(self, wrappee: nn.Conv2d) -> None:
+        super().__init__(wrappee)
+
+    @property
+    def weight(self) -> Tensor:
+        return self.wrappee.weight
+
+    @property
+    def bias(self) -> Tensor:
+        return self.wrappee.bias
+
+    def forward(self, input: Tensor) -> Tensor:
+        return self.wrappee._conv_forward(input, self.available_weights(), self.bias)
+
+
+class _PnConvTransposed2d(PackNetDecorator):
+    wrappee: nn.ConvTranspose2d
+
+    def __init__(self, wrappee: nn.ConvTranspose2d) -> None:
+        super().__init__(wrappee)
+
+    @property
+    def weight(self) -> Tensor:
+        return self.wrappee.weight
+
+    @property
+    def bias(self) -> Tensor:
+        return self.wrappee.bias
+
+    def forward(self, input: Tensor, output_size: typing.Optional[typing.List[int]] = None) -> Tensor:
+        w = self.wrappee
+        if w.padding_mode != 'zeros':
+            raise ValueError('Only `zeros` padding mode is supported for ConvTranspose2d')
+
+        assert isinstance(w.padding, tuple)
+        # One cannot replace List by Tuple or Sequence in "_output_padding" because
+        # TorchScript does not support `Sequence[T]` or `Tuple[T, ...]`.
+        output_padding = w._output_padding(
+            input, output_size, w.stride, w.padding, w.kernel_size, w.dilation)  # type: ignore[arg-type]
+
+        return F.conv_transpose2d(
+            input, self.available_weights(), w.bias, w.stride, w.padding,
+            output_padding, w.groups, w.dilation)
+
+
+def wrap(wrappee: nn.Module):
+    if isinstance(wrappee, nn.Linear):
+        return _PnLinear(wrappee)
+    elif isinstance(wrappee, nn.Conv2d):
+        return _PnConv2d(wrappee)
+    elif isinstance(wrappee, nn.ConvTranspose2d):
+        return _PnConvTransposed2d(wrappee)
+    elif isinstance(wrappee, nn.Sequential):
+        # Wrap each submodule
+        for i, x in enumerate(wrappee):
+            wrappee[i] = wrap(x)
+    return wrappee
+
+def deffer_wrap(wrappee: typing.Type[nn.Module]):
+    def _deffered(*args, **kwargs):
+        return wrap(wrappee(*args, **kwargs))
+    return _deffered
+
 
