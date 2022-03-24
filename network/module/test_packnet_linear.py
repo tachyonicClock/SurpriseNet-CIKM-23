@@ -8,8 +8,9 @@ from torch import Tensor, rand
 from torch.nn import functional as F
 
 import pytest
+from network.trait import PackNetParent
 
-from packnet_linear import * 
+from packnet import * 
 
 TORCH_SEED = torch.seed()
 
@@ -18,12 +19,12 @@ layer_shapes = [(2,3), (8, 4), (64, 128), (128, 64), (1024, 1024)]
 @pytest.fixture(params=layer_shapes)
 def packnet_linear(request):
     torch.manual_seed(TORCH_SEED)
-    return PackNetLinear(*request.param)
+    return Linear(*request.param)
 
 @pytest.fixture(params=layer_shapes)
 def packnet_linear_random_z(request):
     """Same as `packnet_linear` but the z index is randomized"""
-    packnet_linear = PackNetLinear(*request.param)
+    packnet_linear = Linear(*request.param)
     packnet_linear.z_mask = torch.randint(0, 2, packnet_linear.z_mask.shape)
     return packnet_linear
 
@@ -38,13 +39,13 @@ def device(request):
     return torch.device(request.param)
 
 
-def test_init(packnet_linear: PackNetLinear, device):
+def test_init(packnet_linear: Linear, device):
     packnet_linear.to(device)
     assert packnet_linear.weight.device == device
     assert packnet_linear.bias.device == device
     assert packnet_linear.z_mask.device == device
 
-def test_equivalence(packnet_linear: PackNetLinear, torch_linear: nn.Linear, device):
+def test_equivalence(packnet_linear: Linear, torch_linear: nn.Linear, device):
     """Test `PackNetLinear` and `nn.Linear` are equivalent after init"""
     packnet_linear.to(device)
     torch_linear.to(device)
@@ -60,7 +61,7 @@ def test_equivalence(packnet_linear: PackNetLinear, torch_linear: nn.Linear, dev
     assert torch_linear.forward(x).equal(packnet_linear.forward(x)), \
         "Forward should be equivalent"
 
-def test__rank_prunable(packnet_linear_random_z: PackNetLinear, device):
+def test__rank_prunable(packnet_linear_random_z: Linear, device):
 
     packnet_linear_random_z.to(device)
     ranked = packnet_linear_random_z._rank_prunable()
@@ -72,10 +73,10 @@ def test__rank_prunable(packnet_linear_random_z: PackNetLinear, device):
     # assert double_sort.indices.equal(ranked)
 
     assert sorted_weights.equal(double_sort), "Expected to be sorted already"
-    assert sorted_weights.size()[0] == packnet_linear_random_z._prunable_count(), "Got the wrong number of ranked parameter indices"
+    assert sorted_weights.size()[0] == packnet_linear_random_z.top_mask.count_nonzero(), "Got the wrong number of ranked parameter indices"
 
 
-def test__prune_weights(packnet_linear: PackNetLinear, device):
+def test__prune_weights(packnet_linear: Linear, device):
     packnet_linear.to(device)
     prune_count = packnet_linear.weight_count//2
     to_prune = list(range(packnet_linear.weight_count))
@@ -99,7 +100,7 @@ def test__grad_freeze(packnet_linear_random_z, device):
     assert pnl.top_mask.equal(grad), "Gradients should match mask "
     
 @pytest.mark.parametrize('proportion', [0.1, 0.5, 0.75])
-def test_prune(proportion, packnet_linear: PackNetLinear, device):
+def test_prune(proportion, packnet_linear: Linear, device):
     packnet_linear.to(device)
     should_prune = int(packnet_linear.weight_count * proportion)
     if should_prune == 0:
@@ -123,12 +124,11 @@ def test_prune(proportion, packnet_linear: PackNetLinear, device):
 
 
 
-# def XORNet(PackNet)
-class XORNet(PackNetModule):
+class XORNet(PackNetParent):
     def __init__(self) -> None:
         super().__init__()
-        self.lin_1 = PackNetLinear(4, 8)
-        self.lin_2 = PackNetLinear(8, 2)
+        self.lin_1 = Linear(4, 8)
+        self.lin_2 = Linear(8, 2)
 
     def forward(self, input: Tensor):
         x = self.lin_1(input)

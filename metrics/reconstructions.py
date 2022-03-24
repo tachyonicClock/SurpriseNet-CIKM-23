@@ -9,7 +9,7 @@ from avalanche.evaluation import PluginMetric
 from avalanche.evaluation.metric_definitions import MetricValue
 from matplotlib.axes import Axes
 from mltypes import *
-from network.trait import AutoEncoder, PackNetModule, Samplable
+from network.trait import AutoEncoder, PackNet, Samplable
 from PIL import Image
 
 
@@ -107,7 +107,7 @@ class GenerateReconstruction(PluginMetric):
             task_fig = task_figs[task_id]
             task_fig.suptitle(f"Experience {task_id}")
 
-            if isinstance(model, PackNetModule):
+            if isinstance(model, PackNet):
                 model.use_task_subset(task_id)
 
             task_plots = task_fig.subplots(len(task_patterns), 2, squeeze=False)
@@ -120,7 +120,7 @@ class GenerateReconstruction(PluginMetric):
 
                 self.add_image(pattern_plot, x, out.x_hat, y, torch.argmax(out.y_hat))
 
-        if isinstance(model, PackNetModule):
+        if isinstance(model, PackNet):
             model.use_top_subset()
 
         x_plot = strategy.clock.train_exp_counter
@@ -178,7 +178,7 @@ class GenerateSamples(PluginMetric):
         # Add image by sampling for each row and column
         for task_id, rows in enumerate(axes):
             if self.rows_are_experiences:
-                assert isinstance(strategy.model, PackNetModule)
+                assert isinstance(strategy.model, PackNet)
                 strategy.model.use_task_subset(task_id)
             for ax in rows:
                 self.add_image(ax, strategy.model)

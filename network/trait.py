@@ -5,16 +5,9 @@ from torch import Tensor, nn
 import torch
 from experiment.strategy import Strategy
 
-class PackNetModule(nn.Module):
+class PackNet(ABC):
 
-    def _pn_apply(self, func: Callable[['PackNetModule'], None]):
-        """Apply only to child PackNetModule"""
-        @torch.no_grad()
-        def __pn_apply(module):
-            if isinstance(module, PackNetModule) and module != self:
-                func(module)
-        self.apply(__pn_apply)
-
+    @abstractmethod
     def prune(self, to_prune_proportion: float) -> None:
         """Prune a proportion of the prunable parameters (parameters on the 
         top of the stack) using the absolute value of the weights as a 
@@ -24,11 +17,36 @@ class PackNetModule(nn.Module):
         """
         self._pn_apply(lambda x : x.prune(to_prune_proportion))
 
+    @abstractmethod
     def push_pruned(self) -> None:
         """
         Commits the layer by incrementing counters and moving pruned parameters
         to the top of the stack. Biases are frozen as a side-effect.
         """
+
+    @abstractmethod
+    def use_task_subset(self, task_id):
+        pass
+
+    @abstractmethod
+    def use_top_subset(self):
+        pass
+
+class PackNetParent(PackNet, nn.Module):
+    def _pn_apply(self, func: Callable[['PackNet'], None]):
+        @torch.no_grad()
+        def __pn_apply(module):
+            # Apply function to all child packnets but not other parents.
+            # If we were to apply to other parents we would duplicate
+            # applications to their children
+            if isinstance(module, PackNet) and not isinstance(module, PackNetParent):
+                func(module)
+        self.apply(__pn_apply)
+
+    def prune(self, to_prune_proportion: float) -> None:
+        self._pn_apply(lambda x : x.prune(to_prune_proportion))
+
+    def push_pruned(self) -> None:
         self._pn_apply(lambda x : x.push_pruned())
 
     def use_task_subset(self, task_id):
@@ -36,6 +54,7 @@ class PackNetModule(nn.Module):
 
     def use_top_subset(self):
         self._pn_apply(lambda x : x.use_top_subset())
+
 
 class AutoEncoder(ABC):
     '''Generative algorithms with classification capability'''
@@ -73,7 +92,7 @@ class Samplable(ABC):
 
 def get_all_trait_types():
     return [
-        PackNetModule,
+        PackNet,
         AutoEncoder,
         Classifier,
         Samplable

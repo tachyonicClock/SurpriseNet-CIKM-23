@@ -23,7 +23,7 @@ from metrics.metrics import EpochClock
 from conf import *
 from metrics.reconstructions import GenerateReconstruction, GenerateSamples
 
-from network.trait import AutoEncoder, PackNetModule, Samplable, get_all_trait_types
+from network.trait import AutoEncoder, PackNet, Samplable, get_all_trait_types
 
 import logging
 

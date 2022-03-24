@@ -1,5 +1,5 @@
 from avalanche.core import SupervisedPlugin
-from network.trait import PackNetModule
+from network.trait import PackNet
 import logging
 
 log = logging.getLogger(__name__)
@@ -9,7 +9,7 @@ class PackNetPlugin(SupervisedPlugin):
     capacity: float = 1.0
     """How much of the network is still trainable"""
 
-    def __init__(self, network: PackNetModule, prune_proportion, post_prune_epochs):
+    def __init__(self, network: PackNet, prune_proportion, post_prune_epochs):
         self.network = network
         self.prune_proportion = prune_proportion
         self.post_prune_epochs = post_prune_epochs

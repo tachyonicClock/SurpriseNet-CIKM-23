@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 from experiment.experiment import Experiment, BaseHyperParameters
-from network.trait import PackNetModule
+from network.trait import PackNet
 from network.module.packnet_linear import PackNetLinear
 
 from conf import *
@@ -13,7 +13,7 @@ from avalanche.benchmarks.classic.cfashion_mnist import SplitFMNIST
 import avalanche as av
 
 
-class SimplePackNet(PackNetModule):
+class SimplePackNet(PackNet):
 
     def __init__(self):
         super().__init__()

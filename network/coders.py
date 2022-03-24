@@ -5,9 +5,9 @@ import math
 import typing
 from torch import Tensor, nn
 import torch
-from network.module.packnet_linear import PackNetLinear
+import network.module.packnet as pn
 
-from network.trait import PackNetModule
+from network.trait import PackNet, PackNetParent
 
 class CNN_Encoder(nn.Module):
     def __init__(self,
@@ -126,7 +126,7 @@ class DenseEncoder(nn.Module):
             new_layer(input_size, layer_sizes[0]),
             *[new_layer(i_feat, o_feat) 
                 for i_feat, o_feat in zip(layer_sizes, layer_sizes[1:])],
-            PackNetLinear(layer_sizes[-1], latent_dim),
+            linear(layer_sizes[-1], latent_dim),
             nn.Tanh()
         )
 
@@ -135,7 +135,7 @@ class DenseEncoder(nn.Module):
         x = self.net(x)
         return x
 
-class DenseDecoder(PackNetModule):
+class DenseDecoder(nn.Module):
 
     def __init__(self,
         pattern_shape: torch.Size,
@@ -153,7 +153,7 @@ class DenseDecoder(PackNetModule):
             new_layer(latent_dim, layer_sizes[0]),
             *[new_layer(i_feat, o_feat) 
                 for i_feat, o_feat in zip(layer_sizes, layer_sizes[1:])],
-            PackNetLinear(layer_sizes[-1], output_size),
+            linear(layer_sizes[-1], output_size),
         )
         self.pattern_shape = pattern_shape
 
@@ -163,31 +163,31 @@ class DenseDecoder(PackNetModule):
         x = x.view(-1, *self.pattern_shape)
         return x
 
-class PackNetDenseEncoder(DenseEncoder, PackNetModule):
+class PackNetDenseEncoder(DenseEncoder, PackNetParent):
     def __init__(self,
         pattern_shape: torch.Size,
         latent_dim: int,
         layer_sizes: typing.Sequence[int]
         ) -> None:
-        super().__init__(pattern_shape, latent_dim, layer_sizes, PackNetLinear)
+        super().__init__(pattern_shape, latent_dim, layer_sizes, pn.Linear)
 
 
 
-class PackNetDenseDecoder(DenseDecoder, PackNetModule):
+class PackNetDenseDecoder(DenseDecoder, PackNetParent):
     def __init__(self,
         pattern_shape: torch.Size,
         latent_dim: int,
         layer_sizes: typing.Sequence[int]
         ) -> None:
-        super().__init__(pattern_shape, latent_dim, layer_sizes, PackNetLinear)
+        super().__init__(pattern_shape, latent_dim, layer_sizes, pn.Linear)
 
 
-class PackNetDenseHead(PackNetModule):
+class PackNetDenseHead(PackNetParent):
     def __init__(self, latent_dims, output_size):
         super().__init__()
 
         self.net = nn.Sequential(
-            PackNetLinear(latent_dims, output_size),
+            pn.Linear(latent_dims, output_size),
             nn.ReLU()
         )
     

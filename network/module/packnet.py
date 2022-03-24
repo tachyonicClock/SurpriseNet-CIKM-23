@@ -1,4 +1,6 @@
+from abc import abstractmethod
 import math
+from sre_parse import State
 import typing
 
 import torch
@@ -6,18 +8,29 @@ import torch.nn as nn
 from torch import Tensor
 from torch.nn import functional as F
 
-from network.trait import PackNetModule
+from enum import Enum
+from network.trait import PackNet
 
-class PackNetLinear(PackNetModule):
+class ModuleDecorator(nn.Module):
+    wrappee: nn.Module
+
+    def forward(self, input: Tensor) -> Tensor:
+        return self.wrappee.forward(input)
+
+    def __init__(self, wrappee: nn.Module):
+        super().__init__()
+        self.add_module('wrappee', wrappee)
+
+class PackNetDecorator(PackNet, ModuleDecorator):
     """
-    Implementation of linear module to implement PackNet functionality. You
-    can think about a PackNet as a Stack of networks overlayed on top of each other
+    PackNetStack implement PackNet functionality for a supplied weight buffer. 
+    You can think about a PackNet as a Stack of networks overlayed on top of each other
     where each layer is only connected to those below additionally only the
     top of the stack can be trained.
 
-    In order to grow the stack the top must be pruned `PackNetLinear.prune` to
+    In order to grow the stack the top must be pruned `PackNetStack.prune` to
     free up parameters. The pruned parameters then need to pushed to the top of
-    the stack with `PackNetLinear.push_pruned()`
+    the stack with `PackNetStack.push_pruned()`
 
 
     Bib:
@@ -32,10 +45,27 @@ class PackNetLinear(PackNetModule):
     ArXiv:1607.04381 [Cs]. http://arxiv.org/abs/1607.04381
     """
 
-    weight: Tensor
-    """Weights of each connection"""
-    bias: Tensor
-    """Biases for each neuron"""
+
+    class State(Enum):
+        """
+        PackNet requires a procedure to be followed and we model this with the
+        following states
+        """
+        MUTABLE_TOP = 0
+        """Normally train the top of the network"""
+        PRUNED_TOP = 1
+        """Post prune training"""
+        IMMUTABLE = 2
+        """Use a non-top layer of the network. In this state training cannot be conducted"""
+
+    class StateError(Exception):
+        pass
+
+    def next_state(self, previous: typing.Sequence[State], next: State):
+        if self.state not in previous:
+            raise self.StateError(f"Function only valid for {previous} instead PackNet was in the {self.state} state")
+        self.state = next
+
     z_mask: Tensor
     """
     Z mask is a depth index of weights in an imaginary "stack" that makes up the
@@ -51,10 +81,6 @@ class PackNetLinear(PackNetModule):
     Index defining which subset is used for a forward pass
     """
 
-    in_features: int
-    out_features: int
-    weight_count: int
-
     @property
     def top_mask(self) -> Tensor:
         """Return a mask of weights at the top of the `stack`"""
@@ -65,59 +91,28 @@ class PackNetLinear(PackNetModule):
         """Return a mask of weights that have been pruned"""
         return self.z_mask.eq(self._Z_PRUNED)
 
-    def __init__(self, in_features: int, out_features: int) -> None:
-        super().__init__()
-        self.in_features = in_features
-        self.out_features = out_features
-        self.weight_count = in_features * out_features
+    @property
+    def weight(self) -> Tensor:
+        return NotImplemented
 
-        # Initialize stack z index
-        self.register_buffer("z_mask", torch.ones((out_features, in_features)).byte() * self._z_top)
+    @property
+    def bias(self) -> Tensor:
+        return NotImplemented
 
-        # Initialize tunable parameters
-        self.weight = nn.parameter.Parameter(
-            torch.empty((out_features, in_features)))
-        self.bias = nn.parameter.Parameter(
-            torch.empty(out_features)
-        )
+    def __init__(self, wrappee: nn.Module) -> None:
+        super().__init__(wrappee)
+        self.register_buffer("z_mask", torch.ones(self.weight.shape).byte() * self._z_top)
+        self.state = self.State.MUTABLE_TOP
 
-        self._reset_parameters()
-        self.weight.register_hook(self._backward_hook)
-
-
-    def _reset_parameters(self) -> None:
-        # Kaiming initialization
-        # Reused `nn.Linear` initialization code
-        # See https://github.com/pytorch/pytorch/issues/57109 or
-        # https://pouannes.github.io/blog/initialization/#xavier-and-kaiming-initialization
-        # for details
-        nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
-        fan_in, _ = nn.init._calculate_fan_in_and_fan_out(self.weight)
-        bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
-        nn.init.uniform_(self.bias, -bound, bound)
-
-    def _backward_hook(self, grad: Tensor) -> Tensor:
+    def _remove_gradient_hook(self, grad: Tensor) -> Tensor:
         """
         Only the top layer should be trained. Todo so all other gradients
         are zeroed. Caution should be taken when optimizers with momentum are 
         used, since they can cause parameters to be modified even when no 
         gradient exists
         """
-        assert self._z_active == self._z_top, \
-            "Backward not possible, only the top can be trained"
         grad[~self.top_mask] = 0.0
         return grad
-
-    def _available_weights(self, z_index: int) -> Tensor:
-        weight = self.weight.clone()
-        # Mask of the weights that are above the supplied z_index. Used to zero
-        # them 
-        mask = self.z_mask.greater(z_index)
-        with torch.no_grad(): weight[mask] = 0.0
-        return weight
-
-    def _prunable_count(self) -> int:
-        return self.top_mask.count_nonzero()
 
     def _rank_prunable(self) -> Tensor:
         """
@@ -151,12 +146,24 @@ class PackNetLinear(PackNetModule):
         with torch.no_grad(): self.weight.flatten()[indices] = 0.0
 
     def prune(self, to_prune_proportion: float):
+        self.next_state([self.State.MUTABLE_TOP], self.State.PRUNED_TOP)
         ranked = self._rank_prunable()
         prune_count = int(len(ranked) * to_prune_proportion)
         self._prune_weights(ranked[:prune_count])
 
+    def available_weights(self) -> Tensor:
+        weight = self.weight.clone()
+        # Mask of the weights that are above the supplied z_index. Used to zero
+        # them 
+        mask = self.z_mask.greater(self._z_active)
+        with torch.no_grad(): weight[mask] = 0.0
+        return weight
+
     def use_task_subset(self, task_id):
         """Setter to set the sub-set of the network to be used on forward pass"""
+        next_state = self.State.MUTABLE_TOP if self._z_top == task_id else self.State.IMMUTABLE
+        self.next_state([self.State.MUTABLE_TOP, self.State.IMMUTABLE], next_state)
+
         task_id = min(max(task_id, 0), self._z_top)
         self._z_active = task_id
 
@@ -165,28 +172,37 @@ class PackNetLinear(PackNetModule):
         self.use_task_subset(self._z_top)
 
     def push_pruned(self):
-        if self.pruned_mask.count_nonzero() == 0:
-            raise RuntimeError(f"No pruned parameters exist to be pushed. Try pruning first. Weight count: {self.weight_count}")
+        self.next_state([self.State.PRUNED_TOP], self.State.MUTABLE_TOP)
         # The top is now one higher up
         self._z_top += 1
         # Move pruned weights to the top
         self.z_mask[self.pruned_mask] = self._z_top
         # Change the active z_index
         self.use_top_subset()
-        
-        """
-        Freezing bias parameters
-        "We did not find it necessary to learn task-specific biases similar to EWC,
-        and keep the biases of all the layers fixed after the network is pruned and
-        re-trained for the first time." (Mallya & Lazebnik, 2018)
-        """
-        self.bias.requires_grad = False
+
+        if self.bias != None:
+            self.bias.requires_grad = False
+
+class Linear(PackNetDecorator):
+    wrappee: nn.Linear
+
+    def __init__(self, in_features: int, out_features: int, bias: bool = True, device = None, dtype = None) -> None:
+        super().__init__(nn.Linear(in_features, out_features, bias, device, dtype))
+        self.weight_count = in_features * out_features
+        self.weight.register_hook(self._remove_gradient_hook)
+
+    @property
+    def bias(self) -> Tensor:
+        return self.wrappee.bias
+
+    @property
+    def in_features(self) -> Tensor:
+        return self.wrappee.in_features
+
+    @property
+    def weight(self) -> Tensor:
+        return self.wrappee.weight
 
     def forward(self, input: Tensor) -> Tensor:
-        weights = self._available_weights(self._z_active)
-        return F.linear(input, weights, self.bias)
+        return F.linear(input, self.available_weights(), self.bias)
 
-    def extra_repr(self) -> str:
-        return 'in_features={}, out_features={}'.format(
-            self.in_features, self.out_features
-        )
