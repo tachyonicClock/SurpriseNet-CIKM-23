@@ -1,4 +1,5 @@
 from avalanche.core import SupervisedPlugin
+from experiment.strategy import Strategy
 from network.trait import PackNet
 import logging
 
@@ -34,9 +35,10 @@ class PackNetPlugin(SupervisedPlugin):
         """Reset for new experience"""
         self.network.use_top_subset()
 
-    def before_eval_exp(self, strategy, *args, **kwargs):
+    def before_eval_exp(self, strategy: Strategy, *args, **kwargs):
         """Use task id to select the right part of each layer for eval"""
-        task_id = strategy.experience.task_label
+        task_id = strategy.experience.current_experience
+        log.info(f"using task {task_id}")
         self.network.use_task_subset(task_id)
     
 

@@ -97,7 +97,7 @@ class CNN_Decoder(nn.Module):
         x = self.linear(x)
         x = x.reshape(x.shape[0], -1, 4, 4)
         x = self.net(x)
-        return x
+        return x * 4 # Since we are normalizing data with a normal distribution this makes it so that Tanh is within the full range
 
 
 class PN_CNN_Encoder(CNN_Encoder, PackNetParent):

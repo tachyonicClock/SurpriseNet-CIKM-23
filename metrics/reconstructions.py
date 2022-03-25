@@ -8,10 +8,10 @@ from avalanche.benchmarks.scenarios.new_classes.nc_scenario import NCExperience
 from avalanche.evaluation import PluginMetric
 from avalanche.evaluation.metric_definitions import MetricValue
 from matplotlib.axes import Axes
-from mltypes import *
 from network.trait import AutoEncoder, PackNet, Samplable
 from PIL import Image
 
+LabeledExample = typing.Tuple[int, torch.Tensor]
 
 def fig2img(fig):
     """Convert a Matplotlib figure to a PIL Image and return it"""
@@ -59,9 +59,15 @@ class GenerateReconstruction(PluginMetric):
         axes[1].set_ylabel(f"Prediction: {pred}")
         axes[0].set_title(f"Input")
         axes[1].set_title(f"Reconstruction")
-        input, output = input.cpu(), output.cpu()
-        axes[0].imshow(input.squeeze())
-        axes[1].imshow(output.squeeze())
+
+        
+        def to_image(img: torch.Tensor) -> torch.Tensor:
+            return ((img.squeeze().T + 3)/6).clamp(0, 1).rot90(-1).cpu()
+
+        input, output = to_image(input), to_image(output)
+
+        axes[0].imshow(input)
+        axes[1].imshow(output)
 
     def get_examples(self, test_stream, n_exemplars=1) \
             -> typing.Dict[int, typing.Sequence[LabeledExample]]:
@@ -135,7 +141,7 @@ class GenerateReconstruction(PluginMetric):
     def result(self, **kwargs):
         pass
 
-    def __init__(self, scenario, examples_per_class=1, seed=42, every_n_epochs=1):
+    def __init__(self, scenario, examples_per_class=1, seed=42):
         # A sample of images to use to generate reconstructions with
         state = random.get_state()
         random.seed(seed)

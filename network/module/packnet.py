@@ -25,7 +25,7 @@ class ModuleDecorator(nn.Module):
 
 class PackNetDecorator(PackNet, ModuleDecorator):
     """
-    PackNetStack implement PackNet functionality for a supplied weight buffer. 
+    PackNetDecorator implement PackNet functionality for a supplied weight buffer. 
     You can think about a PackNet as a Stack of networks overlayed on top of each other
     where each layer is only connected to those below additionally only the
     top of the stack can be trained.

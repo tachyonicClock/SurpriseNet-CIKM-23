@@ -127,9 +127,9 @@ class DAE_Loss():
         self.classifier_weight = classifier_weight 
 
     def _recon_loss(self, x_hat, x):
-        loss = F.mse_loss(x_hat, x, reduction="none")
         # Mean sum of pixel differences
-        loss = loss.sum(dim=[1,2,3]).mean(dim=[0])
+        loss = F.mse_loss(x, x_hat, reduction="none")
+        loss = loss.sum(dim=[1, 2, 3]).mean(dim=[0])
         return self.recon_weight * loss
 
     def _classifier_loss(self, y, y_hat):
