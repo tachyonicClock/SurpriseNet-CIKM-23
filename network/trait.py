@@ -58,16 +58,7 @@ class PackNetParent(PackNet, nn.Module):
 
 class AutoEncoder(ABC):
     '''Generative algorithms with classification capability'''
-
-    @dataclass
-    class ForwardOutput(Strategy.ForwardOutput):
-        x: Tensor
-        """The original input"""
-        x_hat: Tensor
-        """The generative models reconstruction"""
-        z_code: Tensor
-        """The generative models internal representation"""
-
+    
     @abstractmethod
     def encode(self, x: Tensor) -> Tensor:
         pass

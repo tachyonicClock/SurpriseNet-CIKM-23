@@ -40,6 +40,7 @@ class CNN_Encoder(nn.Module):
             nn.Conv2d(c_hid, 2 * c_hid,
                       kernel_size=3, padding=1, stride=2),
             act_fn(),
+            # 8x8 => 8x8
             nn.Conv2d(
                 2 * c_hid, 2 * c_hid,
                 kernel_size=3, padding=1),
@@ -71,7 +72,7 @@ class CNN_Decoder(nn.Module):
         c_hid = base_channel_size
         self.linear = nn.Sequential(
             nn.Linear(latent_dim, 2 * 16 * c_hid),
-            act_fn()
+            act_fn(),
         )
         self.net = nn.Sequential(
             # 4x4 => 8x8
@@ -97,7 +98,9 @@ class CNN_Decoder(nn.Module):
         x = self.linear(x)
         x = x.reshape(x.shape[0], -1, 4, 4)
         x = self.net(x)
-        return x * 4 # Since we are normalizing data with a normal distribution this makes it so that Tanh is within the full range
+        return x * 4 # *4 because Tanh is between -1 and 1 but the data
+                     # follows a normal distribution. x4 contains 99.99% of the
+                     # range
 
 
 class PN_CNN_Encoder(CNN_Encoder, PackNetParent):
@@ -210,7 +213,7 @@ class PackNetDenseHead(PackNetParent):
 
         self.net = nn.Sequential(
             pn.wrap(nn.Linear(latent_dims, output_size)),
-            nn.ReLU()
+            nn.Softmax(dim=1)
         )
 
     def forward(self, input: Tensor) -> Tensor:

@@ -3,6 +3,9 @@ import typing
 from torch import Tensor, nn
 import torch
 from torch.nn import functional as F
+
+from experiment.strategy import ForwardOutput
+from functional import recon_loss
 from .trait import AutoEncoder, Classifier,Samplable
 
 
@@ -31,11 +34,11 @@ class DAE(AutoEncoder, Classifier, nn.Module):
     def classify(self, x: Tensor) -> Tensor:
         return self.forward(x).y_hat
 
-    def forward(self, x: Tensor) -> AutoEncoder.ForwardOutput:
+    def forward(self, x: Tensor) -> ForwardOutput:
         z = self.encoder(x)      # Latent codes
         x_hat = self.decoder(z)  # Reconstruction
         y_hat = self.head(z)     # Classification head
-        return AutoEncoder.ForwardOutput(y_hat, x, x_hat, z)
+        return ForwardOutput(y_hat=y_hat, x=x, x_hat=x_hat, z_code=z)
 
 class DVAE(Classifier, Samplable, AutoEncoder, nn.Module):
     """
@@ -86,10 +89,6 @@ class DVAE(Classifier, Samplable, AutoEncoder, nn.Module):
         z = mu + eps*std
         return z
 
-    @dataclass
-    class ForwardOutput(AutoEncoder.ForwardOutput):
-        mu: Tensor      # means
-        log_var: Tensor # log(variance)
 
 
     def forward(self, input: Tensor, **kwargs) -> ForwardOutput:
@@ -98,8 +97,12 @@ class DVAE(Classifier, Samplable, AutoEncoder, nn.Module):
         x_hat = self.decode(z)
 
         y_hat = self.class_head(z)
-        return DVAE.ForwardOutput(
-            y_hat, input, x_hat, z, mu, log_var)
+        return ForwardOutput(
+            y_hat=y_hat,
+            x_hat=x_hat,
+            z_code=z,
+            mu=mu,
+            log_var=log_var)
 
     def classify(self, x: Tensor) -> Tensor:
         return self.forward(x).y_hat
@@ -111,63 +114,50 @@ class DVAE(Classifier, Samplable, AutoEncoder, nn.Module):
     def device(self):
         return next(self.parameters()).device
 
-class DAE_Loss():
+
+
+
+class LossPart():
+    loss: Tensor = 0.0
+    weighting: float = 1.0
+
+    @property
+    def weighted_loss(self):
+        return self.weighting * self.loss
+
+    @property
+    def is_used(self):
+        return self.weighting != 0.0
+
+    def __init__(self, weighting: float) -> None:
+        self.weighting = weighting
+
+class Loss():
     """
-    Discriminative Auto-Encoder loss function
-
-    2x joint objectives:
-     * Classifier accuracy
-     * Minimise reconstruction error
-    """
-
-    def __init__(self,
-        recon_weight: float,
-        classifier_weight: float) -> None:
-        self.recon_weight = recon_weight
-        self.classifier_weight = classifier_weight 
-
-    def _recon_loss(self, x_hat, x):
-        # Mean sum of pixel differences
-        loss = F.mse_loss(x, x_hat, reduction="none")
-        loss = loss.sum(dim=[1, 2, 3]).mean(dim=[0])
-        return self.recon_weight * loss
-
-    def _classifier_loss(self, y, y_hat):
-        return self.classifier_weight * F.cross_entropy(y_hat, y)
-    
-    def loss(self, out: DAE.ForwardOutput, y: Tensor):
-        return self._recon_loss(out.x_hat, out.x) + \
-               self._classifier_loss(y, out.y_hat)
-
-
-class DVAE_Loss(DAE_Loss):
-    """
-    Discriminative Variational Auto-Encoder loss function. 
-    
-    3x joint objectives:
-     * Classifier accuracy
-     * Minimise reconstruction error
-     * Make latent space follow gaussian distributions
+    My loss class for calculating non-trivial multi-part loss functions
     """
 
     def __init__(self,
-        recon_weight: float,
-        classifier_weight: float,
-        kld_weight: float
-        ) -> None:
-        super().__init__(recon_weight, classifier_weight)
-        self.kld_weight = kld_weight
+        classifier_weight: float = 0.0,
+        recon_weight: float = 0.0,
+        kld_weight: float = 0.0) -> None:
+
+        self.classifier = LossPart(classifier_weight)
+        self.recon = LossPart(recon_weight)
+        self.kld = LossPart(kld_weight)
 
     def _kl_loss(self, mu, log_var):
         # KL loss if we assume a normal distribution!
-        return self.kld_weight * torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim = 1), dim = 0)
+        return torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim = 1), dim = 0)
 
-    def loss(self, out: DVAE.ForwardOutput, y: Tensor) -> Tensor:
-        kl = self._kl_loss(out.mu, out.log_var)
-        recon = self._recon_loss(out.x_hat, out.x)
-        classifier = self._classifier_loss(y, out.y_hat)
+    def update(self, out: ForwardOutput, y: Tensor):
+        if self.recon.is_used:
+            self.recon.loss = recon_loss(out.x_hat, out.x)
+        if self.classifier.is_used:
+            self.classifier.loss = F.cross_entropy(out.y_hat, y)
+        if self.kld.is_used:
+            self.kld.loss = self._kl_loss(out.mu, out.log_var)
 
-        # print(f"kl: {kl}, recon: {recon}, classifier: {classifier}")
-        return  kl + recon + classifier
-
+    def weighted_sum(self):
+        return self.classifier.weighted_loss + self.recon.weighted_loss + self.kld.weighted_loss
 

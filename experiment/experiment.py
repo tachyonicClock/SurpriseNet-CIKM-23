@@ -16,16 +16,21 @@ from avalanche.training.templates.supervised import SupervisedTemplate
 import torch
 from torch import nn
 from torch.utils.tensorboard.summary import hparams
-from experiment.strategy import Strategy
+from experiment.strategy import ForwardOutput, Strategy
 
-from metrics.metrics import EpochClock
+from metrics.metrics import ConditionalMetrics, EpochClock, ExperienceIdentificationCM, LossPartMetric
 
 from conf import *
 from metrics.reconstructions import GenerateReconstruction, GenerateSamples
+from network.deep_generative import Loss
 
 from network.trait import AutoEncoder, PackNet, Samplable, get_all_trait_types
 
+# Setup logging
 import logging
+import coloredlogs
+coloredlogs.install(fmt='%(name)s %(levelname)s %(message)s')
+log = logging.getLogger(__name__)
 
 @dataclass
 class BaseHyperParameters():
@@ -49,6 +54,7 @@ class Experiment(SupervisedPlugin):
     optimizer: torch.optim.Optimizer
     evaluator: EvaluationPlugin
     hp: BaseHyperParameters
+    loss: Loss
 
     def __init__(self, hp: BaseHyperParameters) -> None:
         super().__init__()
@@ -61,6 +67,7 @@ class Experiment(SupervisedPlugin):
         self.logger = av.logging.TensorboardLogger(
             LOGDIR+f"/experiment_{max(self._get_log_numbers())+1:04d}")
 
+        self.loss = self.make_mulitpart_loss()
         self.scenario = self.make_scenario()
         self.network = self.make_network()
         self.evaluator = self.make_evaluator(
@@ -95,9 +102,9 @@ class Experiment(SupervisedPlugin):
         return []
 
     def _experience_log(self, exp: av.benchmarks.NCExperience):
-        print(f"Start of experience: {exp.current_experience}")
-        print(f"Current Classes:     {exp.classes_in_this_experience}")
-        print(f"Experience size:     {len(exp.dataset)}")
+        log.info(f"Start of experience: {exp.current_experience}")
+        log.info(f"Current Classes:     {exp.classes_in_this_experience}")
+        log.info(f"Experience size:     {len(exp.dataset)}")
 
     def train_experience(self, experience: av.benchmarks.NCExperience):
         self.strategy.train(experience)
@@ -133,6 +140,9 @@ class Experiment(SupervisedPlugin):
     def make_criterion(self):
         return torch.nn.CrossEntropyLoss()
 
+    def make_mulitpart_loss(self) -> Loss:
+        return NotImplemented
+
     def make_evaluator(self, loggers, num_classes) -> EvaluationPlugin:
         """Overload to define the evaluation plugin"""
         plugins = []
@@ -141,6 +151,11 @@ class Experiment(SupervisedPlugin):
         if isinstance(self.network, Samplable):
             plugins.append(GenerateSamples(5, 4, rows_are_experiences=True))
 
+        if self.loss.classifier.is_used:
+            plugins.append(LossPartMetric("Classifier", self.loss.classifier))
+        if self.loss.recon.is_used:
+            plugins.append(LossPartMetric("Reconstruction", self.loss.recon))
+
         return EvaluationPlugin(
             loss_metrics(epoch=True,
                          epoch_running=True, experience=True, stream=True, minibatch=True),
@@ -148,6 +163,8 @@ class Experiment(SupervisedPlugin):
                              experience=True, trained_experience=True),
             confusion_matrix_metrics(num_classes=num_classes, stream=True),
             forgetting_metrics(experience=True, stream=True),
+            ConditionalMetrics(),
+            ExperienceIdentificationCM(self.n_experiences),
             EpochClock(),
             *plugins,
             loggers=loggers,
@@ -155,10 +172,10 @@ class Experiment(SupervisedPlugin):
         )
 
     def preflight(self):
-        print(f"Network: {type(self.network)}")
+        log.info(f"Network: {type(self.network)}")
         for trait in get_all_trait_types():
             if isinstance(self.network, trait):
-                print(f" > Has the {trait} trait")
+                log.info(f" > Has the {trait} trait")
 
     def make_network(self) -> nn.Module:
         raise NotImplemented
@@ -193,7 +210,7 @@ class Experiment(SupervisedPlugin):
         return len(self.scenario.train_stream)
 
     @property
-    def last_mb_output(self) -> Strategy.ForwardOutput:
+    def last_mb_output(self) -> ForwardOutput:
         return self.strategy.last_forward_output
 
     @property

@@ -8,19 +8,11 @@ from avalanche.benchmarks.scenarios.new_classes.nc_scenario import NCExperience
 from avalanche.evaluation import PluginMetric
 from avalanche.evaluation.metric_definitions import MetricValue
 from matplotlib.axes import Axes
+from experiment.strategy import ForwardOutput, Strategy
+from functional import figure_to_image, recon_loss
 from network.trait import AutoEncoder, PackNet, Samplable
-from PIL import Image
 
 LabeledExample = typing.Tuple[int, torch.Tensor]
-
-def fig2img(fig):
-    """Convert a Matplotlib figure to a PIL Image and return it"""
-    buf = io.BytesIO()
-    fig.savefig(buf)
-    buf.seek(0)
-    img = Image.open(buf)
-    return img
-
 
 class GenerateReconstruction(PluginMetric):
     examples_per_experience: int
@@ -47,18 +39,24 @@ class GenerateReconstruction(PluginMetric):
     def add_image(
             self,
             axes:   typing.Sequence[Axes],
-            input:  torch.Tensor, output: torch.Tensor,
-            label:  int, pred:   int):
+            input:  torch.Tensor, 
+            output: torch.Tensor,
+            label:  int, 
+            pred:   int,
+            pred_exp: int):
 
         # Hide axis
         for axe in axes:
             axe.get_xaxis().set_ticks([])
             axe.get_yaxis().set_ticks([])
 
-        axes[0].set_ylabel(f"Class: {label}")
-        axes[1].set_ylabel(f"Prediction: {pred}")
+
+
+        axes[0].set_ylabel(f"Class={label}")
+        axes[1].set_ylabel(f"{pred} using {pred_exp}")
         axes[0].set_title(f"Input")
-        axes[1].set_title(f"Reconstruction")
+        loss = float(recon_loss(input, output))
+        axes[1].set_title(f"Loss={loss:.04}")
 
         
         def to_image(img: torch.Tensor) -> torch.Tensor:
@@ -95,7 +93,7 @@ class GenerateReconstruction(PluginMetric):
         return patterns
 
     @torch.no_grad()
-    def after_eval_exp(self, strategy: 'BaseStrategy') -> 'MetricResult':
+    def after_eval_exp(self, strategy: Strategy) -> 'MetricResult':
         model = strategy.model
         assert isinstance(model, AutoEncoder), "Network must be generative"
 
@@ -122,15 +120,15 @@ class GenerateReconstruction(PluginMetric):
                 x: torch.Tensor = x.to(strategy.device)
 
                 # Pass data through auto-encoder
-                out = strategy.model.forward(x.unsqueeze(0))
+                out: ForwardOutput = strategy.model.forward(x.unsqueeze(0))
 
-                self.add_image(pattern_plot, x, out.x_hat, y, torch.argmax(out.y_hat))
+                self.add_image(pattern_plot, x, out.x_hat, y, torch.argmax(out.y_hat), int(out.pred_exp_id))
 
         if isinstance(model, PackNet):
             model.use_top_subset()
 
         x_plot = strategy.clock.train_exp_counter
-        metric = MetricValue(self, "Reconstructions", fig2img(fig), x_plot)
+        metric = MetricValue(self, "Reconstructions", figure_to_image(fig), x_plot)
 
         plt.close("all")
         return metric
@@ -161,7 +159,7 @@ class GenerateSamples(PluginMetric):
         gen_z = model.sample_z().to(self.device)
         # print("add_image", gen_z)
         # Use the generated z to generate a pattern
-        gen_x: Tensor = model.decode(gen_z)
+        gen_x: torch.Tensor = model.decode(gen_z)
         # Use the generated pattern to classify the instance
         gen_y = torch.argmax(model.classify(gen_x))
 
@@ -189,7 +187,7 @@ class GenerateSamples(PluginMetric):
             for ax in rows:
                 self.add_image(ax, strategy.model)
 
-        metric = MetricValue(self, "Sample", fig2img(fig), x_plot=strategy.clock.train_exp_counter)
+        metric = MetricValue(self, "Sample", figure_to_image(fig), x_plot=strategy.clock.train_exp_counter)
         plt.close(fig)
         plt.ion()
         return metric

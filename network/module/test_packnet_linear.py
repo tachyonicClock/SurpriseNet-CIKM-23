@@ -1,6 +1,4 @@
-import math
 import random
-from turtle import forward
 
 import torch
 import torch.nn as nn
