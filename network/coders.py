@@ -51,6 +51,7 @@ class CNN_Encoder(nn.Module):
             act_fn(),
             nn.Flatten(),  # Image grid to single feature vector
             nn.Linear(2 * 16 * c_hid, latent_dim),
+            nn.Tanh()
         )
 
     def forward(self, x: Tensor) -> Tensor:
@@ -212,6 +213,8 @@ class PackNetDenseHead(PackNetParent):
         super().__init__()
 
         self.net = nn.Sequential(
+            pn.wrap(nn.Linear(latent_dims, latent_dims)),
+            nn.ReLU(),
             pn.wrap(nn.Linear(latent_dims, output_size)),
             nn.Softmax(dim=1)
         )

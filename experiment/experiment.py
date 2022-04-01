@@ -155,6 +155,8 @@ class Experiment(SupervisedPlugin):
             plugins.append(LossPartMetric("Classifier", self.loss.classifier))
         if self.loss.recon.is_used:
             plugins.append(LossPartMetric("Reconstruction", self.loss.recon))
+        if self.loss.sparsifying.is_used:
+            plugins.append(LossPartMetric("Sparsifying", self.loss.recon))
 
         return EvaluationPlugin(
             loss_metrics(epoch=True,

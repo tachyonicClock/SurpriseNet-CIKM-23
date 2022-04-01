@@ -78,9 +78,11 @@ class HyperParams(BaseHyperParameters):
     prune: bool
     prune_proportion: float
     post_prune_epochs: int
-    classifier_weight: float = 1.0
-    latent_dims: int = 64
-    base_channel_size: int = 64
+    latent_dims: int
+    base_channel_size: int
+    classifier_weight: float
+    sparsifying_weight: float
+    input_channels: int
 
 
 
@@ -98,7 +100,7 @@ class MyExperiment(Experiment):
         # encoder = PackNetDenseEncoder((1, 28, 28), 64, [512, 256, 128])
         # decoder = PackNetDenseDecoder((1, 28, 28), 64, [128, 256, 512])
 
-        channels = 3
+        channels = self.hp.input_channels
         encoder = PN_CNN_Encoder(channels, self.hp.base_channel_size, latent_dims)
         decoder = PN_CNN_Decoder(channels, self.hp.base_channel_size, latent_dims)
 
@@ -113,7 +115,10 @@ class MyExperiment(Experiment):
         return [PackNetPlugin(self.network, self.hp.prune_proportion, self.hp.post_prune_epochs)]
 
     def make_mulitpart_loss(self) -> Loss:
-        return Loss(classifier_weight=self.hp.classifier_weight, recon_weight=1.0)
+        return Loss(
+            classifier_weight=self.hp.classifier_weight, 
+            recon_weight=1.0, 
+            sparsifying_weight=self.hp.sparsifying_weight)
 
     def make_criterion(self):
         def _loss_function(output: Tensor, target: Tensor) -> Tensor:
@@ -134,9 +139,6 @@ class MyExperiment(Experiment):
         #     train_transform=transform
         #     )
 
-        # transform = transforms.Compose(
-        #     [transforms.ToTensor(), transforms.Normalize((0.2860,), (0.3530,)), transforms.RandomHorizontalFlip(), transforms.Resize((32, 32))]
-        # )
         scenario = SplitCIFAR10(
             n_experiences=5,
             fixed_class_order=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
@@ -145,22 +147,81 @@ class MyExperiment(Experiment):
             )
         return scenario
 
+# FMNIST
+# experiment = MyExperiment(
+#     HyperParams(
+#         lr=0.0005,
+#         train_mb_size=64,
+#         eval_mb_size=64,
+#         eval_every=-1,
+#         prune=True,
+#         prune_proportion=0.50,
+
+#         # Epochs
+#         train_epochs=5,
+#         post_prune_epochs=1,
+
+#         # Loss weights
+#         classifier_weight=500,
+#         sparsifying_weight=0.1,
+
+
+#         # Network architecture
+#         base_channel_size=32,
+#         latent_dims=64,
+#         device="cuda",
+#         input_channels=1,
+#     )
+# )
 
 experiment = MyExperiment(
     HyperParams(
-        lr=0.001,
+        lr=0.0005,
         train_mb_size=64,
-        train_epochs=500,
-        eval_mb_size=256,
+        eval_mb_size=64,
         eval_every=-1,
         prune=True,
-        prune_proportion=0.5,
-        post_prune_epochs=100,
+        prune_proportion=0.7,
+
+        # Epochs
+        train_epochs=1000,
+        post_prune_epochs=200,
+
+        # Loss weights
         classifier_weight=1000,
-        base_channel_size=32,
+        sparsifying_weight=1,
+
+        # Network architecture
+        base_channel_size=64,
+        latent_dims=265,
+        input_channels=3,
         device="cuda"
     )
 )
+
+# experiment = MyExperiment(
+#     HyperParams(
+#         lr=0.0005,
+#         train_mb_size=64,
+#         train_epochs=500,
+#         eval_mb_size=64,
+#         eval_every=-1,
+#         prune=True,
+#         prune_proportion=0.5,
+#         post_prune_epochs=100,
+#         classifier_weight=1000,
+#         sparsifying_weight=1,
+
+#         # Network architecture
+#         base_channel_size=32,
+#         latent_dims=128,
+#         device="cuda"
+#     )
+# )
+
+
+# for k, v in experiment.network.named_parameters():
+#     print(k)
 
 experiment.train()
 print("DONE!")

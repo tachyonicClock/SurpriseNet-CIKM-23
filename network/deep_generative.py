@@ -140,11 +140,14 @@ class Loss():
     def __init__(self,
         classifier_weight: float = 0.0,
         recon_weight: float = 0.0,
-        kld_weight: float = 0.0) -> None:
+        kld_weight: float = 0.0,
+        sparsifying_weight: float = 0.0) -> None:
 
         self.classifier = LossPart(classifier_weight)
         self.recon = LossPart(recon_weight)
         self.kld = LossPart(kld_weight)
+
+        self.sparsifying = LossPart(sparsifying_weight)
 
     def _kl_loss(self, mu, log_var):
         # KL loss if we assume a normal distribution!
@@ -157,7 +160,12 @@ class Loss():
             self.classifier.loss = F.cross_entropy(out.y_hat, y)
         if self.kld.is_used:
             self.kld.loss = self._kl_loss(out.mu, out.log_var)
+        if self.sparsifying.is_used:
+            self.sparsifying.loss = out.z_code.abs().sum()
 
     def weighted_sum(self):
-        return self.classifier.weighted_loss + self.recon.weighted_loss + self.kld.weighted_loss
+        return self.classifier.weighted_loss + \
+               self.recon.weighted_loss      + \
+               self.kld.weighted_loss        + \
+               self.sparsifying.weighted_loss
 
