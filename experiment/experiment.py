@@ -24,6 +24,8 @@ from conf import *
 from metrics.reconstructions import GenerateReconstruction, GenerateSamples
 from network.deep_generative import Loss
 
+import setproctitle
+
 from network.trait import AutoEncoder, PackNet, Samplable, get_all_trait_types
 
 # Setup logging
@@ -63,9 +65,13 @@ class Experiment(SupervisedPlugin):
 
         self.hp = hp
 
+        self.label = f"experiment_{max(self._get_log_numbers())+1:04d}"
+
+        setproctitle.setproctitle(self.label)
+
         # Create a new logger with sequential names
         self.logger = av.logging.TensorboardLogger(
-            LOGDIR+f"/experiment_{max(self._get_log_numbers())+1:04d}")
+            LOGDIR+"/"+self.label)
 
         self.loss = self.make_mulitpart_loss()
         self.scenario = self.make_scenario()

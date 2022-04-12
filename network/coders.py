@@ -50,7 +50,14 @@ class CNN_Encoder(nn.Module):
                       kernel_size=3, padding=1, stride=2),
             act_fn(),
             nn.Flatten(),  # Image grid to single feature vector
+            nn.Linear(2 * 16 * c_hid, 2 * 16 * c_hid),
+            nn.Dropout(0.1),
+            act_fn(),
             nn.Linear(2 * 16 * c_hid, latent_dim),
+            nn.Dropout(0.1),
+            act_fn(),
+            nn.Linear(latent_dim, latent_dim),
+            act_fn(),
             nn.Tanh()
         )
 
@@ -72,7 +79,13 @@ class CNN_Decoder(nn.Module):
         super().__init__()
         c_hid = base_channel_size
         self.linear = nn.Sequential(
+            nn.Linear(latent_dim, latent_dim),
+            act_fn(),
             nn.Linear(latent_dim, 2 * 16 * c_hid),
+            nn.Dropout(0.1),
+            act_fn(),
+            nn.Linear(2 * 16 * c_hid, 2 * 16 * c_hid),
+            nn.Dropout(0.1),
             act_fn(),
         )
         self.net = nn.Sequential(
@@ -216,7 +229,7 @@ class PackNetDenseHead(PackNetParent):
             pn.wrap(nn.Linear(latent_dims, latent_dims)),
             nn.ReLU(),
             pn.wrap(nn.Linear(latent_dims, output_size)),
-            nn.Softmax(dim=1)
+            nn.ReLU()
         )
 
     def forward(self, input: Tensor) -> Tensor:

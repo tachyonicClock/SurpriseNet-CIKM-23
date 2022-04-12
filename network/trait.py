@@ -81,6 +81,25 @@ class Samplable(ABC):
     def sample_z(self, n: int = 1) -> Tensor:
         pass
 
+
+class Encoder(nn.Module):
+    pass
+
+class Decoder(nn.Module):
+    pass
+
+class LatentSampler(Samplable):
+    pass
+
+class DVAE():
+
+    def __init__(self,
+        encoder: Encoder,
+        decorder: Decoder,
+        latent_sampler: LatentSampler,
+        classifier) -> None:
+        pass
+
 def get_all_trait_types():
     return [
         PackNet,

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import avalanche as av
 import torch
 import torch.nn.functional as F
+from avalanche.benchmarks.classic.ccifar100 import SplitCIFAR100
 from avalanche.benchmarks.classic.ccifar10 import SplitCIFAR10
 from avalanche.benchmarks.classic.cfashion_mnist import SplitFMNIST
 from torch import Tensor, nn
@@ -104,7 +105,7 @@ class MyExperiment(Experiment):
         encoder = PN_CNN_Encoder(channels, self.hp.base_channel_size, latent_dims)
         decoder = PN_CNN_Decoder(channels, self.hp.base_channel_size, latent_dims)
 
-        head = PackNetDenseHead(latent_dims, 10)
+        head = PackNetDenseHead(latent_dims, self.scenario.n_classes)
         return PackNetClassifyingAutoEncoder(latent_dims, encoder, decoder, head)
 
     def make_optimizer(self, parameters) -> torch.optim.Optimizer:
@@ -139,12 +140,19 @@ class MyExperiment(Experiment):
         #     train_transform=transform
         #     )
 
-        scenario = SplitCIFAR10(
-            n_experiences=5,
-            fixed_class_order=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-            dataset_root=DATASETS,
-            return_task_id=False,
-            )
+        # scenario = SplitCIFAR10(
+        #     n_experiences=5,
+        #     fixed_class_order=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+        #     dataset_root=DATASETS,
+        #     return_task_id=False,
+        #     )
+
+        scenario = SplitCIFAR100(
+            n_experiences=10,
+            fixed_class_order=list(range(100)),
+            dataset_root=DATASETS
+        )
+
         return scenario
 
 # FMNIST
@@ -176,24 +184,24 @@ class MyExperiment(Experiment):
 
 experiment = MyExperiment(
     HyperParams(
-        lr=0.0005,
-        train_mb_size=64,
-        eval_mb_size=64,
+        lr=0.0002,
+        train_mb_size=128,
+        eval_mb_size=128,
         eval_every=-1,
         prune=True,
-        prune_proportion=0.7,
+        prune_proportion=0.8,
 
         # Epochs
         train_epochs=1000,
-        post_prune_epochs=200,
+        post_prune_epochs=500,
 
         # Loss weights
         classifier_weight=1000,
-        sparsifying_weight=1,
+        sparsifying_weight=0.0,
 
         # Network architecture
         base_channel_size=64,
-        latent_dims=265,
+        latent_dims=512,
         input_channels=3,
         device="cuda"
     )

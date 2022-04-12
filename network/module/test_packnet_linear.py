@@ -1,4 +1,5 @@
 import random
+from sympy import false
 
 import torch
 import torch.nn as nn
@@ -226,3 +227,29 @@ def test_toy_end_to_end():
     model.use_top_subset()
     print("Task b")
     assert validate(0, task_b) == b_loss, "Should not have changed performance"
+
+
+
+def test_linear_reinit(packnet_linear: _PnLinear):
+    import scipy.stats as st
+    from scipy.stats import f
+    # We require a sufficient sample size
+    if packnet_linear.weight_count < 30:
+        return
+    packnet_linear.prune(0.9)
+    packnet_linear.push_pruned()
+
+    n = packnet_linear.top_mask.count_nonzero()
+    expected_mean = 0.0
+    expected_var = 2/n
+    weights = packnet_linear.weight[packnet_linear.top_mask]
+    actual_var  = float(weights.square().sum().divide(n))
+    actual_mean = float(weights.mean())
+
+    lower, upper = st.t.interval(alpha=0.90, df=n-1, loc=expected_mean, scale=expected_var)
+    assert lower < actual_mean < upper, "T-test failed"
+
+    # F-test for variance
+    p = f.cdf(actual_var/expected_var, n-1, n-1)
+    assert p > 0.05, "We reject the null hypothesis and can conclude they are not equal as we would expect"
+    

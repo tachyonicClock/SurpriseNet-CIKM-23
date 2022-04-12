@@ -67,6 +67,7 @@ class PackNetDecorator(PackNet, ModuleDecorator):
             raise self.StateError(f"Function only valid for {previous} instead PackNet was in the {self.state} state")
         self.state = next
 
+    # TODO Rename to supermask
     z_mask: Tensor
     """
     Z mask is a depth index of weights in an imaginary "stack" that makes up the
@@ -159,7 +160,10 @@ class PackNetDecorator(PackNet, ModuleDecorator):
         prune_count = int(len(ranked) * to_prune_proportion)
         self._prune_weights(ranked[:prune_count])
 
+
     def available_weights(self) -> Tensor:
+        if self.state == self.state.MUTABLE_TOP:
+            return self.weight
         weight = self.weight.clone()
         # Mask of the weights that are above the supplied z_index. Used to zero
         # them 
@@ -179,6 +183,11 @@ class PackNetDecorator(PackNet, ModuleDecorator):
         """Forward should use the top subset"""
         self.use_task_subset(self._z_top)
 
+
+    def initialize_top(self):
+        """Re-initialize the top of the network"""
+        return
+
     def push_pruned(self):
         self.next_state([self.State.PRUNED_TOP], self.State.MUTABLE_TOP)
         # The top is now one higher up
@@ -187,6 +196,8 @@ class PackNetDecorator(PackNet, ModuleDecorator):
         self.z_mask[self.pruned_mask] = self._z_top
         # Change the active z_index
         self.use_top_subset()
+
+        self.initialize_top()
 
         if self.bias != None:
             self.bias.requires_grad = False
@@ -209,6 +220,15 @@ class _PnLinear(PackNetDecorator):
     @property
     def weight(self) -> Tensor:
         return self.wrappee.weight
+
+
+    def initialize_top(self):
+        # He Weight Initialization
+        stddev = math.sqrt(2/self.top_mask.count_nonzero())
+        dist = torch.distributions.Normal(0, stddev)
+        with torch.no_grad():
+            self.weight[self.top_mask] = dist.sample((self.top_mask.count_nonzero(),)).to(self.weight.device)
+
 
     def forward(self, input: Tensor) -> Tensor:
         return F.linear(input, self.available_weights(), self.bias)
