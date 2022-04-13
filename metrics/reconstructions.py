@@ -9,8 +9,8 @@ from avalanche.evaluation import PluginMetric
 from avalanche.evaluation.metric_definitions import MetricValue
 from matplotlib.axes import Axes
 from experiment.strategy import ForwardOutput, Strategy
-from functional import figure_to_image, recon_loss
-from network.trait import AutoEncoder, PackNet, Samplable
+from functional import figure_to_image, MRAE
+from network.trait import Encoder, Decoder, PackNet, Samplable, AutoEncoder
 
 LabeledExample = typing.Tuple[int, torch.Tensor]
 
@@ -50,12 +50,10 @@ class GenerateReconstruction(PluginMetric):
             axe.get_xaxis().set_ticks([])
             axe.get_yaxis().set_ticks([])
 
-
-
         axes[0].set_ylabel(f"Class={label}")
         axes[1].set_ylabel(f"{pred} using {pred_exp}")
         axes[0].set_title(f"Input")
-        loss = float(recon_loss(input, output))
+        loss = float(MRAE(input.reshape(output.shape), output))
         axes[1].set_title(f"Loss={loss:.04}")
 
         
@@ -95,7 +93,8 @@ class GenerateReconstruction(PluginMetric):
     @torch.no_grad()
     def after_eval_exp(self, strategy: Strategy) -> 'MetricResult':
         model = strategy.model
-        assert isinstance(model, AutoEncoder), "Network must be generative"
+        assert isinstance(model, AutoEncoder), "Network must be auto encoder"
+
 
         n_tasks = len(self.patterns)
         n_patterns_per_task = len(self.patterns[0])
@@ -122,6 +121,7 @@ class GenerateReconstruction(PluginMetric):
                 # Pass data through auto-encoder
                 out: ForwardOutput = strategy.model.forward(x.unsqueeze(0))
 
+                out.pred_exp_id = out.pred_exp_id if out.pred_exp_id else -1
                 self.add_image(pattern_plot, x, out.x_hat, y, torch.argmax(out.y_hat), int(out.pred_exp_id))
 
         if isinstance(model, PackNet):

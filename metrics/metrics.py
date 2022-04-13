@@ -14,9 +14,9 @@ from avalanche.evaluation import PluginMetric
 from avalanche.evaluation.metric_definitions import Metric
 
 from avalanche.evaluation.metric_results import MetricValue
+from experiment.loss import LossObjective
 from experiment.strategy import Strategy
 from functional import figure_to_image
-from network.deep_generative import LossPart
 
 
 class _MyMetric(PluginMetric[float]):
@@ -153,12 +153,12 @@ class ConditionalMetrics(_MyMetric):
 
         
         
-class LossPartMetric(_MyMetric):
+class LossObjectiveMetric(_MyMetric):
 
     n_samples: int
     loss_sum: float
 
-    def __init__(self, name: str, loss_part: LossPart):
+    def __init__(self, name: str, loss_part: LossObjective):
         super().__init__()
         self.loss_part = loss_part
         self.name = name

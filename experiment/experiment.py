@@ -16,30 +16,31 @@ from avalanche.training.templates.supervised import SupervisedTemplate
 import torch
 from torch import nn
 from torch.utils.tensorboard.summary import hparams
+from experiment.loss import MultipleObjectiveLoss
 from experiment.strategy import ForwardOutput, Strategy
 
-from metrics.metrics import ConditionalMetrics, EpochClock, ExperienceIdentificationCM, LossPartMetric
+from metrics.metrics import ConditionalMetrics, EpochClock, ExperienceIdentificationCM, LossObjectiveMetric
 
-from conf import *
+from config import *
 from metrics.reconstructions import GenerateReconstruction, GenerateSamples
-from network.deep_generative import Loss
 
 import setproctitle
 
-from network.trait import AutoEncoder, PackNet, Samplable, get_all_trait_types
+from network.trait import AutoEncoder, ClassifyExperience, PackNet, Samplable, NETWORK_TRAITS
 
 # Setup logging
 import logging
-import coloredlogs
-coloredlogs.install(fmt='%(name)s %(levelname)s %(message)s')
+logging.basicConfig(format='\x1b[36m%(module)s/%(filename)s:\x1b[34m%(lineno)d %(levelname)s \x1b[0m %(message)s', level=logging.INFO)
 log = logging.getLogger(__name__)
 
 @dataclass
 class BaseHyperParameters():
     lr: float
+    
     train_mb_size: int
-    train_epochs: int
     eval_mb_size: int
+
+    train_epochs: int
     eval_every: int
     device: str
 
@@ -56,7 +57,7 @@ class Experiment(SupervisedPlugin):
     optimizer: torch.optim.Optimizer
     evaluator: EvaluationPlugin
     hp: BaseHyperParameters
-    loss: Loss
+    objective: MultipleObjectiveLoss
 
     def __init__(self, hp: BaseHyperParameters) -> None:
         super().__init__()
@@ -73,7 +74,7 @@ class Experiment(SupervisedPlugin):
         self.logger = av.logging.TensorboardLogger(
             LOGDIR+"/"+self.label)
 
-        self.loss = self.make_mulitpart_loss()
+        self.objective = self.make_objective()
         self.scenario = self.make_scenario()
         self.network = self.make_network()
         self.evaluator = self.make_evaluator(
@@ -146,7 +147,7 @@ class Experiment(SupervisedPlugin):
     def make_criterion(self):
         return torch.nn.CrossEntropyLoss()
 
-    def make_mulitpart_loss(self) -> Loss:
+    def make_objective(self) -> MultipleObjectiveLoss:
         return NotImplemented
 
     def make_evaluator(self, loggers, num_classes) -> EvaluationPlugin:
@@ -156,13 +157,12 @@ class Experiment(SupervisedPlugin):
             plugins.append(GenerateReconstruction(self.scenario, 2, 1))
         if isinstance(self.network, Samplable):
             plugins.append(GenerateSamples(5, 4, rows_are_experiences=True))
+        if isinstance(self.network, ClassifyExperience):
+            plugins.append(ConditionalMetrics())
+            plugins.append(ExperienceIdentificationCM(self.n_experiences))
 
-        if self.loss.classifier.is_used:
-            plugins.append(LossPartMetric("Classifier", self.loss.classifier))
-        if self.loss.recon.is_used:
-            plugins.append(LossPartMetric("Reconstruction", self.loss.recon))
-        if self.loss.sparsifying.is_used:
-            plugins.append(LossPartMetric("Sparsifying", self.loss.recon))
+        for name, objective in self.objective:
+            plugins.append(LossObjectiveMetric(name, objective))
 
         return EvaluationPlugin(
             loss_metrics(epoch=True,
@@ -171,8 +171,6 @@ class Experiment(SupervisedPlugin):
                              experience=True, trained_experience=True),
             confusion_matrix_metrics(num_classes=num_classes, stream=True),
             forgetting_metrics(experience=True, stream=True),
-            ConditionalMetrics(),
-            ExperienceIdentificationCM(self.n_experiences),
             EpochClock(),
             *plugins,
             loggers=loggers,
@@ -181,9 +179,13 @@ class Experiment(SupervisedPlugin):
 
     def preflight(self):
         log.info(f"Network: {type(self.network)}")
-        for trait in get_all_trait_types():
+        log.info(f"Traits:")
+        for trait in NETWORK_TRAITS:
             if isinstance(self.network, trait):
-                log.info(f" > Has the {trait} trait")
+                log.info(f" > Has the `{trait.__name__}` trait")
+        log.info(f"Objectives:")
+        for name, _ in self.objective:
+            log.info(f" > Has the `{name}` objective")
 
     def make_network(self) -> nn.Module:
         raise NotImplemented
@@ -216,6 +218,10 @@ class Experiment(SupervisedPlugin):
     @property
     def n_experiences(self) -> int:
         return len(self.scenario.train_stream)
+
+    @property
+    def n_classes(self) -> int:
+        return self.scenario.n_classes
 
     @property
     def last_mb_output(self) -> ForwardOutput:

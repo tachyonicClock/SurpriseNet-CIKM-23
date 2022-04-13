@@ -7,7 +7,7 @@ from avalanche.models import avalanche_forward
 
 @dataclass
 class ForwardOutput():
-    y_hat: Tensor
+    y_hat: Tensor = None
     """The predicted class label"""
     x: Tensor = None
     """The original input"""
@@ -21,7 +21,7 @@ class ForwardOutput():
     """The actual exp id for a forward pass"""
     mu: Tensor = None
     """The output of the mean layer in a VAE"""
-    log_var: Tensor = None
+    log_std: Tensor = None
     """The output of the variance layer in a VAE"""
 
 class Strategy(SupervisedTemplate):

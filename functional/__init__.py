@@ -14,11 +14,17 @@ def best_reduce(metric: Tensor, values: Tensor) -> Tensor:
     tensors = torch.stack([values[b][i] for i, b in enumerate(best)])
     return tensors
 
-def recon_loss(x_hat: Tensor, x: Tensor) -> Tensor:
-    # Mean sum of pixel squared error
+def MSE(x_hat: Tensor, x: Tensor) -> Tensor:
+    """Mean sum of pixel squared error"""
     loss = F.mse_loss(x, x_hat, reduction="none")
     loss = loss.sum(dim=[1, 2, 3]).mean(dim=[0])
     return loss
+
+def MRAE(x_hat: Tensor, x: Tensor) -> Tensor:
+    """Relative absolute error"""
+    x = x.flatten()
+    x_hat = x_hat.flatten()
+    return (x_hat - x).abs().sum()/x.abs().sum()
 
 def figure_to_image(fig: Figure) -> Image.Image:
     """Convert a Matplotlib figure to a PIL Image and return it"""

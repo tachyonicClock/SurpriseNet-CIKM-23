@@ -1,9 +1,61 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import Callable
-from torch import Tensor, nn
-import torch
-from experiment.strategy import Strategy
+from torch import Tensor, TensorType
+
+class Classifier(ABC):
+    """Something that can classify"""
+
+    @abstractmethod
+    def classify(self, x: Tensor) -> Tensor:
+        """x -> x_hat
+
+        :param x: An batch of observations to classify
+        :return: A class count wide tensor of predicted probabilities
+        """
+
+class ClassifyExperience(ABC):
+    """
+    Does the classifier try to identify the experience of an observation
+    """
+
+    @abstractmethod
+    def classify(self, x: Tensor) -> Tensor:
+        pass
+
+class Samplable(ABC):
+    """Something that can generate instances"""
+
+    @abstractmethod
+    def sample(self, n: int = 1) -> Tensor:
+        """Sample from a generative model
+
+        :param n: Number of samples to generate, defaults to 1
+        :return: A generated sample
+        """
+
+class Encoder(ABC):
+    """Something that can encode something"""
+
+    @property
+    @abstractmethod
+    def bottleneck_width(self) -> int:
+        """The width of the bottleneck"""
+
+    def encode(self, x: Tensor) -> Tensor:
+        """x -> z"""
+
+class Decoder(ABC):
+    """Something that can decoded something that was encoded"""
+
+    @property
+    @abstractmethod
+    def bottleneck_width(self) -> int:
+        """The width of the bottleneck"""
+
+    def decode(self, z: Tensor) -> Tensor:
+        """z -> x"""
+
+class AutoEncoder(Encoder, Decoder):
+    pass
 
 class PackNet(ABC):
 
@@ -15,7 +67,6 @@ class PackNet(ABC):
 
         :param to_prune_proportion: A proportion of the prunable parameters to prune
         """
-        self._pn_apply(lambda x : x.prune(to_prune_proportion))
 
     @abstractmethod
     def push_pruned(self) -> None:
@@ -32,78 +83,11 @@ class PackNet(ABC):
     def use_top_subset(self):
         pass
 
-class PackNetParent(PackNet, nn.Module):
-    def _pn_apply(self, func: Callable[['PackNet'], None]):
-        @torch.no_grad()
-        def __pn_apply(module):
-            # Apply function to all child packnets but not other parents.
-            # If we were to apply to other parents we would duplicate
-            # applications to their children
-            if isinstance(module, PackNet) and not isinstance(module, PackNetParent):
-                func(module)
-        self.apply(__pn_apply)
-
-    def prune(self, to_prune_proportion: float) -> None:
-        self._pn_apply(lambda x : x.prune(to_prune_proportion))
-
-    def push_pruned(self) -> None:
-        self._pn_apply(lambda x : x.push_pruned())
-
-    def use_task_subset(self, task_id):
-        self._pn_apply(lambda x : x.use_task_subset(task_id))
-
-    def use_top_subset(self):
-        self._pn_apply(lambda x : x.use_top_subset())
-
-
-class AutoEncoder(ABC):
-    '''Generative algorithms with classification capability'''
-    
-    @abstractmethod
-    def encode(self, x: Tensor) -> Tensor:
-        pass
-
-    @abstractmethod
-    def decode(self, z: Tensor) -> Tensor:
-        pass
-
-
-class Classifier(ABC):
-
-    @abstractmethod
-    def classify(self, x: Tensor) -> Tensor:
-        pass
-
-
-class Samplable(ABC):
-
-    @abstractmethod
-    def sample_z(self, n: int = 1) -> Tensor:
-        pass
-
-
-class Encoder(nn.Module):
-    pass
-
-class Decoder(nn.Module):
-    pass
-
-class LatentSampler(Samplable):
-    pass
-
-class DVAE():
-
-    def __init__(self,
-        encoder: Encoder,
-        decorder: Decoder,
-        latent_sampler: LatentSampler,
-        classifier) -> None:
-        pass
-
-def get_all_trait_types():
-    return [
-        PackNet,
-        AutoEncoder,
-        Classifier,
-        Samplable
-    ]
+NETWORK_TRAITS = [
+    Classifier,
+    Samplable,
+    Encoder,
+    Decoder,
+    PackNet,
+    AutoEncoder
+]

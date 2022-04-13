@@ -9,7 +9,7 @@ from avalanche.benchmarks.classic.ccifar10 import SplitCIFAR10
 from avalanche.benchmarks.classic.cfashion_mnist import SplitFMNIST
 from torch import Tensor, nn
 
-from conf import *
+from config import *
 from experiment.experiment import BaseHyperParameters, Experiment
 from experiment.plugins import PackNetPlugin
 from experiment.strategy import ForwardOutput

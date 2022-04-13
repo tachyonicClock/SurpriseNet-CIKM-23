@@ -6,7 +6,7 @@ from experiment.experiment import Experiment, BaseHyperParameters
 from network.trait import PackNet
 from network.module.packnet_linear import PackNetLinear
 
-from conf import *
+from config import *
 
 from dataclasses import dataclass
 from avalanche.benchmarks.classic.cfashion_mnist import SplitFMNIST
