@@ -1,5 +1,6 @@
 
 
+import logging
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure

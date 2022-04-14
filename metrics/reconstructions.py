@@ -1,4 +1,5 @@
 import io
+import logging
 import typing
 
 import matplotlib.pyplot as plt
@@ -10,9 +11,11 @@ from avalanche.evaluation.metric_definitions import MetricValue
 from matplotlib.axes import Axes
 from experiment.strategy import ForwardOutput, Strategy
 from functional import figure_to_image, MRAE
-from network.trait import Encoder, Decoder, PackNet, Samplable, AutoEncoder
+from network.trait import Classifier, Encoder, Decoder, PackNet, Samplable, AutoEncoder
 
 LabeledExample = typing.Tuple[int, torch.Tensor]
+log = logging.Logger(__name__)
+
 
 class GenerateReconstruction(PluginMetric):
     examples_per_experience: int
@@ -154,14 +157,14 @@ class GenerateSamples(PluginMetric):
 
     img_size: float = 2.0 # How big each image should be matplotlib units
 
-    def add_image(self, axes: Axes, model: AutoEncoder):
+    def add_image(self, axes: Axes, model: Samplable):
         # Randomly generate the latent dimension
-        gen_z = model.sample_z().to(self.device)
-        # print("add_image", gen_z)
-        # Use the generated z to generate a pattern
-        gen_x: torch.Tensor = model.decode(gen_z)
-        # Use the generated pattern to classify the instance
-        gen_y = torch.argmax(model.classify(gen_x))
+        gen_x = model.sample(1)
+
+        if isinstance(model, Classifier):
+            gen_y = torch.argmax(model.classify(gen_x))
+        else:
+            gen_y = -1
 
         axes.imshow(gen_x.cpu().squeeze())
         axes.set_axis_off()
@@ -169,7 +172,6 @@ class GenerateSamples(PluginMetric):
 
     @torch.no_grad()
     def after_eval_exp(self, strategy: 'BaseStrategy') -> 'MetricResult':
-        assert isinstance(strategy.model, AutoEncoder), "Network must be `AutoEncoder`"
         assert isinstance(strategy.model, Samplable), "Network must be `Samplable`"
 
         self.device = strategy.device
@@ -182,7 +184,6 @@ class GenerateSamples(PluginMetric):
         # Add image by sampling for each row and column
         for task_id, rows in enumerate(axes):
             if self.rows_are_experiences:
-                assert isinstance(strategy.model, PackNet)
                 strategy.model.use_task_subset(task_id)
             for ax in rows:
                 self.add_image(ax, strategy.model)

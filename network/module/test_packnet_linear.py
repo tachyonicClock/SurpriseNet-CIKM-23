@@ -7,7 +7,7 @@ from torch import Tensor, rand
 from torch.nn import functional as F
 
 import pytest
-from network.trait import PackNetParent
+from network.trait import PackNetComposite
 
 from packnet import *
 from packnet import _PnLinear 
@@ -124,7 +124,7 @@ def test_prune(proportion, packnet_linear: _PnLinear, device):
 
 
 
-class XORNet(PackNetParent):
+class XORNet(PackNetComposite):
     def __init__(self) -> None:
         super().__init__()
         self.lin_1 = wrap(nn.Linear(4, 8))

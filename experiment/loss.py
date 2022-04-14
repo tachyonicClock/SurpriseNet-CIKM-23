@@ -1,6 +1,7 @@
 from experiment.strategy import ForwardOutput
 import typing
 import torch
+from torch.nn import functional as F
 from torch import Tensor
 from abc import ABC, abstractmethod
 
@@ -49,7 +50,28 @@ class MultipleObjectiveLoss():
 
 
 class ReconstructionError(LossObjective):
-    name = "ReconstructionError"
-    
+    name = "Reconstruction"
+
     def update(self, out: ForwardOutput, target: Tensor = None):
         self.loss = MRAE(out.x_hat, out.x)
+
+class ClassifierLoss(LossObjective):
+    name = "Classifier"
+
+    def update(self, out: ForwardOutput, target: Tensor = None):
+        self.loss = F.cross_entropy(out.y_hat, target)
+
+class VAELoss(LossObjective):
+    name = "VAE"
+
+    def __init__(self, M: int, N: int, beta: float):
+        """Create a VAE loss function
+
+        :param M: M is the size of the latent space
+        :param N: N is the input size
+        :param beta: The beta factor, typically between 0.001 and 10 (https://openreview.net/pdf?id=Sy2fzU9gl)
+        """
+        self.weighting = beta*M/N
+
+    def update(self, out: ForwardOutput, target: Tensor = None):
+        self.loss = torch.mean(-0.5 * torch.sum(1+out.log_var - out.mu.square() - out.log_var.exp()))

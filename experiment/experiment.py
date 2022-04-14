@@ -14,7 +14,7 @@ from avalanche.training.plugins import EvaluationPlugin
 from avalanche.core import BasePlugin, SupervisedPlugin
 from avalanche.training.templates.supervised import SupervisedTemplate
 import torch
-from torch import nn
+from torch import Tensor, nn
 from torch.utils.tensorboard.summary import hparams
 from experiment.loss import MultipleObjectiveLoss
 from experiment.strategy import ForwardOutput, Strategy
@@ -26,7 +26,7 @@ from metrics.reconstructions import GenerateReconstruction, GenerateSamples
 
 import setproctitle
 
-from network.trait import AutoEncoder, ClassifyExperience, PackNet, Samplable, NETWORK_TRAITS
+from network.trait import AutoEncoder, ClassifyExperience, ConditionedSample, PackNet, Samplable, NETWORK_TRAITS
 
 # Setup logging
 import logging
@@ -145,7 +145,10 @@ class Experiment(SupervisedPlugin):
         )
 
     def make_criterion(self):
-        return torch.nn.CrossEntropyLoss()
+        def _loss_function(output: Tensor, target: Tensor) -> Tensor:
+            self.objective.update(self.last_mb_output, target)
+            return self.objective.weighted_sum
+        return _loss_function
 
     def make_objective(self) -> MultipleObjectiveLoss:
         return NotImplemented
@@ -156,7 +159,7 @@ class Experiment(SupervisedPlugin):
         if isinstance(self.network, AutoEncoder):
             plugins.append(GenerateReconstruction(self.scenario, 2, 1))
         if isinstance(self.network, Samplable):
-            plugins.append(GenerateSamples(5, 4, rows_are_experiences=True))
+            plugins.append(GenerateSamples(5, 4, rows_are_experiences=isinstance(self.network, ConditionedSample)))
         if isinstance(self.network, ClassifyExperience):
             plugins.append(ConditionalMetrics())
             plugins.append(ExperienceIdentificationCM(self.n_experiences))

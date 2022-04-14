@@ -1,12 +1,14 @@
 from dataclasses import dataclass
 from turtle import forward
 import typing
+from sqlalchemy import false
 from torch import Tensor, nn
 import torch
 from torch.nn import functional as F
 
 from experiment.strategy import ForwardOutput
-from .trait import Classifier, Decoder, Samplable, Encoder, AutoEncoder
+from functional import MRAE
+from .trait import Classifier, ClassifyExperience, Decoder, PackNet, PackNetComposite, Sampler, Samplable, Encoder, AutoEncoder
 
 
 class DAE(AutoEncoder, Classifier, nn.Module):
@@ -49,107 +51,80 @@ class DAE(AutoEncoder, Classifier, nn.Module):
         out.x = x
         return out
 
+class DVAE(AutoEncoder, Classifier, Samplable, nn.Module):
 
-# class DAE(AutoEncoder, Classifier, nn.Module):
-#     """
-#     Discriminative Auto-Encoder
-#     """
+    def __init__(self,
+        encoder: Encoder,
+        probabilistic_encoder: Sampler,
+        decoder: Decoder,
+        classifier: Classifier) -> None:
+        super().__init__()
 
-#     def __init__(self,
-#                  latent_dim: int,
-#                  encoder: nn.Module,
-#                  decoder: nn.Module,
-#                  head: nn.Module) -> None:
-#         super().__init__()
-#         self.latent_dim = latent_dim
-#         self.encoder: nn.Module = encoder
-#         self.decoder: nn.Module = decoder
-#         self.head: nn.Module = head
+        self.dummy_param = nn.Parameter(torch.empty(0)) # Used to determine device
+        self.encoder = encoder
+        self.probabilistic_encoder = probabilistic_encoder
+        self.decoder = decoder
+        self.classifier = classifier
 
-#     def encode(self, x: Tensor):
-#         return self.encoder(x)
+    def encode(self, x: Tensor) -> Tensor:
+        mu, std = self.probabilistic_encoder.encode(self.encoder.encode(x))
+        return self.probabilistic_encoder.reparameterise(mu, std)
+    
+    def sample(self, n: int = 1) -> Tensor:
+        return self.decode(self.probabilistic_encoder.sample(n).to(self.dummy_param.device))
 
-#     def decode(self, z: Tensor):
-#         return self.decoder(z)
+    def decode(self, z: Tensor) -> Tensor:
+        return self.decoder.decode(z)
 
-#     def classify(self, x: Tensor) -> Tensor:
-#         return self.forward(x).y_hat
+    def classify(self, x: Tensor) -> Tensor:
+        return self.forward(x).y_hat
 
-#     def forward(self, x: Tensor) -> ForwardOutput:
-#         z = self.encoder(x)      # Latent codes
-#         x_hat = self.decoder(z)  # Reconstruction
-#         y_hat = self.head(z)     # Classification head
-#         return ForwardOutput(y_hat=y_hat, x=x, x_hat=x_hat, z_code=z)
+    @property
+    def bottleneck_width(self) -> int:
+        return self.probabilistic_encoder.bottleneck_width
 
-# class DVAE(Classifier, Samplable, AutoEncoder, nn.Module):
-#     """
-#     Discriminative Variational Auto-Encoder
+    def forward(self, x: Tensor) -> ForwardOutput:
+        out = ForwardOutput()
+        z = self.encoder.encode(x)
+        out.mu, out.log_var = self.probabilistic_encoder.encode(z)
+        out.z_code = self.probabilistic_encoder.reparameterise(out.mu, out.log_var)
+        out.y_hat = self.classifier(out.z_code)
+        out.x_hat = self.decoder(out.z_code)
+        out.x = x
+        return out
 
-#     Based on https://github.com/AntixK/PyTorch-VAE/blob/master/models/vanilla_vae.py
-#     """
+    def sample_x(self, n:int=1) -> Tensor:
+        return torch.randn(n, self.latent_dim)
 
-#     def __init__(self,
-#         latent_dim: int,
-#         encoder: nn.Module,
-#         decoder: nn.Module,
-#         class_head: nn.Module,
-#         mu_head: nn.Module,
-#         var_head: nn.Module
-#         ) -> None:
-#         """_summary_
+class PN_DVAE(ClassifyExperience, DVAE, PackNetComposite):
 
-#         :param latent_dim: The size of the latent dimension
-#         :param encoder: Pattern encoded and fed through mu and var heads
-#         :param decoder: Takes latent code and creates reconstruction  
-#         :param class_head: Outputs classes
-#         :param mu_head: Outputs means of latent distribution
-#         :param var_head: Outputs variances means of latent distribution
-#         """
-#         super().__init__()
+    subnet_count: int = 0
 
-#         self.latent_dim = latent_dim
-#         self.mu_head    = mu_head
-#         self.var_head   = var_head
-#         self.class_head = class_head
-#         self.encoder    = encoder
-#         self.decoder    = decoder
+    def __init__(self,
+        encoder: typing.Union[Encoder, PackNet],
+        probabilistic_encoder: typing.Union[Sampler, PackNet],
+        decoder: typing.Union[Decoder, PackNet],
+        classifier: typing.Union[Classifier, PackNet]) -> None:
+        super().__init__(encoder, probabilistic_encoder, decoder, classifier)
 
+    def push_pruned(self):
+        super().push_pruned()
+        self.subnet_count += 1
 
-#     def encode(self, x: Tensor) -> typing.Tuple[Tensor, Tensor]:
-#         x = self.encoder(x)
-#         return self.mu_head(x), self.var_head(x)
+    def classify_experience(self, x: Tensor) -> Tensor:
+        best_subnet = self.subnet_count * torch.ones(x.shape[0]).to(x.device)
+        # Using MRAE we should expect to see losses below 1
+        best_loss   = 10000 * torch.ones(x.shape[0]).to(x.device)
 
-#     def decode(self, z: Tensor) -> Tensor:
-#         x = self.decoder(z)
-#         return x
-
-#     def reparameterise(self, mu: Tensor, log_var: Tensor) -> Tensor:
-#         # Do the "Reparameterization Trick" aka sample from the distribution
-#         std = torch.exp(0.5 * log_var)  # 0.5 square roots it
-#         eps = torch.randn_like(std)
-#         z = mu + eps*std
-#         return z
+        for i in range(self.subnet_count):
+            self.use_task_subset(i)
+            output = super().forward(x)
+            loss = MRAE(output.x_hat, output.x, reduce_batch=False)
 
 
-#     def forward(self, input: Tensor, **kwargs) -> ForwardOutput:
-#         mu, log_var = self.encode(input)
-#         z = self.reparameterise(mu, log_var)
-#         x_hat = self.decode(z)
+            best_subnet.where(loss.less(best_loss))
 
-#         y_hat = self.class_head(z)
-#         return ForwardOutput(
-#             y_hat=y_hat,
-#             x_hat=x_hat,
-#             z_code=z,
-#             mu=mu,
-#             log_std=log_var)
+            
 
-#     def classify(self, x: Tensor) -> Tensor:
-#         return self.forward(x).y_hat
+        return super().classify_experience(x)
 
-#     def sample_z(self, n:int=1) -> Tensor:
-#         return torch.randn(n, self.latent_dim)
-
-#     @property
-#     def device(self):
-#         return next(self.parameters()).device

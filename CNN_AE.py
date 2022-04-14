@@ -16,19 +16,19 @@ from experiment.strategy import ForwardOutput
 from functional import best_reduce
 from network.coders import (PackNetDenseHead, PN_CNN_Decoder, PN_CNN_Encoder)
 from network.deep_generative import DAE, Loss
-from network.trait import PackNetParent
+from network.trait import PackNetComposite
 
 from torchvision.transforms import transforms
 
 
-class PackNetClassifyingAutoEncoder(DAE, PackNetParent):
-    encoder: PackNetParent
-    decoder: PackNetParent
-    head: PackNetParent
+class PackNetClassifyingAutoEncoder(DAE, PackNetComposite):
+    encoder: PackNetComposite
+    decoder: PackNetComposite
+    head: PackNetComposite
 
     subnet_count: int = 0
 
-    def _pn_apply(self, func: typing.Callable[['PackNetParent'], None]):
+    def _pn_apply(self, func: typing.Callable[['PackNetComposite'], None]):
         """Apply only to child PackNetModule"""
         for module in [self.encoder, self.decoder, self.head]:
             func(module)

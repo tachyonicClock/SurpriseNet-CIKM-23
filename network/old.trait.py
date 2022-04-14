@@ -127,8 +127,8 @@ class DVAE(nn.Module, Samplable):
     def forward(self, x: Tensor) -> ForwardOutput:
         out = ForwardOutput()
         z = self.encoder.encode(x)
-        out.mu, out.log_std = self.probabilistic_encoder.encode_parameters(z)
-        out.z_code = self.probabilistic_encoder.reparameterise(out.mu, out.log_std)
+        out.mu, out.log_var = self.probabilistic_encoder.encode_parameters(z)
+        out.z_code = self.probabilistic_encoder.reparameterise(out.mu, out.log_var)
         out.y_hat = self.classifier(z)
         out.x_hat = self.decoder(z)
         return out

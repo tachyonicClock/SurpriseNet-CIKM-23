@@ -21,7 +21,7 @@ class ForwardOutput():
     """The actual exp id for a forward pass"""
     mu: Tensor = None
     """The output of the mean layer in a VAE"""
-    log_std: Tensor = None
+    log_var: Tensor = None
     """The output of the variance layer in a VAE"""
 
 class Strategy(SupervisedTemplate):

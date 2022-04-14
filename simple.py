@@ -5,19 +5,22 @@ from torch import Tensor, nn
 from avalanche.benchmarks.classic.cfashion_mnist import SplitFMNIST
 
 from experiment.experiment import Experiment, BaseHyperParameters
-from experiment.loss import MultipleObjectiveLoss, ReconstructionError
-from network.coders import CNN_Decoder, CNN_Encoder, ClassifyHead
-from network.deep_generative import DAE
+from experiment.loss import  MultipleObjectiveLoss, ReconstructionError, VAELoss
+from network.components.classifier import PN_ClassifyHead
+from network.components.decoder import PN_CNN_Decoder
+from network.components.encoder import PN_CNN_Encoder
+from network.components.sampler import PN_VAE_Sampler
+from network.deep_generative import DAE, DVAE
 import config
 
 class HyperParams(BaseHyperParameters):
-    bottleneck_width: int = 10
+    bottleneck_width: int = 32
     input_channels: int = 1
     base_channel_size: int = 64
 
 class SimpleExperiment(Experiment):
     hp: HyperParams
-    network: DAE
+    network: DVAE
 
     def __init__(self, hp: HyperParams) -> None:
         super().__init__(hp)
@@ -25,10 +28,17 @@ class SimpleExperiment(Experiment):
 
     def make_network(self) -> nn.Module:
         hp = self.hp
-        network = DAE(
-            CNN_Encoder(hp.input_channels, hp.base_channel_size, hp.bottleneck_width),
-            CNN_Decoder(hp.input_channels, hp.base_channel_size, hp.bottleneck_width),
-            ClassifyHead(hp.bottleneck_width, self.n_classes)
+        # network = DAE(
+        #     CNN_Encoder(hp.input_channels, hp.base_channel_size, hp.bottleneck_width),
+        #     CNN_Decoder(hp.input_channels, hp.base_channel_size, hp.bottleneck_width),
+        #     ClassifyHead(hp.bottleneck_width, self.n_classes)
+        # )
+
+        network = DVAE(
+            PN_CNN_Encoder(hp.input_channels, hp.base_channel_size, hp.bottleneck_width*2),
+            PN_VAE_Sampler(hp.bottleneck_width*2, hp.bottleneck_width),
+            PN_CNN_Decoder(hp.input_channels, hp.base_channel_size, hp.bottleneck_width),
+            PN_ClassifyHead(hp.bottleneck_width, self.n_classes)
         )
         return network
         
@@ -38,13 +48,9 @@ class SimpleExperiment(Experiment):
         return optimizer
 
     def make_objective(self) -> MultipleObjectiveLoss:
-        return MultipleObjectiveLoss().add(ReconstructionError())
-
-    def make_criterion(self):
-        def _loss_function(output: Tensor, target: Tensor) -> Tensor:
-            self.objective.update(self.last_mb_output, target)
-            return self.objective.weighted_sum
-        return _loss_function
+        return MultipleObjectiveLoss().add(ReconstructionError()) \
+                                      .add(VAELoss(self.hp.bottleneck_width, 32*32*self.hp.train_mb_size, 1.0))
+                                    #   .add(ClassifierLoss())
 
     def make_scenario(self):
         transform = tv.transforms.Compose([
@@ -72,7 +78,7 @@ SimpleExperiment(
         train_mb_size=256,
         eval_mb_size=256,
 
-        train_epochs=10,
+        train_epochs=20,
 
         eval_every=-1,
         device="cuda"
