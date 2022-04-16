@@ -1,6 +1,7 @@
 
 from dataclasses import dataclass
-from torch import Tensor
+from typing import Protocol
+from torch import Tensor, nn
 from avalanche.training.templates.supervised import SupervisedTemplate
 from avalanche.models import avalanche_forward
 
@@ -23,6 +24,11 @@ class ForwardOutput():
     """The output of the mean layer in a VAE"""
     log_var: Tensor = None
     """The output of the variance layer in a VAE"""
+
+
+class Network(Protocol):
+    def forward(self, x: Tensor) -> ForwardOutput:
+        pass
 
 class Strategy(SupervisedTemplate):
     """

@@ -9,13 +9,19 @@ from avalanche.benchmarks.scenarios.new_classes.nc_scenario import NCExperience
 from avalanche.evaluation import PluginMetric
 from avalanche.evaluation.metric_definitions import MetricValue
 from matplotlib.axes import Axes
+from config import get_logger
 from experiment.strategy import ForwardOutput, Strategy
 from functional import figure_to_image, MRAE
 from network.trait import Classifier, Encoder, Decoder, PackNet, Samplable, AutoEncoder
 
 LabeledExample = typing.Tuple[int, torch.Tensor]
-log = logging.Logger(__name__)
+log = get_logger(__name__)
 
+
+def hide_axis(axes: Axes):
+    # Hide axis
+    axes.get_xaxis().set_ticks([])
+    axes.get_yaxis().set_ticks([])
 
 class GenerateReconstruction(PluginMetric):
     examples_per_experience: int
@@ -48,17 +54,14 @@ class GenerateReconstruction(PluginMetric):
             pred:   int,
             pred_exp: int):
 
-        # Hide axis
-        for axe in axes:
-            axe.get_xaxis().set_ticks([])
-            axe.get_yaxis().set_ticks([])
-
         axes[0].set_ylabel(f"Class={label}")
         axes[1].set_ylabel(f"{pred} using {pred_exp}")
         axes[0].set_title(f"Input")
         loss = float(MRAE(input.reshape(output.shape), output))
         axes[1].set_title(f"Loss={loss:.04}")
 
+        for ax in axes:
+            hide_axis(ax)
         
         def to_image(img: torch.Tensor) -> torch.Tensor:
             return ((img.squeeze().T + 3)/6).clamp(0, 1).rot90(-1).cpu()
@@ -94,7 +97,7 @@ class GenerateReconstruction(PluginMetric):
         return patterns
 
     @torch.no_grad()
-    def after_eval_exp(self, strategy: Strategy) -> 'MetricResult':
+    def after_eval(self, strategy: Strategy) -> 'MetricResult':
         model = strategy.model
         assert isinstance(model, AutoEncoder), "Network must be auto encoder"
 
@@ -124,7 +127,7 @@ class GenerateReconstruction(PluginMetric):
                 # Pass data through auto-encoder
                 out: ForwardOutput = strategy.model.forward(x.unsqueeze(0))
 
-                out.pred_exp_id = out.pred_exp_id if out.pred_exp_id else -1
+                out.pred_exp_id = out.pred_exp_id if out.pred_exp_id != None else -1
                 self.add_image(pattern_plot, x, out.x_hat, y, torch.argmax(out.y_hat), int(out.pred_exp_id))
 
         if isinstance(model, PackNet):
@@ -167,11 +170,11 @@ class GenerateSamples(PluginMetric):
             gen_y = -1
 
         axes.imshow(gen_x.cpu().squeeze())
-        axes.set_axis_off()
+        hide_axis(axes)
         axes.set_title(f"Prediction {gen_y}")
 
     @torch.no_grad()
-    def after_eval_exp(self, strategy: 'BaseStrategy') -> 'MetricResult':
+    def after_eval(self, strategy: 'BaseStrategy') -> 'MetricResult':
         assert isinstance(strategy.model, Samplable), "Network must be `Samplable`"
 
         self.device = strategy.device
@@ -183,9 +186,10 @@ class GenerateSamples(PluginMetric):
 
         # Add image by sampling for each row and column
         for task_id, rows in enumerate(axes):
-            if self.rows_are_experiences:
-                strategy.model.use_task_subset(task_id)
             for ax in rows:
+                if self.rows_are_experiences:
+                    strategy.model.use_task_subset(task_id)
+                    ax.set_ylabel(f"Subnet {task_id}")
                 self.add_image(ax, strategy.model)
 
         metric = MetricValue(self, "Sample", figure_to_image(fig), x_plot=strategy.clock.train_exp_counter)
@@ -211,3 +215,5 @@ class GenerateSamples(PluginMetric):
         self.cols = cols
         self.img_size = img_size
         self.rows_are_experiences = rows_are_experiences
+
+        log.info(f"Diplay rows as experiences? {self.rows_are_experiences}")

@@ -14,14 +14,10 @@ class Classifier(ABC):
         :return: A class count wide tensor of predicted probabilities
         """
 
-class ClassifyExperience(ABC):
+class InferTask(ABC):
     """
     Does the classifier try to identify the experience of an observation
     """
-
-    @abstractmethod
-    def classify_experience(self, x: Tensor) -> Tensor:
-        pass
 
 class Samplable(ABC):
     """Something that can generate instances"""
@@ -38,7 +34,7 @@ class ConditionedSample(ABC):
     """Something that can generate instances"""
 
     @abstractmethod
-    def conditioned_sample(self, n: int = 1, given_class: int = 0) -> Tensor:
+    def conditioned_sample(self, n: int = 1, given_task: int = 0) -> Tensor:
         pass
 
 
@@ -151,4 +147,5 @@ NETWORK_TRAITS = [
     PackNet,
     AutoEncoder,
     ConditionedSample,
+    InferTask
 ]

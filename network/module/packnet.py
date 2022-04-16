@@ -186,7 +186,11 @@ class PackNetDecorator(PackNet, ModuleDecorator):
 
     def initialize_top(self):
         """Re-initialize the top of the network"""
-        return
+        # He Weight Initialization
+        stddev = math.sqrt(2/self.top_mask.count_nonzero())
+        dist = torch.distributions.Normal(0, stddev)
+        with torch.no_grad():
+            self.weight[self.top_mask] = dist.sample((self.top_mask.count_nonzero(),)).to(self.weight.device)
 
     def push_pruned(self):
         self.next_state([self.State.PRUNED_TOP], self.State.MUTABLE_TOP)
@@ -221,15 +225,6 @@ class _PnLinear(PackNetDecorator):
     def weight(self) -> Tensor:
         return self.wrappee.weight
 
-
-    def initialize_top(self):
-        # He Weight Initialization
-        stddev = math.sqrt(2/self.top_mask.count_nonzero())
-        dist = torch.distributions.Normal(0, stddev)
-        with torch.no_grad():
-            self.weight[self.top_mask] = dist.sample((self.top_mask.count_nonzero(),)).to(self.weight.device)
-
-
     def forward(self, input: Tensor) -> Tensor:
         return F.linear(input, self.available_weights(), self.bias)
 
@@ -248,6 +243,15 @@ class _PnConv2d(PackNetDecorator):
     @property
     def bias(self) -> Tensor:
         return self.wrappee.bias
+
+
+    def initialize_top(self):
+        # He Weight Initialization
+        stddev = math.sqrt(2/self.top_mask.count_nonzero())
+        dist = torch.distributions.Normal(0, stddev)
+        with torch.no_grad():
+            self.weight[self.top_mask] = dist.sample((self.top_mask.count_nonzero(),)).to(self.weight.device)
+
 
     def forward(self, input: Tensor) -> Tensor:
         return self.wrappee._conv_forward(input, self.available_weights(), self.bias)

@@ -25,13 +25,11 @@ from config import *
 from metrics.reconstructions import GenerateReconstruction, GenerateSamples
 
 import setproctitle
-
-from network.trait import AutoEncoder, ClassifyExperience, ConditionedSample, PackNet, Samplable, NETWORK_TRAITS
+from config import get_logger
+from network.trait import AutoEncoder, ConditionedSample, InferTask, PackNet, Samplable, NETWORK_TRAITS
 
 # Setup logging
-import logging
-logging.basicConfig(format='\x1b[36m%(module)s/%(filename)s:\x1b[34m%(lineno)d %(levelname)s \x1b[0m %(message)s', level=logging.INFO)
-log = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 @dataclass
 class BaseHyperParameters():
@@ -160,7 +158,7 @@ class Experiment(SupervisedPlugin):
             plugins.append(GenerateReconstruction(self.scenario, 2, 1))
         if isinstance(self.network, Samplable):
             plugins.append(GenerateSamples(5, 4, rows_are_experiences=isinstance(self.network, ConditionedSample)))
-        if isinstance(self.network, ClassifyExperience):
+        if isinstance(self.network, InferTask):
             plugins.append(ConditionalMetrics())
             plugins.append(ExperienceIdentificationCM(self.n_experiences))
 
