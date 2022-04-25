@@ -5,8 +5,6 @@ from torch.nn import functional as F
 from torch import Tensor
 from abc import ABC, abstractmethod
 
-from functional import MRAE
-
 class LossObjective(ABC):
     name: str = "Untitled"
     loss: Tensor = 0.0
@@ -53,7 +51,7 @@ class ReconstructionError(LossObjective):
     name = "Reconstruction"
 
     def update(self, out: ForwardOutput, target: Tensor = None):
-        self.loss = MRAE(out.x_hat, out.x)
+        self.loss = F.mse_loss(out.x_hat, out.x)
 
 class ClassifierLoss(LossObjective):
     name = "Classifier"

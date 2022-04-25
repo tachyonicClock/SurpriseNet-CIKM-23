@@ -23,6 +23,9 @@ def hide_axis(axes: Axes):
     axes.get_xaxis().set_ticks([])
     axes.get_yaxis().set_ticks([])
 
+def to_image(img: torch.Tensor) -> torch.Tensor:
+    return ((img.squeeze().T + 3)/6).clamp(0, 1).rot90(-1).cpu()
+
 class GenerateReconstruction(PluginMetric):
     examples_per_experience: int
     metric_name = "ExperienceReconstruction"
@@ -62,9 +65,7 @@ class GenerateReconstruction(PluginMetric):
 
         for ax in axes:
             hide_axis(ax)
-        
-        def to_image(img: torch.Tensor) -> torch.Tensor:
-            return ((img.squeeze().T + 3)/6).clamp(0, 1).rot90(-1).cpu()
+    
 
         input, output = to_image(input), to_image(output)
 
@@ -169,7 +170,7 @@ class GenerateSamples(PluginMetric):
         else:
             gen_y = -1
 
-        axes.imshow(gen_x.cpu().squeeze())
+        axes.imshow(to_image(gen_x.cpu()))
         hide_axis(axes)
         axes.set_title(f"Prediction {gen_y}")
 

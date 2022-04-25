@@ -9,6 +9,11 @@ class VAE_Sampler(Sampler, nn.Module):
 
     def __init__(self, input_width: int, latent_dims: int) -> None:
         super().__init__()
+
+        self.backbone = nn.Sequential(
+            nn.Linear(input_width, input_width),
+            nn.ReLU(),
+        )
         self.mu = nn.Linear(input_width, latent_dims)
         self.log_var = nn.Linear(input_width, latent_dims)
         self.latent_dims = latent_dims
@@ -19,6 +24,7 @@ class VAE_Sampler(Sampler, nn.Module):
 
     def encode(self, input: Tensor) -> typing.Tuple[Tensor, Tensor]:
         input = F.relu(input)
+        input = self.backbone(input)
         return self.mu(input), self.log_var(input)
     
 
@@ -28,3 +34,4 @@ class PN_VAE_Sampler(VAE_Sampler, PackNetComposite):
         super().__init__(input_width, latent_dims)
         self.mu = pn.wrap(self.mu)
         self.log_var = pn.wrap(self.log_var)
+        self.backbone = pn.wrap(self.backbone)

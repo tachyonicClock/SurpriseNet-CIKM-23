@@ -109,7 +109,7 @@ class DVAE(AutoEncoder, Classifier, Samplable, nn.Module):
         z = self.encoder.encode(x)
         out.mu, out.log_var = self.probabilistic_encoder.encode(z)
         out.z_code = self.probabilistic_encoder.reparameterise(out.mu, out.log_var)
-        out.y_hat = self.classifier(z)
+        out.y_hat = self.classifier(out.z_code)
         out.x_hat = self.decoder(out.z_code)
         out.x = x
         return out
