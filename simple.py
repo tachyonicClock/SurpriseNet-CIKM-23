@@ -70,17 +70,16 @@ class SimpleExperiment(Experiment):
                                       .add(ClassifierLoss(self.hp.class_weight))
 
         if self.hp.network_type == "VAE":
-            loss.add(VAELoss(self.hp.vae_bottleneck, 3*32*32*self.hp.train_mb_size, self.hp.vae_beta))
+            loss.add(VAELoss(self.hp.vae_bottleneck, 3*32*32, self.hp.vae_beta))
 
         return loss
               
 
     def make_scenario(self):
         transform = tv.transforms.Compose([
-            tv.transforms.ToTensor(), 
-            tv.transforms.Normalize((0.2860,), (0.3530,)), 
+            # tv.transforms.Resize((32, 32)),
             tv.transforms.RandomHorizontalFlip(), 
-            tv.transforms.Resize((32, 32))
+            tv.transforms.ToTensor(), 
         ])
 
         # scenario = SplitFMNIST(
@@ -97,7 +96,8 @@ class SimpleExperiment(Experiment):
             fixed_class_order=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
             dataset_root=config.DATASETS,
             return_task_id=False,
-            # first_exp_with_half_classes=True
+            eval_transform=transform,
+            train_transform=transform
         )
 
         return scenario
@@ -105,9 +105,9 @@ class SimpleExperiment(Experiment):
 
 SimpleExperiment(
     HyperParams(
-        lr=0.0005,
-        vae_beta=0.001,
-        class_weight=0,
+        lr=0.001,
+        vae_beta=0.0001,
+        class_weight=0.01,
 
         network_type="VAE",
 
@@ -116,12 +116,12 @@ SimpleExperiment(
         train_mb_size=128,
         eval_mb_size=128,
 
-        train_epochs=500,
-        post_prune_epoch=250,
+        train_epochs=1000,
+        post_prune_epoch=500,
 
-        ae_bottleneck=500,
+        ae_bottleneck=256,
         vae_bottleneck=128,
-        base_channel_size=32,
+        base_channel_size=64,
         input_channels=3,
 
         eval_every=-1,

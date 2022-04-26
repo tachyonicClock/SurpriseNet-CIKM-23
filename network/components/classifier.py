@@ -8,7 +8,7 @@ class ClassifyHead(Classifier, nn.Module):
         super().__init__()
         self.lin = nn.Sequential(
             nn.Linear(bottleneck_width, n_classes),
-            nn.ReLU()
+            nn.Softmax(dim=1)
         )
 
     def forward(self, x: Tensor) -> Tensor:

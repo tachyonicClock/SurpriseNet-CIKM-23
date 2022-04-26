@@ -1,3 +1,4 @@
+from math import prod
 from experiment.strategy import ForwardOutput
 import typing
 import torch
@@ -43,7 +44,7 @@ class MultipleObjectiveLoss():
     def weighted_sum(self):
         weighted_sum = 0.0
         for _, objective in self:
-            weighted_sum += objective.weighted
+            weighted_sum += 1/len(self.objectives) * objective.weighted
         return weighted_sum
 
 
@@ -51,7 +52,7 @@ class ReconstructionError(LossObjective):
     name = "Reconstruction"
 
     def update(self, out: ForwardOutput, target: Tensor = None):
-        self.loss = F.mse_loss(out.x_hat, out.x)
+        self.loss = F.binary_cross_entropy(out.x_hat, out.x)
 
 class ClassifierLoss(LossObjective):
     name = "Classifier"
@@ -72,4 +73,5 @@ class VAELoss(LossObjective):
         self.weighting = beta*M/N
 
     def update(self, out: ForwardOutput, target: Tensor = None):
-        self.loss = torch.mean(-0.5 * torch.sum(1+out.log_var - out.mu.square() - out.log_var.exp()))
+        self.loss = -0.5 * torch.sum(1+out.log_var - out.mu.square() - out.log_var.exp())
+

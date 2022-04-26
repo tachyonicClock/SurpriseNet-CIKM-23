@@ -39,16 +39,14 @@ class CNN_Decoder(Decoder, nn.Module):
             act_fn(),
             nn.ConvTranspose2d(c_hid, num_input_channels,
                                kernel_size=3, output_padding=1, padding=1, stride=2),  # 16x16 => 32x32
-            nn.Tanh(),  # The input images is scaled between -1 and 1, hence the output has to be bounded as well
+            nn.Sigmoid(),  # The input images is scaled between -1 and 1, hence the output has to be bounded as well
         )
 
     def forward(self, x):
         x = self.linear(x)
         x = x.reshape(x.shape[0], -1, 4, 4)
         x = self.net(x)
-        return x * 4 # *4 because Tanh is between -1 and 1 but the data
-                     # follows a normal distribution. x4 contains 99.99% of the
-                     # range
+        return x
 
     def decode(self, z: Tensor) -> Tensor:
         return self.forward(z)

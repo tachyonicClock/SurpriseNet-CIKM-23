@@ -1,4 +1,7 @@
-from lib2to3.pytree import Base
+import json
+from config import get_logger
+log = get_logger(__name__)
+
 import os
 from dataclasses import dataclass
 from enum import Enum
@@ -25,11 +28,9 @@ from config import *
 from metrics.reconstructions import GenerateReconstruction, GenerateSamples
 
 import setproctitle
-from config import get_logger
 from network.trait import AutoEncoder, ConditionedSample, InferTask, PackNet, Samplable, NETWORK_TRAITS
 
-# Setup logging
-log = get_logger(__name__)
+
 
 @dataclass
 class BaseHyperParameters():
@@ -51,7 +52,7 @@ class Experiment(SupervisedPlugin):
     strategy: Strategy
     network:  nn.Module
     logger:   av.logging.TensorboardLogger
-    scenario: av.benchmarks.ScenarioStream
+    scenario: av.benchmarks.NCScenario
     optimizer: torch.optim.Optimizer
     evaluator: EvaluationPlugin
     hp: BaseHyperParameters
@@ -60,8 +61,6 @@ class Experiment(SupervisedPlugin):
     def __init__(self, hp: BaseHyperParameters) -> None:
         super().__init__()
 
-        logging.basicConfig(level=logging.INFO)
-
         self.hp = hp
 
         self.label = f"experiment_{max(self._get_log_numbers())+1:04d}"
@@ -69,8 +68,8 @@ class Experiment(SupervisedPlugin):
         setproctitle.setproctitle(self.label)
 
         # Create a new logger with sequential names
-        self.logger = av.logging.TensorboardLogger(
-            LOGDIR+"/"+self.label)
+        self.logdir = LOGDIR+"/"+self.label
+        self.logger = av.logging.TensorboardLogger(self.logdir)
 
         self.objective = self.make_objective()
         self.scenario = self.make_scenario()
@@ -87,14 +86,7 @@ class Experiment(SupervisedPlugin):
 
         # Turn hyper-parameters into a format that plays nice with tensorboard
         hparam_dict = {}
-        discrete_hparam = {}
-        for key, value in self.hp.__dict__.items():
-            if isinstance(value, Enum):
-                discrete_hparam[key] = [e.value for e in value]
-            else:
-                hparam_dict[key] = value
-
-        exp, ssi, sei = hparams(hparam_dict, dependent_var, discrete_hparam)
+        exp, ssi, sei = hparams(hparam_dict, dependent_var)
         self.logger.writer.file_writer.add_summary(exp)
         self.logger.writer.file_writer.add_summary(ssi)
         self.logger.writer.file_writer.add_summary(sei)
@@ -187,6 +179,9 @@ class Experiment(SupervisedPlugin):
         log.info(f"Objectives:")
         for name, _ in self.objective:
             log.info(f" > Has the `{name}` objective")
+        
+        with open(self.logdir + "/hp.json", "w") as f:
+            json.dump(self.hp.__dict__, f)
 
     def make_network(self) -> nn.Module:
         raise NotImplemented
@@ -202,7 +197,7 @@ class Experiment(SupervisedPlugin):
     def make_optimizer(self, parameters) -> torch.optim.Optimizer:
         raise NotImplemented
 
-    def make_scenario(self) -> av.benchmarks.ScenarioStream:
+    def make_scenario(self) -> av.benchmarks.NCScenario:
         raise NotImplemented
 
     def log_scalar(self, name, value, step=None):

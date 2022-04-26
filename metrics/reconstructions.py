@@ -24,7 +24,7 @@ def hide_axis(axes: Axes):
     axes.get_yaxis().set_ticks([])
 
 def to_image(img: torch.Tensor) -> torch.Tensor:
-    return ((img.squeeze().T + 3)/6).clamp(0, 1).rot90(-1).cpu()
+    return img.squeeze().T.clamp(0, 1).rot90(-1).cpu()
 
 class GenerateReconstruction(PluginMetric):
     examples_per_experience: int
@@ -38,8 +38,7 @@ class GenerateReconstruction(PluginMetric):
 
         while True:
             # Find each class in a monte carlo way
-            x, y, _ = experience.dataset[random.randint(
-                len(experience.dataset))]
+            x, y, _ = experience.dataset[random.randint(len(experience.dataset))]
             class_examples[y] = (x, y)
 
             # Exit when one of each class is found

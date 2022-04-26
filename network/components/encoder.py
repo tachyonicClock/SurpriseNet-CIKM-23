@@ -47,7 +47,7 @@ class CNN_Encoder(Encoder, nn.Module):
             act_fn(),
             nn.Linear(latent_dim, latent_dim),
             act_fn(),
-            nn.Tanh()
+            nn.Sigmoid()
         )
 
     def forward(self, x: Tensor) -> Tensor:
