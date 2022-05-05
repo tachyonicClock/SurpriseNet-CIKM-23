@@ -41,7 +41,7 @@ class PackNetPlugin(SupervisedPlugin):
         strategy.optimizer = self.experiment.optimizer
 
 
-    def after_eval(self, strategy, *args, **kwargs):
+    def before_training_exp(self, strategy, *args, **kwargs):
         """Reset for new experience"""
         self.network.use_top_subset()
 

@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from curses import wrapper
 import math
 from sre_parse import State
 import typing
@@ -110,7 +111,8 @@ class PackNetDecorator(PackNet, ModuleDecorator):
         assert self.bias != NotImplemented, "Concrete decorator must implement self.bias"
         self.weight.register_hook(self._remove_gradient_hook)
 
-        self.bias.requires_grad = False
+        # if self.bias != None:
+        #     self.bias.requires_grad = False
 
 
     def _remove_gradient_hook(self, grad: Tensor) -> Tensor:
@@ -206,6 +208,41 @@ class PackNetDecorator(PackNet, ModuleDecorator):
         if self.bias != None:
             self.bias.requires_grad = False
 
+class _PnBatchNorm(PackNet, ModuleDecorator):
+    """BatchNorm is insanely annoying 
+    """
+
+    frozen: bool = False
+
+    def prune(self, to_prune_proportion: float) -> None:
+        # Hopefully this freezes batch norm
+        self.wrappee.weight.requires_grad = False
+        self.wrappee.bias.requires_grad = False
+        self.frozen = True
+
+
+    def forward(self, input: Tensor) -> Tensor:
+        if self.frozen:
+            # Keep it in eval mode once we have frozen things
+            self.wrappee.eval()
+        return self.wrappee.forward(input)
+
+
+    def _zero_grad(self, grad: Tensor):
+        grad.fill_(0)
+
+
+    def push_pruned(self) -> None:
+        pass
+
+    def use_task_subset(self, task_id):
+        pass
+
+    def use_top_subset(self):
+        pass
+
+
+
 class _PnLinear(PackNetDecorator):
     wrappee: nn.Linear
 
@@ -286,7 +323,6 @@ class _PnConvTransposed2d(PackNetDecorator):
             input, self.available_weights(), w.bias, w.stride, w.padding,
             output_padding, w.groups, w.dilation)
 
-
 def wrap(wrappee: nn.Module):
     if isinstance(wrappee, nn.Linear):
         return _PnLinear(wrappee)
@@ -294,10 +330,15 @@ def wrap(wrappee: nn.Module):
         return _PnConv2d(wrappee)
     elif isinstance(wrappee, nn.ConvTranspose2d):
         return _PnConvTransposed2d(wrappee)
+    elif isinstance(wrappee, nn.BatchNorm2d):
+        return _PnBatchNorm(wrappee)
     elif isinstance(wrappee, nn.Sequential):
         # Wrap each submodule
         for i, x in enumerate(wrappee):
             wrappee[i] = wrap(x)
+    else:
+        for submodule_name, submodule in wrappee.named_children():
+            setattr(wrappee, submodule_name, wrap(submodule))
     return wrappee
 
 def deffer_wrap(wrappee: typing.Type[nn.Module]):

@@ -24,7 +24,8 @@ def hide_axis(axes: Axes):
     axes.get_yaxis().set_ticks([])
 
 def to_image(img: torch.Tensor) -> torch.Tensor:
-    return img.squeeze().T.clamp(0, 1).rot90(-1).cpu()
+    
+    return img.squeeze().permute(1, 2, 0).cpu()
 
 class GenerateReconstruction(PluginMetric):
     examples_per_experience: int

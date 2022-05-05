@@ -1,5 +1,4 @@
 import random
-from sympy import false
 
 import torch
 import torch.nn as nn
@@ -252,4 +251,13 @@ def test_linear_reinit(packnet_linear: _PnLinear):
     # F-test for variance
     p = f.cdf(actual_var/expected_var, n-1, n-1)
     assert p > 0.05, "We reject the null hypothesis and can conclude they are not equal as we would expect"
-    
+
+
+
+# def test_bn():
+
+#     x = torch.randn((5, 2, 4, 4))
+#     print(x)
+#     bn = nn.BatchNorm2d(2)
+#     print(bn(x))
+#     assert False

@@ -137,7 +137,7 @@ class Experiment(SupervisedPlugin):
     def make_criterion(self):
         def _loss_function(output: Tensor, target: Tensor) -> Tensor:
             self.objective.update(self.last_mb_output, target)
-            return self.objective.weighted_sum
+            return self.objective.sum
         return _loss_function
 
     def make_objective(self) -> MultipleObjectiveLoss:
@@ -159,7 +159,7 @@ class Experiment(SupervisedPlugin):
 
         return EvaluationPlugin(
             loss_metrics(epoch=True,
-                         epoch_running=True, experience=True, stream=True, minibatch=True),
+                         epoch_running=True, experience=True, stream=True, minibatch=False),
             accuracy_metrics(epoch=True, stream=True,
                              experience=True, trained_experience=True),
             confusion_matrix_metrics(num_classes=num_classes, stream=True),

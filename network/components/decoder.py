@@ -1,9 +1,9 @@
-from torch import nn, Tensor
+from torch import nn, Tensor, sigmoid
 from network.trait import Decoder, PackNetComposite
 import network.module.packnet as pn
 
 class CNN_Decoder(Decoder, nn.Module):
-    def __init__(self, num_input_channels: int, base_channel_size: int, latent_dim: int, act_fn: object = nn.GELU):
+    def __init__(self, num_input_channels: int, kernel_number: int, latent_dim: int, act_fn: object = nn.GELU):
         """
         Args:
            num_input_channels : Number of channels of the image to reconstruct. 
@@ -14,32 +14,21 @@ class CNN_Decoder(Decoder, nn.Module):
            act_fn : Activation function used throughout the decoder network
         """
         super().__init__()
+        self.act_fn = act_fn
         self.latent_dim = latent_dim
-        c_hid = base_channel_size
         self.linear = nn.Sequential(
-            nn.Linear(latent_dim, latent_dim),
-            act_fn(),
-            nn.Linear(latent_dim, 2 * 16 * c_hid),
-            act_fn(),
+            nn.Linear(latent_dim, kernel_number*16),
+            nn.ReLU(),
         )
         self.net = nn.Sequential(
-            # 4x4 => 8x8
-            nn.ConvTranspose2d(2 * c_hid, 2 * c_hid,
-                               kernel_size=3, output_padding=1, padding=1, stride=2),
-            act_fn(),
-            nn.Conv2d(2 * c_hid, 2 * c_hid,
-                      kernel_size=3, padding=1),
-            act_fn(),
-            # 8x8 => 16x16
-            nn.ConvTranspose2d(2 * c_hid, c_hid,
-                               kernel_size=3, output_padding=1, padding=1, stride=2),
-            act_fn(),
-            nn.Conv2d(c_hid, c_hid,
-                      kernel_size=3, padding=1),
-            act_fn(),
-            nn.ConvTranspose2d(c_hid, num_input_channels,
-                               kernel_size=3, output_padding=1, padding=1, stride=2),  # 16x16 => 32x32
-            nn.Sigmoid(),  # The input images is scaled between -1 and 1, hence the output has to be bounded as well
+            # 4x4
+            self._deconv(kernel_number, kernel_number // 2),
+            # 8x8
+            self._deconv(kernel_number//2, kernel_number // 4),
+            # 16x16
+            nn.ConvTranspose2d(kernel_number//4, num_input_channels, kernel_size=3, output_padding=1, padding=1, stride=2),
+            # 32x32
+            nn.Sigmoid()
         )
 
     def forward(self, x):
@@ -54,6 +43,15 @@ class CNN_Decoder(Decoder, nn.Module):
     @property
     def bottleneck_width(self) -> int:
         return self.latent_dim
+
+    def _deconv(self, in_channels, out_channels) -> nn.Module:
+        return nn.Sequential(
+            nn.ConvTranspose2d(in_channels, out_channels, kernel_size=3, output_padding=1, padding=1, stride=2),
+            nn.GroupNorm(8, out_channels),
+            self.act_fn(),
+        )
+
+
 
 class PN_CNN_Decoder(CNN_Decoder, PackNetComposite):
     def __init__(self, num_input_channels: int, base_channel_size: int, latent_dim: int, act_fn: object = nn.GELU):

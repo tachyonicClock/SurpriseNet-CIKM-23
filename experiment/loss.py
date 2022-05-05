@@ -41,11 +41,11 @@ class MultipleObjectiveLoss():
         return iter(self.objectives.items())
 
     @property
-    def weighted_sum(self):
-        weighted_sum = 0.0
+    def sum(self):
+        sum = 0.0
         for _, objective in self:
-            weighted_sum += 1/len(self.objectives) * objective.weighted
-        return weighted_sum
+            sum += objective.weighted
+        return sum
 
 
 class ReconstructionError(LossObjective):
