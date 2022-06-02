@@ -42,6 +42,7 @@ class Strategy(SupervisedTemplate):
         """Compute the model's output given the current mini-batch."""
         self.last_forward_output: ForwardOutput = \
             avalanche_forward(self.model, self.mb_x, self.mb_task_id)
+        self.last_forward_output.x = self.mb_x
         return self.last_forward_output.y_hat
 
 

@@ -34,7 +34,8 @@ class MultipleObjectiveLoss():
         return self
 
     def update(self, out: ForwardOutput, target: Tensor):
-        for _, objective in self:
+        assert isinstance(out, ForwardOutput), "Expected forward output"
+        for _, objective in self.objectives.items():
             objective.update(out, target)
 
     def __iter__(self):
@@ -47,8 +48,7 @@ class MultipleObjectiveLoss():
             sum += objective.weighted
         return sum
 
-
-class ReconstructionError(LossObjective):
+class ReconstructionLoss(LossObjective):
     name = "Reconstruction"
 
     def update(self, out: ForwardOutput, target: Tensor = None):

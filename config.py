@@ -1,8 +1,9 @@
 # General purpose global configuration information
+import typing as t
+from dataclasses import dataclass, asdict
 import logging
 
-DATASETS = "./datasets"
-LOGDIR = "./experiment_logs"
+from experiment.scenario import scenario
 
 def get_logger(name):
     # https://github.com/omz/Pythonista-Issues/issues/243 idk?

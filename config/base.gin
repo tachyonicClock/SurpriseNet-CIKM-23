@@ -1,0 +1,28 @@
+
+Experiment.optimizer.lr = 0.001
+
+Experiment.experiment_dir = "./experiment_logs"
+
+Experiment.scenario.dataset = "FMNIST"
+Experiment.scenario.dataset_root =  "/Scratch/al183/datasets"
+
+Experiment.network.deep_generative_type = "AE"
+# Experiment.network.network_architecture = @vanilla_cnn
+
+Experiment.network.network_architecture = @wide_residual_network
+wide_residual_network.in_channels = 1
+
+Experiment.loss.loss_objectives = [@ReconstructionLoss()]
+
+ReconstructionLoss.weighting = 0.01
+vanilla_cnn.in_channels = 1
+
+
+Experiment.train.device = "cuda"
+
+Experiment.train.train_mb_size = 32
+Experiment.train.eval_mb_size = 32
+Experiment.train.eval_every = -1
+Experiment.train.train_epochs = 1
+
+

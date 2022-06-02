@@ -28,23 +28,10 @@ from config import *
 from metrics.reconstructions import GenerateReconstruction, GenerateSamples
 
 import setproctitle
-from network.trait import AutoEncoder, ConditionedSample, InferTask, PackNet, Samplable, NETWORK_TRAITS
+from network.trait import AutoEncoder, Classifier, ConditionedSample, InferTask, PackNet, Samplable, NETWORK_TRAITS
 
 
-
-@dataclass
-class BaseHyperParameters():
-    lr: float
-    
-    train_mb_size: int
-    eval_mb_size: int
-
-    train_epochs: int
-    eval_every: int
-    device: str
-
-
-class Experiment(SupervisedPlugin):
+class BaseExperiment(SupervisedPlugin):
     """
     Py-lightning style container for continual learning
     """
@@ -55,20 +42,19 @@ class Experiment(SupervisedPlugin):
     scenario: av.benchmarks.NCScenario
     optimizer: torch.optim.Optimizer
     evaluator: EvaluationPlugin
-    hp: BaseHyperParameters
     objective: MultipleObjectiveLoss
 
-    def __init__(self, hp: BaseHyperParameters) -> None:
+    def __init__(self, experiment_dir: str) -> None:
         super().__init__()
 
-        self.hp = hp
 
+        self.experiment_dir = experiment_dir
         self.label = f"experiment_{max(self._get_log_numbers())+1:04d}"
 
         setproctitle.setproctitle(self.label)
 
         # Create a new logger with sequential names
-        self.logdir = LOGDIR+"/"+self.label
+        self.logdir = experiment_dir+"/"+self.label
         self.logger = av.logging.TensorboardLogger(self.logdir)
 
         self.objective = self.make_objective()
@@ -79,17 +65,6 @@ class Experiment(SupervisedPlugin):
         self.optimizer = self.make_optimizer(self.network.parameters())
 
         self.strategy = self.make_strategy()
-
-        dependent_var = {}
-        for x in self.make_dependent_variables():
-            dependent_var[x] = 0.0
-
-        # Turn hyper-parameters into a format that plays nice with tensorboard
-        hparam_dict = {}
-        exp, ssi, sei = hparams(hparam_dict, dependent_var)
-        self.logger.writer.file_writer.add_summary(exp)
-        self.logger.writer.file_writer.add_summary(ssi)
-        self.logger.writer.file_writer.add_summary(sei)
 
     def add_plugins(self) -> Sequence[BasePlugin]:
         """
@@ -117,22 +92,8 @@ class Experiment(SupervisedPlugin):
         self.logger.writer.flush()
         return results
 
-    def make_strategy_type(self):
-        return Strategy
-
     def make_strategy(self) -> SupervisedPlugin:
-        return self.make_strategy_type()(
-            self.network,
-            self.optimizer,
-            criterion=self.make_criterion(),
-            device=self.hp.device,
-            train_mb_size=self.hp.train_mb_size,
-            train_epochs=self.hp.train_epochs,
-            eval_mb_size=self.hp.eval_mb_size,
-            eval_every=self.hp.eval_every,
-            plugins=[self, *self.add_plugins()],
-            evaluator=self.evaluator
-        )
+        return NotImplemented
 
     def make_criterion(self):
         def _loss_function(output: Tensor, target: Tensor) -> Tensor:
@@ -154,21 +115,27 @@ class Experiment(SupervisedPlugin):
             plugins.append(ConditionalMetrics())
             plugins.append(ExperienceIdentificationCM(self.n_experiences))
 
+        if isinstance(self.network, Classifier):
+            plugins.append(
+                accuracy_metrics(epoch=True, stream=True, experience=True, trained_experience=True),
+                confusion_matrix_metrics(num_classes=num_classes, stream=True),
+                forgetting_metrics(experience=True, stream=True),
+            )
+        
+
         for name, objective in self.objective:
             plugins.append(LossObjectiveMetric(name, objective))
 
         return EvaluationPlugin(
-            loss_metrics(epoch=True,
-                         epoch_running=True, experience=True, stream=True, minibatch=False),
-            accuracy_metrics(epoch=True, stream=True,
-                             experience=True, trained_experience=True),
-            confusion_matrix_metrics(num_classes=num_classes, stream=True),
-            forgetting_metrics(experience=True, stream=True),
+            loss_metrics(epoch=True, epoch_running=True, experience=True, stream=True, minibatch=True),
             EpochClock(),
             *plugins,
             loggers=loggers,
             suppress_warnings=True
         )
+
+    def dump_config(self):
+        log.warn("NOT DUMPING CONFIG ANYWHERE!!")
 
     def preflight(self):
         log.info(f"Network: {type(self.network)}")
@@ -179,9 +146,8 @@ class Experiment(SupervisedPlugin):
         log.info(f"Objectives:")
         for name, _ in self.objective:
             log.info(f" > Has the `{name}` objective")
-        
-        with open(self.logdir + "/hp.json", "w") as f:
-            json.dump(self.hp.__dict__, f)
+
+        self.dump_config()
 
     def make_network(self) -> nn.Module:
         raise NotImplemented
@@ -228,7 +194,7 @@ class Experiment(SupervisedPlugin):
         return self.strategy.clock
 
     def _get_log_numbers(self):
-        for filename in os.listdir(LOGDIR):
+        for filename in os.listdir(self.experiment_dir):
             name, _ = os.path.splitext(filename)
             yield int(name[-4:])
         yield 0

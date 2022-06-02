@@ -1,9 +1,11 @@
 from abc import ABC, abstractmethod
 import typing
-from torch import Tensor, TensorType
+from torch import Tensor, TensorType, nn
 import torch
 
-class Classifier(ABC):
+from experiment.strategy import ForwardOutput
+
+class Classifier(ABC, nn.Module):
     """Something that can classify"""
 
     @abstractmethod
@@ -13,6 +15,29 @@ class Classifier(ABC):
         :param x: An batch of observations to classify
         :return: A class count wide tensor of predicted probabilities
         """
+
+class Encoder(ABC, nn.Module):
+
+    @abstractmethod
+    def encode(self, observations: Tensor) -> Tensor:
+        """Encodes observations into an embedding
+
+        :param observation: A tensor to encode
+        :return: An embedding
+        """
+        return NotImplemented
+
+class Decoder(ABC, nn.Module):
+
+    @abstractmethod
+    def decode(self, embedding: Tensor) -> Tensor:
+        """Decodes an embedding into a reconstruction
+
+        :param embedding: An encoded observation
+        :return: A reconstruction
+        """
+        return NotImplemented
+
 
 class InferTask(ABC):
     """
@@ -38,16 +63,6 @@ class ConditionedSample(ABC):
         pass
 
 
-class Encoder(ABC):
-    """Something that can encode something"""
-
-    @property
-    @abstractmethod
-    def bottleneck_width(self) -> int:
-        """The width of the bottleneck"""
-
-    def encode(self, x: Tensor) -> Tensor:
-        """x -> z"""
 
 class Sampler(Encoder, Samplable):
     """
@@ -74,19 +89,32 @@ class Sampler(Encoder, Samplable):
         :return: A tuple of mu and log_var
         """
 
-class Decoder(ABC):
-    """Something that can decoded something that was encoded"""
 
-    @property
-    @abstractmethod
-    def bottleneck_width(self) -> int:
-        """The width of the bottleneck"""
+class AutoEncoder(Encoder, Decoder, nn.Module):
 
-    def decode(self, z: Tensor) -> Tensor:
-        """z -> x"""
+    def __init__(self,
+        encoder: Encoder,
+        decoder: Decoder
+    ) -> None:
+        super().__init__()
 
-class AutoEncoder(Encoder, Decoder):
-    pass
+        self.encoder = encoder
+        self.decoder = decoder
+
+        self.encode = encoder.encode
+        self.decode = decoder.decode
+
+    def encode(self, observations: Tensor) -> Tensor:
+        return self.encoder.encode(observations)
+
+    def decode(self, embedding: Tensor) -> Tensor:
+        return self.encoder.decode(embedding)
+
+    def forward(self, observations: Tensor) -> ForwardOutput:
+        out = ForwardOutput()
+        out.z_codes = self.encoder.encode(observations)
+        out.x_hat  = self.decoder.decode(out.z_codes)
+        return out
 
 class PackNet(ABC):
 

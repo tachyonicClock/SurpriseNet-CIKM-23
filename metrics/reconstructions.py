@@ -13,6 +13,7 @@ from config import get_logger
 from experiment.strategy import ForwardOutput, Strategy
 from functional import figure_to_image, MRAE
 from network.trait import Classifier, Encoder, Decoder, PackNet, Samplable, AutoEncoder
+from torchvision.transforms.functional import to_pil_image 
 
 LabeledExample = typing.Tuple[int, torch.Tensor]
 log = get_logger(__name__)
@@ -24,8 +25,7 @@ def hide_axis(axes: Axes):
     axes.get_yaxis().set_ticks([])
 
 def to_image(img: torch.Tensor) -> torch.Tensor:
-    
-    return img.squeeze().permute(1, 2, 0).cpu()
+    return to_pil_image(img.squeeze())
 
 class GenerateReconstruction(PluginMetric):
     examples_per_experience: int
@@ -128,8 +128,15 @@ class GenerateReconstruction(PluginMetric):
                 # Pass data through auto-encoder
                 out: ForwardOutput = strategy.model.forward(x.unsqueeze(0))
 
-                out.pred_exp_id = out.pred_exp_id if out.pred_exp_id != None else -1
-                self.add_image(pattern_plot, x, out.x_hat, y, torch.argmax(out.y_hat), int(out.pred_exp_id))
+                class_prediction = "NA"
+                if out.y_hat != None:
+                    class_prediction = torch.argmax(out.y_hat)
+
+                experience_prediction = "NA"
+                if out.pred_exp_id != None:
+                    experience_prediction = int(out.pred_exp_id)
+
+                self.add_image(pattern_plot, x, out.x_hat, y, class_prediction, experience_prediction)
 
         if isinstance(model, PackNet):
             model.use_top_subset()
