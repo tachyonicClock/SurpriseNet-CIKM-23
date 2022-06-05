@@ -1,8 +1,9 @@
 from avalanche.core import SupervisedPlugin
-from experiment.experiment import Experiment
 from experiment.strategy import Strategy
 from network.trait import PackNet
 import logging
+
+from .experiment import BaseExperiment
 
 log = logging.getLogger(__name__)
 
@@ -11,8 +12,8 @@ class PackNetPlugin(SupervisedPlugin):
     capacity: float = 1.0
     """How much of the network is still trainable"""
 
-    def __init__(self, experiment: Experiment, prune_proportion, post_prune_epochs):
-        self.network = experiment.network
+    def __init__(self, network, experiment: BaseExperiment, prune_proportion, post_prune_epochs):
+        self.network = network
         self.experiment = experiment
         self.prune_proportion = prune_proportion
         self.post_prune_epochs = post_prune_epochs
@@ -41,14 +42,14 @@ class PackNetPlugin(SupervisedPlugin):
         strategy.optimizer = self.experiment.optimizer
 
 
-    def before_training_exp(self, strategy, *args, **kwargs):
-        """Reset for new experience"""
-        self.network.use_top_subset()
+    # def before_training_exp(self, strategy, *args, **kwargs):
+    #     """Reset for new experience"""
+    #     self.network.use_top_subset()
 
-    def before_eval_exp(self, strategy: Strategy, *args, **kwargs):
-        """Use task id to select the right part of each layer for eval"""
-        task_id = strategy.experience.current_experience
-        log.info(f"using task {task_id}")
-        self.network.use_task_subset(task_id)
+    # def before_eval_exp(self, strategy: Strategy, *args, **kwargs):
+    #     """Use task id to select the right part of each layer for eval"""
+    #     task_id = strategy.experience.current_experience
+    #     log.info(f"using task {task_id}")
+    #     self.network.use_task_subset(task_id)
     
 

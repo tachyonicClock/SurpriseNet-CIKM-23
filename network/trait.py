@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-import typing
+import typing as t
 from torch import Tensor, TensorType, nn
 import torch
 
@@ -39,7 +39,7 @@ class Decoder(ABC, nn.Module):
         return NotImplemented
 
 
-class InferTask(ABC):
+class InferTask():
     """
     Does the classifier try to identify the experience of an observation
     """
@@ -81,7 +81,7 @@ class Sampler(Encoder, Samplable):
         return torch.randn((n, self.bottleneck_width))
 
     @abstractmethod
-    def encode(self, input: Tensor) -> typing.Tuple[Tensor, Tensor]:
+    def encode(self, input: Tensor) -> t.Tuple[Tensor, Tensor]:
         """Encode an input and get parameters representing its position in latent
         space
 
@@ -142,29 +142,7 @@ class PackNet(ABC):
     def use_top_subset(self):
         pass
 
-class PackNetComposite(PackNet, torch.nn.Module):
-    def _pn_apply(self, func: typing.Callable[['PackNet'], None]):
-        @torch.no_grad()
-        def __pn_apply(module):
-            # Apply function to all child packnets but not other parents.
-            # If we were to apply to other parents we would duplicate
-            # applications to their children
-            if isinstance(module, PackNet) and not isinstance(module, PackNetComposite):
-                func(module)
-        self.apply(__pn_apply)
 
-    def prune(self, to_prune_proportion: float) -> None:
-        self._pn_apply(lambda x : x.prune(to_prune_proportion))
-
-    def push_pruned(self) -> None:
-        self._pn_apply(lambda x : x.push_pruned())
-
-    def use_task_subset(self, task_id):
-        self._pn_apply(lambda x : x.use_task_subset(task_id))
-
-    def use_top_subset(self):
-        self._pn_apply(lambda x : x.use_top_subset())
-    
 
 
 NETWORK_TRAITS = [

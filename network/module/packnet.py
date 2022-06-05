@@ -2,7 +2,8 @@ from abc import abstractmethod
 from curses import wrapper
 import math
 from sre_parse import State
-import typing
+from turtle import forward
+import typing as t
 
 import torch
 import torch.nn as nn
@@ -10,8 +11,11 @@ from torch import Tensor
 from torch.nn import functional as F
 
 from enum import Enum
+from experiment.strategy import ForwardOutput
+from experiment.task_inference import TaskInferenceStrategy
 
-from network.trait import PackNet
+from network.trait import AutoEncoder, InferTask, PackNet
+
 
 class ModuleDecorator(nn.Module):
     wrappee: nn.Module
@@ -63,9 +67,10 @@ class PackNetDecorator(PackNet, ModuleDecorator):
     class StateError(Exception):
         pass
 
-    def next_state(self, previous: typing.Sequence[State], next: State):
+    def next_state(self, previous: t.Sequence[State], next: State):
         if self.state not in previous:
-            raise self.StateError(f"Function only valid for {previous} instead PackNet was in the {self.state} state")
+            raise self.StateError(
+                f"Function only valid for {previous} instead PackNet was in the {self.state} state")
         self.state = next
 
     # TODO Rename to supermask
@@ -77,7 +82,7 @@ class PackNetDecorator(PackNet, ModuleDecorator):
 
     _Z_PRUNED = 255
     """Index tracking if a weight has been pruned"""
-    _z_top: int = 0 
+    _z_top: int = 0
     """Index top of the 'stack'. Should only increase"""
     _z_active: int = 0
     """
@@ -104,7 +109,8 @@ class PackNetDecorator(PackNet, ModuleDecorator):
 
     def __init__(self, wrappee: nn.Module) -> None:
         super().__init__(wrappee)
-        self.register_buffer("z_mask", torch.ones(self.weight.shape).byte() * self._z_top)
+        self.register_buffer("z_mask", torch.ones(
+            self.weight.shape).byte() * self._z_top)
         self.state = self.State.MUTABLE_TOP
 
         assert self.weight != NotImplemented, "Concrete decorator must implement self.weight"
@@ -113,7 +119,6 @@ class PackNetDecorator(PackNet, ModuleDecorator):
 
         # if self.bias != None:
         #     self.bias.requires_grad = False
-
 
     def _remove_gradient_hook(self, grad: Tensor) -> Tensor:
         """
@@ -130,7 +135,7 @@ class PackNetDecorator(PackNet, ModuleDecorator):
         Returns a 1D tensor of the weights ranked based on their absolute value.
         Sorted to be in ascending order.
         """
-        # "We use the simple heuristic to quantify the importance of the 
+        # "We use the simple heuristic to quantify the importance of the
         # weights using their absolute value." (Han et al., 2017)
         importance = self.weight.abs()
 
@@ -138,7 +143,7 @@ class PackNetDecorator(PackNet, ModuleDecorator):
         un_prunable = ~self.top_mask
         # Mark un-prunable weights using -1.0 so they can be cutout after sort
         importance[un_prunable] = -1.0
-    
+
         # Rank the importance
         rank = torch.argsort(importance.flatten())
         # Cut out un-prunable weights
@@ -154,7 +159,8 @@ class PackNetDecorator(PackNet, ModuleDecorator):
         # training solution. We re-dense the network from the sparse solution
         # which can be seen as a zero initialization for pruned weights. Other
         # initialization methods are also worth trying." (Han et al., 2017)
-        with torch.no_grad(): self.weight.flatten()[indices] = 0.0
+        with torch.no_grad():
+            self.weight.flatten()[indices] = 0.0
 
     def prune(self, to_prune_proportion: float):
         self.next_state([self.State.MUTABLE_TOP], self.State.PRUNED_TOP)
@@ -162,21 +168,22 @@ class PackNetDecorator(PackNet, ModuleDecorator):
         prune_count = int(len(ranked) * to_prune_proportion)
         self._prune_weights(ranked[:prune_count])
 
-
     def available_weights(self) -> Tensor:
         if self.state == self.state.MUTABLE_TOP:
             return self.weight
         weight = self.weight.clone()
         # Mask of the weights that are above the supplied z_index. Used to zero
-        # them 
+        # them
         mask = self.z_mask.greater(self._z_active)
-        with torch.no_grad(): weight[mask] = 0.0
+        with torch.no_grad():
+            weight[mask] = 0.0
         return weight
 
     def use_task_subset(self, task_id):
         """Setter to set the sub-set of the network to be used on forward pass"""
         next_state = self.State.MUTABLE_TOP if self._z_top == task_id else self.State.IMMUTABLE
-        self.next_state([self.State.MUTABLE_TOP, self.State.IMMUTABLE], next_state)
+        self.next_state(
+            [self.State.MUTABLE_TOP, self.State.IMMUTABLE], next_state)
 
         task_id = min(max(task_id, 0), self._z_top)
         self._z_active = task_id
@@ -185,14 +192,14 @@ class PackNetDecorator(PackNet, ModuleDecorator):
         """Forward should use the top subset"""
         self.use_task_subset(self._z_top)
 
-
     def initialize_top(self):
         """Re-initialize the top of the network"""
         # He Weight Initialization
         stddev = math.sqrt(2/self.top_mask.count_nonzero())
         dist = torch.distributions.Normal(0, stddev)
         with torch.no_grad():
-            self.weight[self.top_mask] = dist.sample((self.top_mask.count_nonzero(),)).to(self.weight.device)
+            self.weight[self.top_mask] = dist.sample(
+                (self.top_mask.count_nonzero(),)).to(self.weight.device)
 
     def push_pruned(self):
         self.next_state([self.State.PRUNED_TOP], self.State.MUTABLE_TOP)
@@ -208,6 +215,7 @@ class PackNetDecorator(PackNet, ModuleDecorator):
         if self.bias != None:
             self.bias.requires_grad = False
 
+
 class _PnBatchNorm(PackNet, ModuleDecorator):
     """BatchNorm is insanely annoying 
     """
@@ -220,17 +228,14 @@ class _PnBatchNorm(PackNet, ModuleDecorator):
         self.wrappee.bias.requires_grad = False
         self.frozen = True
 
-
     def forward(self, input: Tensor) -> Tensor:
         if self.frozen:
             # Keep it in eval mode once we have frozen things
             self.wrappee.eval()
         return self.wrappee.forward(input)
 
-
     def _zero_grad(self, grad: Tensor):
         grad.fill_(0)
-
 
     def push_pruned(self) -> None:
         pass
@@ -240,7 +245,6 @@ class _PnBatchNorm(PackNet, ModuleDecorator):
 
     def use_top_subset(self):
         pass
-
 
 
 class _PnLinear(PackNetDecorator):
@@ -281,14 +285,13 @@ class _PnConv2d(PackNetDecorator):
     def bias(self) -> Tensor:
         return self.wrappee.bias
 
-
     def initialize_top(self):
         # He Weight Initialization
         stddev = math.sqrt(2/self.top_mask.count_nonzero())
         dist = torch.distributions.Normal(0, stddev)
         with torch.no_grad():
-            self.weight[self.top_mask] = dist.sample((self.top_mask.count_nonzero(),)).to(self.weight.device)
-
+            self.weight[self.top_mask] = dist.sample(
+                (self.top_mask.count_nonzero(),)).to(self.weight.device)
 
     def forward(self, input: Tensor) -> Tensor:
         return self.wrappee._conv_forward(input, self.available_weights(), self.bias)
@@ -308,10 +311,11 @@ class _PnConvTransposed2d(PackNetDecorator):
     def bias(self) -> Tensor:
         return self.wrappee.bias
 
-    def forward(self, input: Tensor, output_size: typing.Optional[typing.List[int]] = None) -> Tensor:
+    def forward(self, input: Tensor, output_size: t.Optional[t.List[int]] = None) -> Tensor:
         w = self.wrappee
         if w.padding_mode != 'zeros':
-            raise ValueError('Only `zeros` padding mode is supported for ConvTranspose2d')
+            raise ValueError(
+                'Only `zeros` padding mode is supported for ConvTranspose2d')
 
         assert isinstance(w.padding, tuple)
         # One cannot replace List by Tuple or Sequence in "_output_padding" because
@@ -322,6 +326,7 @@ class _PnConvTransposed2d(PackNetDecorator):
         return F.conv_transpose2d(
             input, self.available_weights(), w.bias, w.stride, w.padding,
             output_padding, w.groups, w.dilation)
+
 
 def wrap(wrappee: nn.Module):
     if isinstance(wrappee, nn.Linear):
@@ -341,9 +346,59 @@ def wrap(wrappee: nn.Module):
             setattr(wrappee, submodule_name, wrap(submodule))
     return wrappee
 
-def deffer_wrap(wrappee: typing.Type[nn.Module]):
+
+def deffer_wrap(wrappee: t.Type[nn.Module]):
     def _deffered(*args, **kwargs):
         return wrap(wrappee(*args, **kwargs))
     return _deffered
 
 
+class _PackNetParent(PackNet, nn.Module):
+    """
+    _PackNetParent is used to apply PackNet methods to all of the child modules
+    that implement PackNet
+
+    :param PackNet: Inherit PackNet functionality
+    :param nn.Module: Inherit ability to apply a function
+    """
+
+    def _pn_apply(self, func: t.Callable[['PackNet'], None]):
+        @torch.no_grad()
+        def __pn_apply(module):
+            # Apply function to all child packnets but not other parents.
+            # If we were to apply to other parents we would duplicate
+            # applications to their children
+            if isinstance(module, PackNet) and not isinstance(module, _PackNetParent):
+                func(module)
+
+        self.apply(__pn_apply)
+
+    def prune(self, to_prune_proportion: float) -> None:
+        self._pn_apply(lambda x: x.prune(to_prune_proportion))
+
+    def push_pruned(self) -> None:
+        self._pn_apply(lambda x: x.push_pruned())
+
+    def use_task_subset(self, task_id):
+        self._pn_apply(lambda x: x.use_task_subset(task_id))
+
+    def use_top_subset(self):
+        self._pn_apply(lambda x: x.use_top_subset())
+
+
+class PackNetAutoEncoder(InferTask, AutoEncoder, _PackNetParent):
+    def __init__(self,
+                 auto_encoder: AutoEncoder,
+                 task_inference_strategy: TaskInferenceStrategy) -> None:
+        super().__init__(auto_encoder.encoder, auto_encoder.decoder)
+        wrap(auto_encoder)
+        self.task_inference_strategy = task_inference_strategy
+
+    def forward(self, x: Tensor) -> ForwardOutput:
+
+        if self.training:
+            return super().forward(x)
+        else:
+            """At eval time we need to try infer the task somehow?"""
+            return self.task_inference_strategy \
+                       .forward_with_task_inference(super().forward, x)

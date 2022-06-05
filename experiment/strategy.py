@@ -8,6 +8,11 @@ from avalanche.models import avalanche_forward
 
 @dataclass
 class ForwardOutput():
+    """
+    Forward output is a big ugly class used to keep track of all the details 
+    that various objects might wish to use.
+    """
+
     y_hat: Tensor = None
     """The predicted class label"""
     x: Tensor = None
@@ -24,6 +29,12 @@ class ForwardOutput():
     """The output of the mean layer in a VAE"""
     log_var: Tensor = None
     """The output of the variance layer in a VAE"""
+    loss_by_layer: Tensor = None
+    """
+    When using task inference we calculate the loss for each layer in the PackNet.
+    We store those here to create metrics. A tensor of shape (n_experiences, batch_size)
+    containing the loss for the appropriate instance
+    """
 
 
 class Network(Protocol):

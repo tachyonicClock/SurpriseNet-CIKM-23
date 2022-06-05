@@ -117,8 +117,9 @@ class GenerateReconstruction(PluginMetric):
             task_fig = task_figs[task_id]
             task_fig.suptitle(f"Experience {task_id}")
 
-            if isinstance(model, PackNet):
-                model.use_task_subset(task_id)
+            # Let the task oracle task inference strategy know what task we
+            # are using
+            strategy.experience.current_experience = task_id
 
             task_plots = task_fig.subplots(len(task_patterns), 2, squeeze=False)
             for pattern, pattern_plot in zip(task_patterns, task_plots):
@@ -137,9 +138,6 @@ class GenerateReconstruction(PluginMetric):
                     experience_prediction = int(out.pred_exp_id)
 
                 self.add_image(pattern_plot, x, out.x_hat, y, class_prediction, experience_prediction)
-
-        if isinstance(model, PackNet):
-            model.use_top_subset()
 
         x_plot = strategy.clock.train_exp_counter
         metric = MetricValue(self, "Reconstructions", figure_to_image(fig), x_plot)

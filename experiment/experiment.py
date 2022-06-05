@@ -5,7 +5,7 @@ log = get_logger(__name__)
 import os
 from dataclasses import dataclass
 from enum import Enum
-from typing import Sequence
+from typing import List, Sequence
 
 import avalanche as av
 from avalanche.evaluation.metrics import (
@@ -22,7 +22,7 @@ from torch.utils.tensorboard.summary import hparams
 from experiment.loss import MultipleObjectiveLoss
 from experiment.strategy import ForwardOutput, Strategy
 
-from metrics.metrics import ConditionalMetrics, EpochClock, ExperienceIdentificationCM, LossObjectiveMetric
+from metrics.metrics import ConditionalMetrics, EpochClock, EvalLossObjectiveMetric, ExperienceIdentificationCM, LossObjectiveMetric
 
 from config import *
 from metrics.reconstructions import GenerateReconstruction, GenerateSamples
@@ -43,13 +43,15 @@ class BaseExperiment(SupervisedPlugin):
     optimizer: torch.optim.Optimizer
     evaluator: EvaluationPlugin
     objective: MultipleObjectiveLoss
+    plugins: List[BasePlugin]
 
-    def __init__(self, experiment_dir: str) -> None:
+    def __init__(self, name:str, experiment_dir: str) -> None:
         super().__init__()
 
-
+        self.name = name
         self.experiment_dir = experiment_dir
-        self.label = f"experiment_{max(self._get_log_numbers())+1:04d}"
+        self.label = f"{max(self._get_log_numbers())+1:04d}_{self.name}"
+        self.plugins = []
 
         setproctitle.setproctitle(self.label)
 
@@ -66,12 +68,8 @@ class BaseExperiment(SupervisedPlugin):
 
         self.strategy = self.make_strategy()
 
-    def add_plugins(self) -> Sequence[BasePlugin]:
-        """
-        Overload to define a sequence of plugins that will be added to the 
-        strategy
-        """
-        return []
+    def add_plugin(self, plugin: BasePlugin):
+        self.plugins.append(plugin)
 
     def _experience_log(self, exp: av.benchmarks.NCExperience):
         log.info(f"Start of experience: {exp.current_experience}")
@@ -111,8 +109,9 @@ class BaseExperiment(SupervisedPlugin):
             plugins.append(GenerateReconstruction(self.scenario, 2, 1))
         if isinstance(self.network, Samplable):
             plugins.append(GenerateSamples(5, 4, rows_are_experiences=isinstance(self.network, ConditionedSample)))
+
         if isinstance(self.network, InferTask):
-            plugins.append(ConditionalMetrics())
+            # plugins.append(ConditionalMetrics())
             plugins.append(ExperienceIdentificationCM(self.n_experiences))
 
         if isinstance(self.network, Classifier):
@@ -125,6 +124,8 @@ class BaseExperiment(SupervisedPlugin):
 
         for name, objective in self.objective:
             plugins.append(LossObjectiveMetric(name, objective))
+            plugins.append(EvalLossObjectiveMetric(name, objective))
+
 
         return EvaluationPlugin(
             loss_metrics(epoch=True, epoch_running=True, experience=True, stream=True, minibatch=True),
@@ -172,6 +173,8 @@ class BaseExperiment(SupervisedPlugin):
             value,
             step if step else self.strategy.clock.total_iterations)
 
+
+
     @property
     def lr(self) -> float:
         for param_group in self.optimizer.param_groups:
@@ -196,5 +199,5 @@ class BaseExperiment(SupervisedPlugin):
     def _get_log_numbers(self):
         for filename in os.listdir(self.experiment_dir):
             name, _ = os.path.splitext(filename)
-            yield int(name[-4:])
+            yield int(name[:4])
         yield 0

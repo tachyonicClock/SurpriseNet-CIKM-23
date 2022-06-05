@@ -1,6 +1,8 @@
 
 
 import logging
+import pickle
+import typing as t
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
@@ -26,8 +28,24 @@ class _MyMetric(PluginMetric[float]):
         self.strategy = strategy
 
     @property
-    def exp(self) -> int:
+    def train_experience(self) -> int:
+        """
+        The experience that is currently being trained on. Or was previously 
+        trained on if we are in the eval phase
+        """
         return self.strategy.clock.train_exp_counter
+
+    @property
+    def test_experience(self) -> int:
+        """
+        The experience we are currently being tested on
+        """
+        return self.strategy.experience.current_experience
+
+    def reset(self):
+        pass
+    def result(self):
+        pass
 
 class EpochClock(_MyMetric):
 
@@ -35,7 +53,7 @@ class EpochClock(_MyMetric):
         clock = strategy.clock
         epoch = clock.train_exp_epochs
         step = strategy.clock.total_iterations
-        return MetricValue(self, f"clock/{self.exp:04d}_epoch", epoch, step)
+        return MetricValue(self, f"clock/{self.train_experience:04d}_epoch", epoch, step)
 
     def result(self, **kwargs):
         return super().result(**kwargs)
@@ -52,6 +70,7 @@ class ExperienceIdentificationCM(_MyMetric):
         self.n_experiences = n_experiences
         self.cm = ConfusionMatrix(n_experiences)
         self.reset()
+        print("ExperienceIdentificationCM")
 
     def update(self, preds: Tensor, target: int):
         self.cm.update(preds.cpu(), torch.ones((preds.shape)).int() * target)
@@ -180,4 +199,67 @@ class LossObjectiveMetric(_MyMetric):
         step = strategy.clock.total_iterations
         value = self.result()
         self.reset()
-        return MetricValue(self, f"LossPart/Unweighted/{self.name}", value, step)
+        return MetricValue(self, f"TrainLossPart/{self.name}", value, step)
+
+class EvalLossObjectiveMetric(_MyMetric):
+
+    n_samples: int
+    loss_sum: float
+
+    def __init__(self, name: str, loss_part: LossObjective):
+        super().__init__()
+        self.loss_part = loss_part
+        self.name = name
+        self.reset()
+
+    def after_eval_iteration(self, strategy: Strategy) -> "MetricResult":
+        self.loss_sum += float(self.loss_part.loss)
+        self.n_samples += 1
+
+    def reset(self):
+        self.n_samples = 0.0
+        self.loss_sum = 0.0
+
+    def result(self):
+        return self.loss_sum/self.n_samples
+
+    def after_eval_exp(self, strategy: Strategy) -> "MetricResult":
+        step = strategy.clock.total_iterations
+        value = self.result()
+        self.reset()
+        return MetricValue(self, f"EvalLossPart/Experience_{self.test_experience}/{self.name}", value, step)
+
+
+class TaskInferenceMetrics(_MyMetric):
+    def __init__(self, logdir: str):
+        super().__init__()
+        self.loss_points: t.Set[t.Tuple[int, int, float]] = set()
+        self.logdir = logdir
+
+
+    def add_point(self):
+        pass
+
+
+    def after_eval_iteration(self, strategy: Strategy) -> "MetricResult":
+        out = strategy.last_forward_output
+        lbl = out.loss_by_layer
+
+        assert lbl != None, "Expected loss by layer to be populated"
+        
+        for layer in range(lbl.shape[0]):
+            for instance in range(lbl.shape[1]):
+                loss = lbl[layer, instance]
+                self.loss_points.add((layer, self.test_experience, float(loss))) 
+
+
+    def after_eval(self, strategy: Strategy) -> "MetricResult":
+
+        # print(self.loss_points)
+        with open(f"{self.logdir}/{self.train_experience}_loss_points.pickle", "wb") as f:
+            pickle.dump(self.loss_points, f)
+
+        self.loss_points = set()
+
+
+
