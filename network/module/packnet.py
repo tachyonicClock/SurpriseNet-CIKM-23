@@ -390,7 +390,7 @@ class PackNetAutoEncoder(InferTask, AutoEncoder, _PackNetParent):
     def __init__(self,
                  auto_encoder: AutoEncoder,
                  task_inference_strategy: TaskInferenceStrategy) -> None:
-        super().__init__(auto_encoder.encoder, auto_encoder.decoder)
+        super().__init__(auto_encoder.encoder, auto_encoder.decoder, auto_encoder.classifier)
         wrap(auto_encoder)
         self.task_inference_strategy = task_inference_strategy
 

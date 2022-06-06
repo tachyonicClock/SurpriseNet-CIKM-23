@@ -9,11 +9,11 @@ class Classifier(ABC, nn.Module):
     """Something that can classify"""
 
     @abstractmethod
-    def classify(self, x: Tensor) -> Tensor:
-        """x -> x_hat
+    def classify(self, embedding: Tensor) -> Tensor:
+        """x -> y_hat
 
         :param x: An batch of observations to classify
-        :return: A class count wide tensor of predicted probabilities
+        :return: A class of predicted probabilities
         """
 
 class Encoder(ABC, nn.Module):
@@ -90,30 +90,33 @@ class Sampler(Encoder, Samplable):
         """
 
 
-class AutoEncoder(Encoder, Decoder, nn.Module):
+class AutoEncoder(Encoder, Decoder, Classifier, nn.Module):
 
     def __init__(self,
         encoder: Encoder,
-        decoder: Decoder
+        decoder: Decoder,
+        classifier: Classifier
     ) -> None:
         super().__init__()
 
         self.encoder = encoder
         self.decoder = decoder
+        self.classifier = classifier
 
-        self.encode = encoder.encode
-        self.decode = decoder.decode
+    def classify(self, embedding: Tensor) -> Tensor:
+        return self.classifier(embedding)
 
     def encode(self, observations: Tensor) -> Tensor:
         return self.encoder.encode(observations)
 
     def decode(self, embedding: Tensor) -> Tensor:
-        return self.encoder.decode(embedding)
+        return self.decoder.decode(embedding)
 
     def forward(self, observations: Tensor) -> ForwardOutput:
         out = ForwardOutput()
-        out.z_codes = self.encoder.encode(observations)
-        out.x_hat  = self.decoder.decode(out.z_codes)
+        out.z_code = self.encode(observations)
+        out.y_hat = self.classify(out.z_code)
+        out.x_hat  = self.decode(out.z_code)
         return out
 
 class PackNet(ABC):

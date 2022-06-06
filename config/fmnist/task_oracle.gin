@@ -1,0 +1,4 @@
+include './base.gin'
+
+Experiment.name = "task_oracle"
+Experiment.packnet.task_inference_strategy = @Experiment.task_inference.task_oracle

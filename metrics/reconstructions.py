@@ -114,7 +114,10 @@ class GenerateReconstruction(PluginMetric):
 
         # For each 
         for task_id, task_patterns in self.patterns.items():
-            task_fig = task_figs[task_id]
+            if self.n_experiences == 1:
+                task_fig = task_figs
+            else:
+                task_fig = task_figs[task_id]
             task_fig.suptitle(f"Experience {task_id}")
 
             # Let the task oracle task inference strategy know what task we

@@ -1,0 +1,11 @@
+# Traditional non-continual learning control experiment.
+
+include './base.gin'
+Experiment.name = "brief_learning"
+# Do not train the decoder making this network equivalent to a traditional CNN
+Experiment.loss.loss_objectives = [@ClassifierLoss()]
+# Make the scenario no longer continual learning
+Experiment.scenario.n_experiences = 1
+# PackNet methods have 1 post prune epoch
+Experiment.train.train_epochs = 5
+Experiment.packnet.use_packnet = False

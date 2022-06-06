@@ -40,7 +40,7 @@ class UseTaskOracle(TaskInferenceStrategy):
 
         model.use_task_subset(task_id)
         out : ForwardOutput = forward_func(x)
-        out.pred_exp_id = task_id
+        out.pred_exp_id = (torch.ones((x.shape[0], 1)) * task_id).int()
         model.use_top_subset()
         return out
 
@@ -67,6 +67,10 @@ class TaskReconstruction(TaskInferenceStrategy):
         self.experiment = experiment
         self.n_experiences = experiment.n_experiences
 
+        experiment.add_plugin(
+            TaskInferenceMetrics(experiment.logdir)
+        )
+
     def forward_with_task_inference(self, 
             forward_func: t.Callable[[Tensor], ForwardOutput],
             x: Tensor) -> ForwardOutput:
@@ -88,7 +92,7 @@ class TaskReconstruction(TaskInferenceStrategy):
             model.use_task_subset(i)
 
             new_loss, new_out = sample(forward_func, x, sample_size)
-            loss_by_layer[i, :] = best_loss
+            loss_by_layer[i, :] = new_loss
 
             # Update best_out if the current subset is better
             swap_mask = new_loss < best_loss

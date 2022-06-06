@@ -111,15 +111,13 @@ class BaseExperiment(SupervisedPlugin):
             plugins.append(GenerateSamples(5, 4, rows_are_experiences=isinstance(self.network, ConditionedSample)))
 
         if isinstance(self.network, InferTask):
-            # plugins.append(ConditionalMetrics())
+            plugins.append(ConditionalMetrics())
             plugins.append(ExperienceIdentificationCM(self.n_experiences))
 
         if isinstance(self.network, Classifier):
-            plugins.append(
-                accuracy_metrics(epoch=True, stream=True, experience=True, trained_experience=True),
-                confusion_matrix_metrics(num_classes=num_classes, stream=True),
-                forgetting_metrics(experience=True, stream=True),
-            )
+            plugins.append(accuracy_metrics(epoch=True, stream=True, experience=True, trained_experience=True))
+            plugins.append(confusion_matrix_metrics(num_classes=num_classes, stream=True))
+            plugins.append(forgetting_metrics(experience=True, stream=True))
         
 
         for name, objective in self.objective:

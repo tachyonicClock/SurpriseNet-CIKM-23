@@ -1,7 +1,9 @@
 from difflib import context_diff
+import os
 import sys
 import gin
 import typing as t
+import click
 
 import torch
 from experiment.experiment import BaseExperiment
@@ -11,10 +13,11 @@ from experiment.plugins import PackNetPlugin
 from experiment.scenario import scenario
 from experiment.strategy import Strategy
 from experiment.task_inference import TaskInferenceStrategy, TaskReconstruction, UseTaskOracle
-from network.trait import AutoEncoder, Decoder, Encoder
+from network.trait import AutoEncoder, Classifier, Decoder, Encoder
 from torch import nn
 from network.architectures import *
 import network.module.packnet as pn
+from network.vanilla_cnn import ClassifierHead
 
 # Make loss parts configurable
 gin.external_configurable(ReconstructionLoss)
@@ -42,7 +45,7 @@ class Experiment(BaseExperiment):
         return UseTaskOracle(self)
 
     @gin.configurable("reconstruction", "Experiment.task_inference")
-    def task_oracle(self) -> TaskInferenceStrategy:
+    def task_reconstruction(self) -> TaskInferenceStrategy:
         return TaskReconstruction(self)
 
     @gin.configurable("packnet", "Experiment")
@@ -70,13 +73,15 @@ class Experiment(BaseExperiment):
     @gin.configurable("network", "Experiment")
     def make_network(self,
         deep_generative_type: t.Literal["AE", "VAE"],
-        network_architecture: t.Callable[[t.Any], t.Tuple[Encoder, Decoder]]) -> nn.Module:
+        ae_architecture: t.Callable[[t.Any], AEArchitecture]) -> nn.Module:
 
-        encoder, decoder = network_architecture()
+        ae_architecture: AEArchitecture = ae_architecture()
+
+        classifier = ClassifierHead(ae_architecture.latent_dims, self.n_classes, 128)
         
 
         if deep_generative_type == "AE":
-            return self.setup_packnet(AutoEncoder(encoder, decoder))
+            return self.setup_packnet(AutoEncoder(ae_architecture.encoder, ae_architecture.decoder, classifier))
         else:
             return NotImplemented
 
@@ -133,10 +138,14 @@ class Experiment(BaseExperiment):
     # def after_eval_exp(self, strategy: Strategy, *args, **kwargs) -> "CallbackResult":
     #     self.save_checkpoint(f"experience_{self.clock.train_exp_counter:04d}")
 
+@click.command()
+@click.argument("gin_config")
+def main(gin_config):
+    gin.add_config_file_search_path(os.path.dirname(gin_config))
+    gin.parse_config_file(gin_config)
+    Experiment().train()
 
-
-gin.parse_config_file("/Scratch/al183/dynamic-dropout/config/base.gin")
-Experiment().train()
-
+if __name__ == '__main__':
+    main()
 
 # Experiment.make_network()

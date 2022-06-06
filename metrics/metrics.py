@@ -233,28 +233,26 @@ class EvalLossObjectiveMetric(_MyMetric):
 class TaskInferenceMetrics(_MyMetric):
     def __init__(self, logdir: str):
         super().__init__()
-        self.loss_points: t.Set[t.Tuple[int, int, float]] = set()
+        self.loss_points: t.Set[t.Tuple[int, int, int, int, float]] = set()
         self.logdir = logdir
-
-
-    def add_point(self):
-        pass
+        self.i = 0
 
 
     def after_eval_iteration(self, strategy: Strategy) -> "MetricResult":
         out = strategy.last_forward_output
+        y_true = strategy.mb_y
         lbl = out.loss_by_layer
 
         assert lbl != None, "Expected loss by layer to be populated"
         
-        for layer in range(lbl.shape[0]):
-            for instance in range(lbl.shape[1]):
+        for k, instance in enumerate(range(lbl.shape[1])):
+            for layer in range(lbl.shape[0]):
                 loss = lbl[layer, instance]
-                self.loss_points.add((layer, self.test_experience, float(loss))) 
-
+                self.loss_points.add((self.i, int(y_true[k]), layer, self.test_experience, float(loss))) 
+            self.i += 1
 
     def after_eval(self, strategy: Strategy) -> "MetricResult":
-
+        self.i = 0
         # print(self.loss_points)
         with open(f"{self.logdir}/{self.train_experience}_loss_points.pickle", "wb") as f:
             pickle.dump(self.loss_points, f)

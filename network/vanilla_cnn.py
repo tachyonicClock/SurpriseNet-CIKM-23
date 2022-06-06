@@ -1,6 +1,7 @@
+from turtle import forward
 import torch
-from torch import nn, Tensor
-from .trait import Decoder, Encoder
+from torch import nn, Tensor, tensor
+from .trait import Classifier, Decoder, Encoder
 
 
 class VanillaCNNEncoder(Encoder):
@@ -107,3 +108,22 @@ class VanillaCNNDecoder(Decoder):
 
     def decode(self, embedding: Tensor) -> Tensor:
         return self(embedding)
+
+
+class ClassifierHead(Classifier):
+
+    def __init__(self, latent_dims: int, class_number: int, width: int) -> None:
+        super().__init__()
+
+        self.net = nn.Sequential(
+            nn.Linear(latent_dims, width),
+            nn.ReLU(),
+            nn.Linear(width, class_number),
+        )
+
+    def classify(self, embedding: Tensor) -> Tensor:
+        return self(embedding)
+
+    def forward(self, x: Tensor) -> Tensor:
+        y_hat = self.net(x)
+        return y_hat
