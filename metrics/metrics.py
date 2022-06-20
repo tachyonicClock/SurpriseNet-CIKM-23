@@ -24,7 +24,7 @@ from functional import figure_to_image
 
 class _MyMetric(PluginMetric[float]):
 
-    def before_training_exp(self, strategy):
+    def before_training(self, strategy):
         self.strategy = strategy
 
     @property

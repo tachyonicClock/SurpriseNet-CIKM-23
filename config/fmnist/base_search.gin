@@ -1,0 +1,25 @@
+# Traditional non-continual learning control experiment.
+
+include './base.gin'
+Experiment.name = "base_search"
+
+# Make the scenario no longer continual learning
+Experiment.scenario.n_experiences = 1
+# PackNet methods have 1 post prune epoch
+Experiment.train.train_epochs = 10
+Experiment.packnet.use_packnet = False
+
+
+# Independent Variables to Tune
+lr/uniform_rand.variable_name = "lr"
+lr/uniform_rand.var_range = (0.00001, 0.001)
+base_channels/uniform_rand.variable_name = "base_channels"
+base_channels/uniform_rand.var_range = (64, 256)
+base_channels/uniform_rand.is_int = True
+latent_dims/uniform_rand.variable_name = "latent_dims"
+latent_dims/uniform_rand.var_range = (10, 256)
+latent_dims/uniform_rand.is_int = True
+
+Experiment.optimizer.lr   = @lr/uniform_rand()
+vanilla_cnn.base_channels = @base_channels/uniform_rand()
+vanilla_cnn.latent_dims   = @latent_dims/uniform_rand()

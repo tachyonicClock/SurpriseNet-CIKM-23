@@ -32,10 +32,10 @@ def wide_residual_network(
         in_channels: int,
         latent_dims: int = 128,
         widening_factor: int = 1,
-        depth: int = 6) -> AEArchitecture:
+        depth: int = 8) -> AEArchitecture:
     """Create a wide residual network for encoding and decoding"""
     encoder = WideResNetEncoder(
-        in_channels, latent_dims, widening_factor, depth)
+        in_channels, latent_dims, widening_factor, depth//2)
     decoder = WideResNetDecoder(
-        in_channels, latent_dims, widening_factor, depth)
+        in_channels, latent_dims, widening_factor, depth//2)
     return AEArchitecture(encoder, decoder, latent_dims)

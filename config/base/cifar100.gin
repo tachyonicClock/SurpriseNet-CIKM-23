@@ -1,0 +1,16 @@
+Experiment.experiment_dir = "./experiment_logs/cifar100"
+
+# Continual learning scenario
+Experiment.scenario.dataset = "CIFAR100"
+Experiment.scenario.dataset_root =  "/Scratch/al183/datasets"
+Experiment.scenario.n_experiences = 10
+vanilla_cnn.in_channels = 3
+wide_residual_network.in_channels = 3
+
+
+Experiment.network.ae_architecture = @wide_residual_network
+Experiment.optimizer.lr = 0.0001
+wide_residual_network.widening_factor = 5
+wide_residual_network.depth = 14
+
+vanilla_cnn.latent_dims = 256

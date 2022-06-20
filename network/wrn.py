@@ -74,7 +74,7 @@ class BasicBlock(nn.Module):
         return x + x_shortcut
 
 
-class WidResNetBlock(nn.Module):
+class WideResNetBlock(nn.Module):
     """
     A WidResNetBlock made by stacking BasicBlocks
     """
@@ -125,14 +125,16 @@ class WideResNetEncoder(Encoder):
                  ) -> None:
         super().__init__()
 
-        assert depth % 3 == 0, "Depth must be multiple of 3"
-        self.num_block_layers = int(depth / 3)
+        assert ((depth - 1) % 3 == 0)
+        self.num_block_layers = int((depth-1) / 3)
         wf = widen_factor
         self.conv_0 = nn.Conv2d(in_channels, 16*wf, 3, 1, 1, bias=False)
         self.encoder = nn.Sequential(
-            WidResNetBlock(self.num_block_layers, wf*16, wf*32),
-            WidResNetBlock(self.num_block_layers, wf*32, wf*64, stride=2),
-            WidResNetBlock(self.num_block_layers, wf*64, wf*64, stride=2),
+            WideResNetBlock(self.num_block_layers, wf*16, wf*32, stride=2),
+            WideResNetBlock(self.num_block_layers, wf*32, wf*64, stride=2),
+            WideResNetBlock(self.num_block_layers, wf*64, wf*64, stride=2),
+            nn.BatchNorm2d(),
+            nn.ReLU()
         )
 
         # hardcoded for 32x32 images
@@ -142,7 +144,7 @@ class WideResNetEncoder(Encoder):
         x = self.conv_0(x)
         x = self.encoder(x)
         x = self.fc(x.flatten(start_dim=1))
-        return torch.sigmoid(x)
+        return x
 
     def encode(self, observations: Tensor) -> Tensor:
         return self(observations)
@@ -158,15 +160,16 @@ class WideResNetDecoder(Decoder):
                  ) -> None:
         super().__init__()
 
-        assert depth % 3 == 0, "Depth must be multiple of 3"
-        self.num_block_layers = int(depth / 3)
+        assert ((depth - 1) % 3 == 0)
+        self.num_block_layers = int((depth-1) / 3)
         wf = widen_factor
         self.decoder = nn.Sequential(
-            WidResNetBlock(self.num_block_layers, wf*64, wf*64),
+            WideResNetBlock(self.num_block_layers, wf*64, wf*64),
             nn.Upsample(scale_factor=2, mode='nearest'),
-            WidResNetBlock(self.num_block_layers, wf*64, wf*32),
+            WideResNetBlock(self.num_block_layers, wf*64, wf*32),
             nn.Upsample(scale_factor=2, mode='nearest'),
-            WidResNetBlock(self.num_block_layers, wf*32, wf*16),
+            WideResNetBlock(self.num_block_layers, wf*32, wf*16),
+            nn.Upsample(scale_factor=2, mode='nearest'),
         )
         self.conv_last = nn.Conv2d(16*wf, output_channels, 3, 1, 1, bias=False)
 

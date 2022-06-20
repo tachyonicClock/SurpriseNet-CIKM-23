@@ -1,10 +1,10 @@
 from difflib import context_diff
 import os
-import sys
 import gin
 import typing as t
 import click
 
+import numpy as np
 import torch
 from experiment.experiment import BaseExperiment
 import avalanche as cl
@@ -26,10 +26,19 @@ gin.external_configurable(VAELoss)
 
 gin.external_configurable(vanilla_cnn)
 gin.external_configurable(wide_residual_network)
-
-
 # Setup configured functions
 scenario = gin.configurable(scenario, "Experiment")
+
+
+random_search_hp: t.Dict[str, float] = dict()
+
+@gin.configurable()
+def uniform_rand(variable_name, var_range: t.Tuple[int, int], is_int=False) -> float:
+    value = np.random.uniform(var_range[0], var_range[1])
+    if is_int:
+        value = int(value)
+    random_search_hp[variable_name] = value
+    return value
 
 @gin.configurable
 class Experiment(BaseExperiment):
@@ -38,7 +47,6 @@ class Experiment(BaseExperiment):
     def make_scenario(self) -> cl.benchmarks.NCScenario:
         """Create a scenario from the config"""
         return scenario()
-
 
     @gin.configurable("task_oracle", "Experiment.task_inference")
     def task_oracle(self) -> TaskInferenceStrategy:
@@ -117,33 +125,38 @@ class Experiment(BaseExperiment):
             evaluator=self.evaluator
         )
 
-
     def dump_config(self):
         with open(f"{self.logdir}/config.gin", "w") as f:
             f.write(gin.operative_config_str())
 
         self.logger.writer.add_text("Config", gin.markdown(gin.operative_config_str()))
 
-    # def save_checkpoint(self, checkpoint_name: str):
-    #     torch.save({
-    #         "network": self.network,
-    #         "gin_config": gin.operative_config_str()
-    #     }, f"{self.logdir}/{checkpoint_name}.pt")
+    def save_checkpoint(self, checkpoint_name: str):
+        torch.save({
+            "network": self.network,
+            "gin_config": gin.operative_config_str()
+        }, f"{self.logdir}/{checkpoint_name}.pt")
 
     # def load_checkpoint(self, path: str):
     #     print(f"Attempting to load checkpoint {path}")
     #     checkpoint = torch.load(path)
     #     self.network = checkpoint["network"]
 
-    # def after_eval_exp(self, strategy: Strategy, *args, **kwargs) -> "CallbackResult":
-    #     self.save_checkpoint(f"experience_{self.clock.train_exp_counter:04d}")
+    def after_eval_exp(self, strategy: Strategy, *args, **kwargs) -> "CallbackResult":
+        self.save_checkpoint(f"experience_{self.clock.train_exp_counter:04d}")
 
 @click.command()
+@click.option("--n-runs", default=1, help="Run the configuration n times")
 @click.argument("gin_config")
-def main(gin_config):
-    gin.add_config_file_search_path(os.path.dirname(gin_config))
-    gin.parse_config_file(gin_config)
-    Experiment().train()
+def main(gin_config, n_runs):
+    for _ in range(n_runs):
+        gin.clear_config(True)
+        gin.add_config_file_search_path(os.path.dirname(gin_config))
+        gin.parse_config_file(gin_config)
+
+        experiment = Experiment()
+        experiment.add_hparams(random_search_hp)
+        experiment.train()
 
 if __name__ == '__main__':
     main()

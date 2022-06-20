@@ -1,4 +1,3 @@
-from turtle import forward
 import torch
 from torch import nn, Tensor, tensor
 from .trait import Classifier, Decoder, Encoder

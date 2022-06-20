@@ -5,7 +5,7 @@ log = get_logger(__name__)
 import os
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Sequence
+from typing import List, Sequence, Dict
 
 import avalanche as av
 from avalanche.evaluation.metrics import (
@@ -152,12 +152,20 @@ class BaseExperiment(SupervisedPlugin):
         raise NotImplemented
 
     def make_dependent_variables(self):
-        return [
-            "Accuracy_On_Trained_Experiences/eval_phase/test_stream/Task000",
-            "StreamForgetting/eval_phase/test_stream",
-            "Top1_Acc_Exp/eval_phase/test_stream/Task000/Exp000",
-            "Top1_Acc_Exp/eval_phase/test_stream/Task000/Exp001"
-        ]
+        return {
+            "Accuracy_On_Trained_Experiences/eval_phase/test_stream/Task000": 0,
+            "Loss_Exp/eval_phase/test_stream/Task000/Exp000": 0,
+            "EvalLossPart/Experience_0/Classifier": 0,
+            "EvalLossPart/Experience_0/Reconstruction": 0
+        }
+
+    def add_hparams(self, hp: dict):
+        print(hp)
+        exp, ssi, sei = hparams(hp, self.make_dependent_variables(), {})
+        self.logger.writer.file_writer.add_summary(exp)
+        self.logger.writer.file_writer.add_summary(ssi)
+        self.logger.writer.file_writer.add_summary(sei)
+
 
     def make_optimizer(self, parameters) -> torch.optim.Optimizer:
         raise NotImplemented
