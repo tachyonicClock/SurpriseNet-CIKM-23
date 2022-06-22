@@ -14,7 +14,7 @@ from enum import Enum
 from experiment.strategy import ForwardOutput
 from experiment.task_inference import TaskInferenceStrategy
 
-from network.trait import AutoEncoder, InferTask, PackNet
+from network.trait import AutoEncoder, InferTask, PackNet, VariationalAutoEncoder
 
 
 class ModuleDecorator(nn.Module):
@@ -387,10 +387,37 @@ class _PackNetParent(PackNet, nn.Module):
 
 
 class PackNetAutoEncoder(InferTask, AutoEncoder, _PackNetParent):
+    """
+    A wrapper for AutoEncoder adding the InferTask trait and PackNet
+    functionality
+    """
     def __init__(self,
                  auto_encoder: AutoEncoder,
                  task_inference_strategy: TaskInferenceStrategy) -> None:
         super().__init__(auto_encoder.encoder, auto_encoder.decoder, auto_encoder.classifier)
+        wrap(auto_encoder)
+        self.task_inference_strategy = task_inference_strategy
+
+    def forward(self, x: Tensor) -> ForwardOutput:
+
+        if self.training:
+            return super().forward(x)
+        else:
+            """At eval time we need to try infer the task somehow?"""
+            return self.task_inference_strategy \
+                       .forward_with_task_inference(super().forward, x)
+
+
+class PackNetVariationalAutoEncoder(InferTask, VariationalAutoEncoder, _PackNetParent):
+    """
+    A wrapper for VariationalAutoEncoder adding the InferTask trait and PackNet
+    functionality.
+    """
+
+    def __init__(self,
+                 auto_encoder: VariationalAutoEncoder,
+                 task_inference_strategy: TaskInferenceStrategy) -> None:
+        super().__init__(auto_encoder.encoder, auto_encoder.bottleneck, auto_encoder.decoder, auto_encoder.classifier)
         wrap(auto_encoder)
         self.task_inference_strategy = task_inference_strategy
 

@@ -1,6 +1,7 @@
 import torch
+import typing as t
 from torch import nn, Tensor, tensor
-from .trait import Classifier, Decoder, Encoder
+from .trait import Classifier, Decoder, Encoder, Sampler
 
 
 class VanillaCNNEncoder(Encoder):
@@ -126,3 +127,19 @@ class ClassifierHead(Classifier):
     def forward(self, x: Tensor) -> Tensor:
         y_hat = self.net(x)
         return y_hat
+
+class VAEBottleneck(Sampler):
+
+    def __init__(self, input_width: int, latent_dims: int) -> None:
+        super().__init__()
+        self.mu = nn.Linear(input_width, latent_dims, bias=False)
+        self.log_var = nn.Linear(input_width, latent_dims, bias=False)
+        self.latent_dims = latent_dims
+
+    @property
+    def bottleneck_width(self) -> int:
+        return self.latent_dims
+
+    def forward(self, x: Tensor) -> t.Tuple[Tensor, Tensor]:
+        return self.mu(x), self.log_var(x)
+    

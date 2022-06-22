@@ -13,11 +13,11 @@ from experiment.plugins import PackNetPlugin
 from experiment.scenario import scenario
 from experiment.strategy import Strategy
 from experiment.task_inference import TaskInferenceStrategy, TaskReconstruction, UseTaskOracle
-from network.trait import AutoEncoder, Classifier, Decoder, Encoder
+from network.trait import AutoEncoder, Classifier, Decoder, Encoder, VariationalAutoEncoder
 from torch import nn
 from network.architectures import *
 import network.module.packnet as pn
-from network.vanilla_cnn import ClassifierHead
+from network.vanilla_cnn import ClassifierHead, VAEBottleneck
 
 # Make loss parts configurable
 gin.external_configurable(ReconstructionLoss)
@@ -26,6 +26,8 @@ gin.external_configurable(VAELoss)
 
 gin.external_configurable(vanilla_cnn)
 gin.external_configurable(wide_residual_network)
+gin.external_configurable(residual_network)
+
 # Setup configured functions
 scenario = gin.configurable(scenario, "Experiment")
 
@@ -68,11 +70,10 @@ class Experiment(BaseExperiment):
         if not use_packnet:
             return network
 
-        if isinstance(network, AutoEncoder):
+        if isinstance(network, VariationalAutoEncoder):
+            network = pn.PackNetVariationalAutoEncoder(network, task_inference_strategy(self))
+        elif isinstance(network, AutoEncoder):
             network = pn.PackNetAutoEncoder(network, task_inference_strategy(self))
-        else:
-            assert False, "Couldn't figure out how to make it a pack net"
-            
         self.plugins.append(
             PackNetPlugin(network, self, prune_proportion, post_prune_epochs)
         )
@@ -83,13 +84,14 @@ class Experiment(BaseExperiment):
         deep_generative_type: t.Literal["AE", "VAE"],
         ae_architecture: t.Callable[[t.Any], AEArchitecture]) -> nn.Module:
 
-        ae_architecture: AEArchitecture = ae_architecture()
-
-        classifier = ClassifierHead(ae_architecture.latent_dims, self.n_classes, 128)
+        ae_architecture: AEArchitecture = ae_architecture(vae=deep_generative_type=="VAE")
+        classifier = ClassifierHead(ae_architecture.latent_dims, self.n_classes, 1024)
         
-
         if deep_generative_type == "AE":
             return self.setup_packnet(AutoEncoder(ae_architecture.encoder, ae_architecture.decoder, classifier))
+        elif deep_generative_type == "VAE":
+            bottleneck = VAEBottleneck(ae_architecture.latent_dims*2, ae_architecture.latent_dims)
+            return self.setup_packnet(VariationalAutoEncoder(ae_architecture.encoder, bottleneck, ae_architecture.decoder, classifier))
         else:
             return NotImplemented
 
@@ -142,8 +144,8 @@ class Experiment(BaseExperiment):
     #     checkpoint = torch.load(path)
     #     self.network = checkpoint["network"]
 
-    def after_eval_exp(self, strategy: Strategy, *args, **kwargs) -> "CallbackResult":
-        self.save_checkpoint(f"experience_{self.clock.train_exp_counter:04d}")
+    # def after_training_epoch(self, strategy: Strategy, *args, **kwargs) -> "CallbackResult":
+    #     self.save_checkpoint(f"experience_{self.clock.train_exp_counter:04d}")
 
 @click.command()
 @click.option("--n-runs", default=1, help="Run the configuration n times")

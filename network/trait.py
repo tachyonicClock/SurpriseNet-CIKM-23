@@ -64,7 +64,7 @@ class ConditionedSample(ABC):
 
 
 
-class Sampler(Encoder, Samplable):
+class Sampler(Samplable, nn.Module):
     """
     Something that encodes something using a normal distribution as the 
     latent space
@@ -80,14 +80,8 @@ class Sampler(Encoder, Samplable):
     def sample(self, n: int = 1) -> Tensor:
         return torch.randn((n, self.bottleneck_width))
 
-    @abstractmethod
-    def encode(self, input: Tensor) -> t.Tuple[Tensor, Tensor]:
-        """Encode an input and get parameters representing its position in latent
-        space
-
-        :param input: Input to encoder
-        :return: A tuple of mu and log_var
-        """
+    def forward(self, x: Tensor) -> t.Tuple[Tensor, Tensor]:
+        return NotImplemented
 
 
 class AutoEncoder(Encoder, Decoder, Classifier, nn.Module):
@@ -118,6 +112,44 @@ class AutoEncoder(Encoder, Decoder, Classifier, nn.Module):
         out.y_hat = self.classify(out.z_code)
         out.x_hat  = self.decode(out.z_code)
         return out
+
+class VariationalAutoEncoder(AutoEncoder, Samplable):
+
+    def __init__(self,
+        encoder: Encoder,
+        bottleneck: Sampler,
+        decoder: Decoder,
+        classifier: Classifier) -> None:
+        super().__init__(encoder, decoder, classifier)
+        self.dummy_param = nn.Parameter(torch.empty(0)) # Used to determine device
+        self.bottleneck = bottleneck
+
+    def encode(self, x: Tensor) -> Tensor:
+        mu, std = self.bottleneck.encode(self.encoder.encode(x))
+        return self.bottleneck.reparameterise(mu, std)
+    
+    def sample(self, n: int = 1) -> Tensor:
+        return self.decode(self.bottleneck.sample(n).to(self.dummy_param.device))
+
+    def decode(self, z: Tensor) -> Tensor:
+        return self.decoder.decode(z)
+
+    def classify(self, x: Tensor) -> Tensor:
+        return self.forward(x).y_hat
+
+    def forward(self, x: Tensor) -> ForwardOutput:
+        out = ForwardOutput()
+        z = self.encoder.encode(x)
+        out.mu, out.log_var = self.bottleneck.forward(z)
+        out.z_code = self.bottleneck.reparameterise(out.mu, out.log_var)
+        out.y_hat = self.classifier(out.z_code)
+        out.x_hat = self.decoder(out.z_code)
+        out.x = x
+        return out
+
+    def sample_x(self, n:int=1) -> Tensor:
+        return torch.randn(n, self.latent_dim)
+
 
 class PackNet(ABC):
 
@@ -156,5 +188,6 @@ NETWORK_TRAITS = [
     PackNet,
     AutoEncoder,
     ConditionedSample,
+    VariationalAutoEncoder,
     InferTask
 ]

@@ -2,8 +2,7 @@
 include '../base/base.gin'
 include '../base/cifar100.gin'
 
-Experiment.name = "transient_learning_wide_cnn"
+Experiment.name = "transient_learning_resnet"
 Experiment.scenario.n_experiences = 1
-Experiment.train.train_epochs = 100
-Experiment.train.eval_every=1
+Experiment.train.train_epochs = 50
 Experiment.packnet.use_packnet = False

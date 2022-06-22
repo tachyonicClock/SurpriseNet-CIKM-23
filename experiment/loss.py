@@ -63,15 +63,6 @@ class ClassifierLoss(LossObjective):
 class VAELoss(LossObjective):
     name = "VAE"
 
-    def __init__(self, M: int, N: int, beta: float):
-        """Create a VAE loss function
-
-        :param M: M is the size of the latent space
-        :param N: N is the input size
-        :param beta: The beta factor, typically between 0.001 and 10 (https://openreview.net/pdf?id=Sy2fzU9gl)
-        """
-        self.weighting = beta*M/N
-
     def update(self, out: ForwardOutput, target: Tensor = None):
-        self.loss = -0.5 * torch.sum(1+out.log_var - out.mu.square() - out.log_var.exp())
+        self.loss = torch.mean(-0.5 * torch.sum(1 + out.log_var - out.mu ** 2 - out.log_var.exp(), dim = 1), dim = 0)
 

@@ -1,4 +1,0 @@
-include './base.gin'
-
-Experiment.name = "task_inference"
-Experiment.packnet.task_inference_strategy = @Experiment.task_inference.reconstruction

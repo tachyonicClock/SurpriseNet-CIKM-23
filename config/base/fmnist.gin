@@ -1,0 +1,16 @@
+Experiment.experiment_dir = "./experiment_logs/fmnist"
+
+# Continual learning scenario
+Experiment.scenario.dataset = "FMNIST"
+Experiment.scenario.dataset_root =  "/Scratch/al183/datasets"
+Experiment.scenario.n_experiences = 5
+
+# Training Defaults
+Experiment.train.train_epochs = 8
+Experiment.packnet.post_prune_epochs = 2
+
+# Network Architecture
+Experiment.network.ae_architecture = @vanilla_cnn
+vanilla_cnn.in_channels = 1
+vanilla_cnn.latent_dims = 128
+vanilla_cnn.base_channels = 128

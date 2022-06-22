@@ -1,0 +1,9 @@
+include '../base/base.gin'
+include '../base/cifar100.gin'
+
+Experiment.name = "Transient_VAE"
+Experiment.network.deep_generative_type = "VAE"
+Experiment.loss.loss_objectives = [@ClassifierLoss(), @ReconstructionLoss(), @VAELoss()]
+Experiment.train.train_epochs = 50
+Experiment.packnet.use_packnet = False
+Experiment.scenario.n_experiences = 1
