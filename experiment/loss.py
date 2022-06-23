@@ -52,7 +52,7 @@ class ReconstructionLoss(LossObjective):
     name = "Reconstruction"
 
     def update(self, out: ForwardOutput, target: Tensor = None):
-        self.loss = F.binary_cross_entropy(out.x_hat, out.x)
+        self.loss = F.mse_loss(out.x_hat, out.x)
 
 class ClassifierLoss(LossObjective):
     name = "Classifier"

@@ -13,6 +13,7 @@ from experiment.plugins import PackNetPlugin
 from experiment.scenario import scenario
 from experiment.strategy import Strategy
 from experiment.task_inference import TaskInferenceStrategy, TaskReconstruction, UseTaskOracle
+from network.mlp import MPLRectangularClassifierHead
 from network.trait import AutoEncoder, Classifier, Decoder, Encoder, VariationalAutoEncoder
 from torch import nn
 from network.architectures import *
@@ -27,6 +28,8 @@ gin.external_configurable(VAELoss)
 gin.external_configurable(vanilla_cnn)
 gin.external_configurable(wide_residual_network)
 gin.external_configurable(residual_network)
+gin.external_configurable(mlp_network)
+gin.external_configurable(rectangular_network)
 
 # Setup configured functions
 scenario = gin.configurable(scenario, "Experiment")
@@ -79,19 +82,22 @@ class Experiment(BaseExperiment):
         )
         return network
 
+    # @gin.configurable("classifier_head", "Experiment")
+    # def make_classifier_head(self, latent_dims, width: int) -> nn.Module:
+    #     return ClassifierHead(self.network.latent_dim, self.network.num_classes, width)
+
     @gin.configurable("network", "Experiment")
     def make_network(self,
         deep_generative_type: t.Literal["AE", "VAE"],
         ae_architecture: t.Callable[[t.Any], AEArchitecture]) -> nn.Module:
 
-        ae_architecture: AEArchitecture = ae_architecture(vae=deep_generative_type=="VAE")
-        classifier = ClassifierHead(ae_architecture.latent_dims, self.n_classes, 1024)
+        ae_architecture: AEArchitecture = ae_architecture(self.n_classes, vae=deep_generative_type=="VAE")
         
         if deep_generative_type == "AE":
-            return self.setup_packnet(AutoEncoder(ae_architecture.encoder, ae_architecture.decoder, classifier))
+            return self.setup_packnet(AutoEncoder(ae_architecture.encoder, ae_architecture.decoder, ae_architecture.head))
         elif deep_generative_type == "VAE":
             bottleneck = VAEBottleneck(ae_architecture.latent_dims*2, ae_architecture.latent_dims)
-            return self.setup_packnet(VariationalAutoEncoder(ae_architecture.encoder, bottleneck, ae_architecture.decoder, classifier))
+            return self.setup_packnet(VariationalAutoEncoder(ae_architecture.encoder, bottleneck, ae_architecture.decoder, ae_architecture.head))
         else:
             return NotImplemented
 

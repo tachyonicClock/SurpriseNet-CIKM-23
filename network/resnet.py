@@ -147,7 +147,7 @@ class ResNet18Dec(Decoder):
         x = self.layer2(x)
         x = self.layer1(x)
         x = torch.sigmoid(self.conv1(x))
-        x = x.view(x.size(0), 3, 32, 32)
+        x = x.view(x.size(0), -1, 32, 32)
         return x
 
     def decode(self, embedding: Tensor) -> Tensor:

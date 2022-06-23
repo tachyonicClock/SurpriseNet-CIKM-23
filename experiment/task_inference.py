@@ -108,9 +108,9 @@ class TaskReconstruction(TaskInferenceStrategy):
         return best_out
 
 def bce_task_inference_loss(input: Tensor, target: Tensor) -> Tensor:
-    bce: Tensor = F.binary_cross_entropy(input, target, reduction="none")
+    # mse: Tensor = F.mse_loss(input, target, reduction="none")
     # Mean each 
-    return torch.mean(bce, dim=(1,2,3))
+    return F.mse_loss(input, target)
 
 
 # TODO this is not the final sampling logic and needs work. We should

@@ -23,3 +23,5 @@ Experiment.packnet.prune_proportion = 0.5
 Experiment.packnet.post_prune_epochs = 2
 Experiment.packnet.task_inference_strategy = @Experiment.task_inference.reconstruction
 
+Experiment.image_data = True
+

@@ -45,11 +45,12 @@ class BaseExperiment(SupervisedPlugin):
     objective: MultipleObjectiveLoss
     plugins: List[BasePlugin]
 
-    def __init__(self, name:str, experiment_dir: str) -> None:
+    def __init__(self, name:str, experiment_dir: str, image_data: bool) -> None:
         super().__init__()
 
         self.name = name
         self.experiment_dir = experiment_dir
+        self.image_data = image_data
         self.label = f"{max(self._get_log_numbers())+1:04d}_{self.name}"
         self.plugins = []
 
@@ -105,9 +106,9 @@ class BaseExperiment(SupervisedPlugin):
     def make_evaluator(self, loggers, num_classes) -> EvaluationPlugin:
         """Overload to define the evaluation plugin"""
         plugins = []
-        if isinstance(self.network, AutoEncoder):
+        if isinstance(self.network, AutoEncoder) and self.image_data:
             plugins.append(GenerateReconstruction(self.scenario, 2, 1))
-        if isinstance(self.network, Samplable):
+        if isinstance(self.network, Samplable) and self.image_data:
             plugins.append(GenerateSamples(5, 4, rows_are_experiences=isinstance(self.network, ConditionedSample)))
 
         if isinstance(self.network, InferTask):
