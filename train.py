@@ -1,6 +1,6 @@
 from difflib import context_diff
+import json
 import os
-import gin
 import typing as t
 import click
 
@@ -8,6 +8,7 @@ import numpy as np
 import torch
 from experiment.experiment import BaseExperiment
 import avalanche as cl
+from config.config import ExperimentConfiguration
 from experiment.loss import LossObjective, MultipleObjectiveLoss, ReconstructionLoss, ClassifierLoss, VAELoss
 from experiment.plugins import PackNetPlugin
 from experiment.scenario import scenario
@@ -21,23 +22,22 @@ import network.module.packnet as pn
 from network.vanilla_cnn import ClassifierHead, VAEBottleneck
 
 # Make loss parts configurable
-gin.external_configurable(ReconstructionLoss)
-gin.external_configurable(ClassifierLoss)
-gin.external_configurable(VAELoss)
+# gin.external_configurable(ReconstructionLoss)
+# gin.external_configurable(ClassifierLoss)
+# gin.external_configurable(VAELoss)
 
-gin.external_configurable(vanilla_cnn)
-gin.external_configurable(wide_residual_network)
-gin.external_configurable(residual_network)
-gin.external_configurable(mlp_network)
-gin.external_configurable(rectangular_network)
+# gin.external_configurable(vanilla_cnn)
+# gin.external_configurable(wide_residual_network)
+# gin.external_configurable(residual_network)
+# gin.external_configurable(mlp_network)
+# gin.external_configurable(rectangular_network)
 
 # Setup configured functions
-scenario = gin.configurable(scenario, "Experiment")
+# scenario = gin.configurable(scenario, "Experiment")
 
 
 random_search_hp: t.Dict[str, float] = dict()
 
-@gin.configurable()
 def uniform_rand(variable_name, var_range: t.Tuple[int, int], is_int=False) -> float:
     value = np.random.uniform(var_range[0], var_range[1])
     if is_int:
@@ -45,105 +45,113 @@ def uniform_rand(variable_name, var_range: t.Tuple[int, int], is_int=False) -> f
     random_search_hp[variable_name] = value
     return value
 
-@gin.configurable
 class Experiment(BaseExperiment):
 
 
     def make_scenario(self) -> cl.benchmarks.NCScenario:
         """Create a scenario from the config"""
-        return scenario()
+        return scenario(
+            self.cfg.dataset_name,
+            self.cfg.dataset_root,
+            self.cfg.n_experiences,
+            self.cfg.fixed_class_order)
 
-    @gin.configurable("task_oracle", "Experiment.task_inference")
-    def task_oracle(self) -> TaskInferenceStrategy:
-        return UseTaskOracle(self)
+    def make_task_inference_strategy(self) -> TaskInferenceStrategy:
+        if self.cfg.task_inference_strategy == "task_oracle":
+            return UseTaskOracle(self)
+        elif self.cfg.task_inference_strategy == "task_reconstruction_loss":
+            return TaskReconstruction(self)
+        else:
+            raise NotImplementedError("Unknown task inference strategy")
 
-    @gin.configurable("reconstruction", "Experiment.task_inference")
-    def task_reconstruction(self) -> TaskInferenceStrategy:
-        return TaskReconstruction(self)
+    def setup_packnet(self, network: nn.Module) -> nn.Module:
+        """Setup packnet"""
 
-    @gin.configurable("packnet", "Experiment")
-    def setup_packnet(self, 
-            network: nn.Module,
-            use_packnet: bool = False, 
-            prune_proportion: float = 0.5, 
-            post_prune_epochs: int = 1,
-            task_inference_strategy: t.Callable[[BaseExperiment],TaskInferenceStrategy] = task_oracle
-            ) -> nn.Module:
-
-        if not use_packnet:
+        if not self.cfg.use_packnet:
             return network
 
+        # Wrap network in packnet
         if isinstance(network, VariationalAutoEncoder):
-            network = pn.PackNetVariationalAutoEncoder(network, task_inference_strategy(self))
+            network = pn.PackNetVariationalAutoEncoder(
+                network,
+                self.make_task_inference_strategy()
+            )
         elif isinstance(network, AutoEncoder):
-            network = pn.PackNetAutoEncoder(network, task_inference_strategy(self))
+            network = pn.PackNetAutoEncoder(
+                network,
+                self.make_task_inference_strategy()
+            )
+
         self.plugins.append(
-            PackNetPlugin(network, self, prune_proportion, post_prune_epochs)
+            PackNetPlugin(network, self, self.cfg.prune_proportion, self.cfg.retrain_epochs)
         )
         return network
 
-    # @gin.configurable("classifier_head", "Experiment")
     # def make_classifier_head(self, latent_dims, width: int) -> nn.Module:
     #     return ClassifierHead(self.network.latent_dim, self.network.num_classes, width)
 
-    @gin.configurable("network", "Experiment")
-    def make_network(self,
-        deep_generative_type: t.Literal["AE", "VAE"],
-        ae_architecture: t.Callable[[t.Any], AEArchitecture]) -> nn.Module:
+    def make_network(self) -> nn.Module:
+        architecture = self.cfg.network_architecture
+        is_vae = self.cfg.deep_generative_type == "VAE"
 
-        ae_architecture: AEArchitecture = ae_architecture(self.n_classes, vae=deep_generative_type=="VAE")
+        if architecture == "vanilla_cnn":
+            assert self.cfg.vanilla_cnn_config is not None, \
+                "Vanilla CNN config must be provided when using vanilla CNN"
+            vanilla_cnn_config = self.cfg.vanilla_cnn_config
+            network = vanilla_cnn(
+                self.n_classes,
+                self.cfg.input_channel_size, 
+                self.cfg.latent_dims,
+                vanilla_cnn_config.base_channels,
+                is_vae)
+            return self.setup_packnet(network)
         
-        if deep_generative_type == "AE":
-            return self.setup_packnet(AutoEncoder(ae_architecture.encoder, ae_architecture.decoder, ae_architecture.head))
-        elif deep_generative_type == "VAE":
-            bottleneck = VAEBottleneck(ae_architecture.latent_dims*2, ae_architecture.latent_dims)
-            return self.setup_packnet(VariationalAutoEncoder(ae_architecture.encoder, bottleneck, ae_architecture.decoder, ae_architecture.head))
-        else:
-            return NotImplemented
 
-    @gin.configurable("loss", "Experiment")
-    def make_objective(self, loss_objectives: t.Sequence[LossObjective]) -> MultipleObjectiveLoss:
+    def make_objective(self) -> MultipleObjectiveLoss:
+        """Create a loss objective from the config"""
         loss = MultipleObjectiveLoss()
-        for objective in loss_objectives:
-            loss.add(objective)
+        if self.cfg.use_classifier_loss:
+            loss.add(ClassifierLoss(self.cfg.classifier_loss_weight))
+        if self.cfg.use_reconstruction_loss:
+            loss.add(ReconstructionLoss(self.cfg.reconstruction_loss_weight))
+        if self.cfg.use_vae_loss:
+            loss.add(VAELoss(self.cfg.vae_loss_weight))
         return loss
 
-    @gin.configurable("optimizer", "Experiment", denylist=["parameters"])
-    def make_optimizer(self, parameters, lr) -> torch.optim.Optimizer:
-        optimizer = torch.optim.Adam(parameters, lr)
+    def make_optimizer(self, parameters) -> torch.optim.Optimizer:
+        optimizer = torch.optim.Adam(parameters, self.cfg.learning_rate)
         return optimizer
 
-    @gin.configurable("train", "Experiment")
-    def make_strategy(self,
-        device,
-        train_mb_size,
-        eval_mb_size,
-        eval_every,
-        train_epochs) -> Strategy:
+    def make_strategy(self) -> Strategy:
+        cfg = self.cfg
+
+        # Ensure that total epochs takes the retrain_epochs into account
+        train_epochs = cfg.total_task_epochs - cfg.retrain_epochs \
+            if cfg.use_packnet else cfg.total_task_epochs
+
         return Strategy(
             self.network,
             self.optimizer,
             criterion=self.make_criterion(),
-            device=device,
-            train_mb_size=train_mb_size,
+            device=cfg.device,
+            train_mb_size=cfg.batch_size,
             train_epochs=train_epochs,
-            eval_mb_size=eval_mb_size,
-            eval_every=eval_every,
+            eval_mb_size=cfg.batch_size,
+            eval_every=-1,
             plugins=[self, *self.plugins],
             evaluator=self.evaluator
         )
 
     def dump_config(self):
-        with open(f"{self.logdir}/config.gin", "w") as f:
-            f.write(gin.operative_config_str())
+        with open(f"{self.logdir}/config.json", "w") as f:
+            f.writelines(self.cfg.toJSON())
+        self.logger.writer.add_text("Config", f"<pre>{self.cfg.toJSON()}</pre>")
 
-        self.logger.writer.add_text("Config", gin.markdown(gin.operative_config_str()))
-
-    def save_checkpoint(self, checkpoint_name: str):
-        torch.save({
-            "network": self.network,
-            "gin_config": gin.operative_config_str()
-        }, f"{self.logdir}/{checkpoint_name}.pt")
+    # def save_checkpoint(self, checkpoint_name: str):
+    #     torch.save({
+    #         "network": self.network,
+    #         "gin_config": gin.operative_config_str()
+    #     }, f"{self.logdir}/{checkpoint_name}.pt")
 
     # def load_checkpoint(self, path: str):
     #     print(f"Attempting to load checkpoint {path}")
@@ -154,24 +162,40 @@ class Experiment(BaseExperiment):
     #     self.save_checkpoint(f"experience_{self.clock.train_exp_counter:04d}")
 
 @click.command()
-@click.option("--n-runs", default=1, help="Run the configuration n times")
-@click.argument("experiment_name", nargs=1)
-@click.argument("gin_configs", nargs=-1, type=click.File())
-def main(experiment_name: str, gin_configs: t.List[str], n_runs):
-    for _ in range(n_runs):
-        gin.clear_config(True)
+@click.argument("dataset", nargs=1)
+@click.argument("architecture", nargs=1)
+@click.argument("variant", nargs=1)
+def main(dataset, architecture, variant):
+    cfg = ExperimentConfiguration()
+    cfg.name = f"{dataset}_{architecture}_{variant}"
 
-        # Apply the configuration files in order
-        for gin_config in gin_configs:
-            print(f"Applying config: {gin_config}")
-            gin.parse_config(gin_config)
+    if dataset == "fmnist":
+        cfg = cfg.configure_fmnist()
+    else:
+        raise NotImplementedError(f"Unknown dataset {dataset}")
+    
+    if architecture == "ae":
+        cfg = cfg.configure_ae()
+    else:
+        raise NotImplementedError(f"Unknown architecture {architecture}")
 
-        # Add the experiment name to the configuration
-        gin.bind_parameter("Experiment.name", experiment_name)
+    if variant == "transient":
+        cfg = cfg.configure_transient()
+    elif variant == "finetuning":
+        cfg.use_packnet = False
+    elif variant == "task_oracle":
+        cfg.configure_packnet()
+    elif variant == "task_inference":
+        cfg.configure_packnet()
+        cfg.task_inference_strategy = "task_reconstruction_loss"
+    else:
+        raise NotImplementedError(f"Unknown variant {variant}")
 
-        experiment = Experiment()
-        experiment.add_hparams(random_search_hp)
-        experiment.train()
+    experiment = Experiment(cfg)
+    experiment.train()
+
+        # Get all configurable parameters
+
 
 if __name__ == '__main__':
     main()

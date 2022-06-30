@@ -112,13 +112,10 @@ class VanillaCNNDecoder(Decoder):
 
 class ClassifierHead(Classifier):
 
-    def __init__(self, latent_dims: int, class_number: int, width: int) -> None:
+    def __init__(self, latent_dims: int, class_number: int) -> None:
         super().__init__()
-
         self.net = nn.Sequential(
-            nn.Dropout(0.5),
             nn.Linear(latent_dims, class_number),
-            nn.ReLU(),
         )
 
     def classify(self, embedding: Tensor) -> Tensor:

@@ -153,4 +153,4 @@ def scenario(
             fixed_class_order=fixed_class_order
         )
     else:
-        return NotImplementedError("Dataset not implemented")
+        raise NotImplementedError("Dataset not implemented")

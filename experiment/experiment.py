@@ -1,6 +1,5 @@
 import json
-from config import get_logger
-log = get_logger(__name__)
+from config.config import ExperimentConfiguration
 
 import os
 from dataclasses import dataclass
@@ -44,24 +43,23 @@ class BaseExperiment(SupervisedPlugin):
     evaluator: EvaluationPlugin
     objective: MultipleObjectiveLoss
     plugins: List[BasePlugin]
+    cfg: ExperimentConfiguration
 
-    def __init__(self, name:str, experiment_dir: str, image_data: bool) -> None:
+    def __init__(self, cfg: ExperimentConfiguration) -> None:
         super().__init__()
 
-        self.name = name
-        self.experiment_dir = experiment_dir
-        self.image_data = image_data
-        self.label = f"{max(self._get_log_numbers())+1:04d}_{self.name}"
+        self.cfg = cfg
+        self.label = f"{max(self._get_log_numbers())+1:04d}_{self.cfg.name}"
         self.plugins = []
 
         setproctitle.setproctitle(self.label)
 
         # Create a new logger with sequential names
-        self.logdir = experiment_dir+"/"+self.label
+        self.logdir = self.cfg.tensorboard_dir+"/"+self.label
         self.logger = av.logging.TensorboardLogger(self.logdir)
 
-        self.objective = self.make_objective()
         self.scenario = self.make_scenario()
+        self.objective = self.make_objective()
         self.network = self.make_network()
         self.evaluator = self.make_evaluator(
             [self.logger], self.scenario.n_classes)
@@ -73,9 +71,9 @@ class BaseExperiment(SupervisedPlugin):
         self.plugins.append(plugin)
 
     def _experience_log(self, exp: av.benchmarks.NCExperience):
-        log.info(f"Start of experience: {exp.current_experience}")
-        log.info(f"Current Classes:     {exp.classes_in_this_experience}")
-        log.info(f"Experience size:     {len(exp.dataset)}")
+        print(f"Start of experience: {exp.current_experience}")
+        print(f"Current Classes:     {exp.classes_in_this_experience}")
+        print(f"Experience size:     {len(exp.dataset)}")
 
     def train_experience(self, experience: av.benchmarks.NCExperience):
         self.strategy.train(experience)
@@ -106,9 +104,10 @@ class BaseExperiment(SupervisedPlugin):
     def make_evaluator(self, loggers, num_classes) -> EvaluationPlugin:
         """Overload to define the evaluation plugin"""
         plugins = []
-        if isinstance(self.network, AutoEncoder) and self.image_data:
+        is_images = self.cfg.is_image_data
+        if isinstance(self.network, AutoEncoder) and is_images:
             plugins.append(GenerateReconstruction(self.scenario, 2, 1))
-        if isinstance(self.network, Samplable) and self.image_data:
+        if isinstance(self.network, Samplable) and is_images:
             plugins.append(GenerateSamples(5, 4, rows_are_experiences=isinstance(self.network, ConditionedSample)))
 
         if isinstance(self.network, InferTask):
@@ -138,14 +137,14 @@ class BaseExperiment(SupervisedPlugin):
         log.warn("NOT DUMPING CONFIG ANYWHERE!!")
 
     def preflight(self):
-        log.info(f"Network: {type(self.network)}")
-        log.info(f"Traits:")
+        print(f"Network: {type(self.network)}")
+        print(f"Traits:")
         for trait in NETWORK_TRAITS:
             if isinstance(self.network, trait):
-                log.info(f" > Has the `{trait.__name__}` trait")
-        log.info(f"Objectives:")
+                print(f" > Has the `{trait.__name__}` trait")
+        print(f"Objectives:")
         for name, _ in self.objective:
-            log.info(f" > Has the `{name}` objective")
+            print(f" > Has the `{name}` objective")
 
         self.dump_config()
 
@@ -204,7 +203,7 @@ class BaseExperiment(SupervisedPlugin):
         return self.strategy.clock
 
     def _get_log_numbers(self):
-        for filename in os.listdir(self.experiment_dir):
+        for filename in os.listdir(self.cfg.tensorboard_dir):
             name, _ = os.path.splitext(filename)
             yield int(name[:4])
         yield 0

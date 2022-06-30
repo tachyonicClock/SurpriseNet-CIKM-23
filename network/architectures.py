@@ -3,9 +3,9 @@ import typing as t
 from network.mlp import MLPDecoder, MLPEncoder, UniformMLPDecoder, UniformMLPEncoder, MPLRectangularClassifierHead
 
 from network.resnet import ResNet18Dec, ResNet18Enc
-from .trait import Classifier, Decoder, Encoder
+from .trait import AutoEncoder, Classifier, Decoder, Encoder, VariationalAutoEncoder
 from .wrn import WideResNetDecoder, WideResNetEncoder
-from .vanilla_cnn import ClassifierHead, VanillaCNNDecoder, VanillaCNNEncoder
+from .vanilla_cnn import ClassifierHead, VAEBottleneck, VanillaCNNDecoder, VanillaCNNEncoder
 
 
 @dataclass
@@ -16,17 +16,24 @@ class AEArchitecture():
     latent_dims: int
 
 def vanilla_cnn(
+        n_classes: int,
         in_channels: int,
         latent_dims: int,
         base_channels: int,
-        vae: bool = False) -> AEArchitecture:
+        is_vae: bool = False) -> t.Union[AutoEncoder, VariationalAutoEncoder]:
     """Create a vanilla CNNs for encoding and decoding"""
-    encoder_output_dims = latent_dims if not vae else latent_dims*2
-    decoder_input_dims = latent_dims
+    # VAE uses VAEBottleneck as the bottleneck so we need more channels here
+    encoder_output_dims = latent_dims*2 if is_vae else latent_dims
 
     encoder = VanillaCNNEncoder(in_channels, base_channels, encoder_output_dims)
-    decoder = VanillaCNNDecoder(in_channels, base_channels, decoder_input_dims)
-    return AEArchitecture(encoder, decoder, latent_dims)
+    decoder = VanillaCNNDecoder(in_channels, base_channels, latent_dims)
+    head = ClassifierHead(latent_dims, n_classes)
+
+    if is_vae:
+        bottleneck = VAEBottleneck(encoder_output_dims, latent_dims)
+        return VariationalAutoEncoder(encoder, bottleneck, decoder, head)
+    else:
+        return AutoEncoder(encoder, decoder, head)
 
 
 def residual_network(
@@ -39,7 +46,8 @@ def residual_network(
 
     encoder = ResNet18Enc(z_dim=encoder_output_dims, nc=in_channels)
     decoder = ResNet18Dec(z_dim=decoder_input_dims, nc=in_channels)
-    return AEArchitecture(encoder, decoder, latent_dims)
+    head = ClassifierHead(latent_dims, n_classes)
+    return AEArchitecture(encoder, decoder, head, latent_dims)
 
 def mlp_network(
         n_classes: int,

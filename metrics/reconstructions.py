@@ -9,15 +9,12 @@ from avalanche.benchmarks.scenarios.new_classes.nc_scenario import NCExperience
 from avalanche.evaluation import PluginMetric
 from avalanche.evaluation.metric_definitions import MetricValue
 from matplotlib.axes import Axes
-from config import get_logger
 from experiment.strategy import ForwardOutput, Strategy
 from functional import figure_to_image, MRAE
 from network.trait import Classifier, Encoder, Decoder, PackNet, Samplable, AutoEncoder
 from torchvision.transforms.functional import to_pil_image 
 
 LabeledExample = typing.Tuple[int, torch.Tensor]
-log = get_logger(__name__)
-
 
 def hide_axis(axes: Axes):
     # Hide axis
@@ -225,4 +222,4 @@ class GenerateSamples(PluginMetric):
         self.img_size = img_size
         self.rows_are_experiences = rows_are_experiences
 
-        log.info(f"Diplay rows as experiences? {self.rows_are_experiences}")
+        print(f"Diplay rows as experiences? {self.rows_are_experiences}")

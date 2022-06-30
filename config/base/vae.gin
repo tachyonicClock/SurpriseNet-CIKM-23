@@ -1,2 +1,0 @@
-Experiment.network.deep_generative_type = "VAE"
-Experiment.loss.loss_objectives = [@ClassifierLoss(), @ReconstructionLoss(), @VAELoss()]
