@@ -155,12 +155,19 @@ class Experiment(BaseExperiment):
 
 @click.command()
 @click.option("--n-runs", default=1, help="Run the configuration n times")
-@click.argument("gin_config")
-def main(gin_config, n_runs):
+@click.argument("experiment_name", nargs=1)
+@click.argument("gin_configs", nargs=-1, type=click.File())
+def main(experiment_name: str, gin_configs: t.List[str], n_runs):
     for _ in range(n_runs):
         gin.clear_config(True)
-        gin.add_config_file_search_path(os.path.dirname(gin_config))
-        gin.parse_config_file(gin_config)
+
+        # Apply the configuration files in order
+        for gin_config in gin_configs:
+            print(f"Applying config: {gin_config}")
+            gin.parse_config(gin_config)
+
+        # Add the experiment name to the configuration
+        gin.bind_parameter("Experiment.name", experiment_name)
 
         experiment = Experiment()
         experiment.add_hparams(random_search_hp)

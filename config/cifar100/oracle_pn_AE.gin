@@ -1,5 +1,0 @@
-include '../base/base.gin'
-include '../base/cifar100.gin'
-
-Experiment.name = "oracle_packnet"
-Experiment.packnet.task_inference_strategy = @Experiment.task_inference.task_oracle

@@ -1,9 +1,0 @@
-include '../base/base.gin'
-include '../base/cifar100.gin'
-
-latent_dim/uniform_rand.var_range = (64, 1024)
-latent_dim/uniform_rand.is_int = True
-
-Experiment.name = "recon_packnet"
-Experiment.packnet.task_inference_strategy = @Experiment.task_inference.reconstruction
-residual_network.latent_dims = 128

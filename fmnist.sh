@@ -1,0 +1,1 @@
+python train.py config/fmnist.gin config/ae.gin config/transcient

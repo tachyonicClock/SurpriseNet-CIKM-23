@@ -67,7 +67,8 @@ class UniformMLPEncoder(Encoder):
         in_dimensions: int,
         width: int,
         depth: int,
-        latent_dims: int
+        latent_dims: int,
+        dropout: float = 0.5
     ):
         super().__init__()
         assert depth >= 4, "At least four layers are needed"
@@ -86,19 +87,23 @@ class UniformMLPEncoder(Encoder):
             nn.Flatten(),
             nn.Linear(in_dimensions, outer_input),
             nn.ReLU(),
+            nn.Dropout(dropout),
             nn.Linear(outer_input, width),
+            nn.Dropout(dropout),
             nn.ReLU() 
         )
 
         self.inner_layers = nn.Sequential(
             *[nn.Sequential(
-                    nn.Linear(width, width), 
+                    nn.Linear(width, width),
+                    nn.Dropout(dropout),
                     nn.ReLU()
             ) for _ in range(depth-3)]
         )
 
         self.outer_layers_latent = nn.Sequential(
             nn.Linear(width, outer_output),
+            nn.Dropout(dropout),
             nn.ReLU(),
             nn.Linear(outer_output, latent_dims),
         )
@@ -122,7 +127,8 @@ class UniformMLPDecoder(Decoder):
         out_dimensions: int,
         width: int,
         depth: int,
-        latent_dims: int
+        latent_dims: int,
+        dropout: float = 0.5
     ):
         super().__init__()
         assert depth >= 4, "At least four layers are needed"
@@ -140,19 +146,23 @@ class UniformMLPDecoder(Decoder):
         self.outer_layers_latent = nn.Sequential(
             nn.Linear(latent_dims, outer_output),
             nn.ReLU(),
+            nn.Dropout(dropout),
             nn.Linear(outer_output, width),
+            nn.Dropout(dropout),
             nn.ReLU()
         )
 
         self.inner_layers = nn.Sequential(
             *[nn.Sequential(
-                    nn.Linear(width, width), 
+                    nn.Linear(width, width),
+                    nn.Dropout(dropout),
                     nn.ReLU()
             ) for _ in range(depth-3)]
         )
 
         self.outer_layers = nn.Sequential(
             nn.Linear(width, outer_input),
+            nn.Dropout(dropout),
             nn.ReLU(),
             nn.Linear(outer_input, out_dimensions),
         )

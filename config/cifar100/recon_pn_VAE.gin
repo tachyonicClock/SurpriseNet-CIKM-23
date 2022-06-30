@@ -1,8 +1,0 @@
-include '../base/base.gin'
-include '../base/cifar100.gin'
-
-Experiment.name = "recon_packnet_VAE"
-Experiment.packnet.task_inference_strategy = @Experiment.task_inference.reconstruction
-
-Experiment.network.deep_generative_type = "VAE"
-Experiment.loss.loss_objectives = [@ClassifierLoss(), @ReconstructionLoss(), @VAELoss()]
