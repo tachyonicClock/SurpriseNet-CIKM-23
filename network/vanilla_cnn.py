@@ -115,7 +115,10 @@ class ClassifierHead(Classifier):
     def __init__(self, latent_dims: int, class_number: int) -> None:
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(latent_dims, class_number),
+            nn.Linear(latent_dims, latent_dims*4),
+            nn.ReLU(),
+            nn.Dropout(),
+            nn.Linear(latent_dims*4, class_number),
         )
 
     def classify(self, embedding: Tensor) -> Tensor:

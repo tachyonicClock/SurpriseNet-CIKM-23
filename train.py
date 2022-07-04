@@ -176,6 +176,8 @@ def main(dataset, architecture, variant):
     
     if architecture == "ae":
         cfg = cfg.configure_ae()
+    elif architecture == "vae":
+        cfg = cfg.configure_vae()
     else:
         raise NotImplementedError(f"Unknown architecture {architecture}")
 
