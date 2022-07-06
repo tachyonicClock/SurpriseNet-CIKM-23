@@ -5,7 +5,6 @@ class VanillaCNNConfig():
     base_channels: int
     """The number of channels in the base convolutional layer"""
 
-
 class ExperimentConfiguration():
     name: str
     """Name of the experiment"""
@@ -51,7 +50,7 @@ class ExperimentConfiguration():
     """Latent dimensions of the VAE/AE"""
     deep_generative_type: t.Literal["AE", "VAE"]
     """Type of deep generative model to use"""
-    network_architecture: t.Literal["vanilla_cnn"]
+    network_architecture: t.Literal["vanilla_cnn", "residual_network"]
     """Type of network architecture to use"""
     vanilla_cnn_config: t.Optional[VanillaCNNConfig]
     """
@@ -95,13 +94,19 @@ class ExperimentConfiguration():
 
     def configure_vanilla_cnn(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment to use a vanilla CNN"""
-        self.latent_dims = 128
+        self.latent_dims = 64
         self.network_architecture = "vanilla_cnn"
         self.vanilla_cnn_config = VanillaCNNConfig()
         self.vanilla_cnn_config.base_channels = 128
         return self
 
-    def configure_fmnist(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
+    def use_resnet(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
+        """Configure the experiment to use a ResNet CNN"""
+        self.network_architecture = "residual_network"
+        self.latent_dims = 64
+        return self
+
+    def fmnist(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment for the Fashion-MNIST dataset"""
         self.tensorboard_dir = "experiment_logs/fmnist"
         self.dataset_name = "FMNIST"
@@ -111,9 +116,23 @@ class ExperimentConfiguration():
         self.is_image_data = True
         self.n_experiences = 5
 
-        self.total_task_epochs = 10
-        self.retrain_epochs = 2
+        self.total_task_epochs = 20
+        self.retrain_epochs = 5
         return self.configure_vanilla_cnn()
+
+    def cifar10(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
+        """Configure the experiment for the CIFAR10 dataset"""
+        self.tensorboard_dir = "experiment_logs/cifar10"
+        self.dataset_name = "CIFAR10"
+        self.dataset_root = "/Scratch/al183/datasets"
+        self.input_channel_size = 3
+        self.fixed_class_order = True
+        self.is_image_data = True
+        self.n_experiences = 5
+
+        self.total_task_epochs = 50
+        self.retrain_epochs = 10
+        return self.use_resnet()
 
     def configure_ae(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment to use an AutoEncoder"""
@@ -133,7 +152,7 @@ class ExperimentConfiguration():
         self.use_vae_loss = True
         self.classifier_loss_weight = 1.0
         self.reconstruction_loss_weight = 1.0
-        self.vae_loss_weight = 0.1
+        self.vae_loss_weight = 0.001
         return self
 
     def configure_packnet(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':

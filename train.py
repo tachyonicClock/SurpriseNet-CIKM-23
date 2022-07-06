@@ -105,6 +105,13 @@ class Experiment(BaseExperiment):
                 vanilla_cnn_config.base_channels,
                 is_vae)
             return self.setup_packnet(network)
+        elif architecture == "residual_network":
+            network = residual_network(
+                self.n_classes,
+                self.cfg.input_channel_size, 
+                self.cfg.latent_dims,
+                is_vae)
+            return self.setup_packnet(network)
         
 
     def make_objective(self) -> MultipleObjectiveLoss:
