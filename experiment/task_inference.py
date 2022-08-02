@@ -67,9 +67,9 @@ class TaskReconstruction(TaskInferenceStrategy):
         self.experiment = experiment
         self.n_experiences = experiment.n_experiences
 
-        experiment.add_plugin(
-            TaskInferenceMetrics(experiment.logdir)
-        )
+        # experiment.add_plugin(
+        #     TaskInferenceMetrics(experiment.logdir)
+        # )
 
     def forward_with_task_inference(self, 
             forward_func: t.Callable[[Tensor], ForwardOutput],

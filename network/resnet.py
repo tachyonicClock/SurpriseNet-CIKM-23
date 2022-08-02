@@ -82,11 +82,12 @@ class BasicBlockDec(nn.Module):
 
 class ResNet18Enc(Encoder):
 
-    def __init__(self, num_Blocks=[2,2,2,2], z_dim=10, nc=3):
+    def __init__(self, num_Blocks=[2,2,2,2], z_dim=10, shape: tuple = (3, 32, 32)):
         super().__init__()
         self.in_planes = 64
         self.z_dim = z_dim
-        self.conv1 = nn.Conv2d(nc, 64, kernel_size=3, stride=2, padding=1, bias=False)
+        self.shape = shape
+        self.conv1 = nn.Conv2d(shape[0], 64, kernel_size=3, stride=2, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.layer1 = self._make_layer(BasicBlockEnc, 64, num_Blocks[0], stride=1)
         self.layer2 = self._make_layer(BasicBlockEnc, 128, num_Blocks[1], stride=2)
@@ -118,17 +119,21 @@ class ResNet18Enc(Encoder):
 
 class ResNet18Dec(Decoder):
 
-    def __init__(self, num_Blocks=[2,2,2,2], z_dim=10, nc=3):
+    def __init__(self, num_Blocks=[2,2,2,2], z_dim=10, shape: tuple = (3, 32, 32)):
         super().__init__()
         self.in_planes = 512
-
+        self.shape = shape
         self.linear = nn.Linear(z_dim, 512)
+
+        # Only works for square images
+        assert shape[1] == shape[2], "only works for square images"
+        self.size = shape[1]
 
         self.layer4 = self._make_layer(BasicBlockDec, 256, num_Blocks[3], stride=2)
         self.layer3 = self._make_layer(BasicBlockDec, 128, num_Blocks[2], stride=2)
         self.layer2 = self._make_layer(BasicBlockDec, 64, num_Blocks[1], stride=2)
         self.layer1 = self._make_layer(BasicBlockDec, 64, num_Blocks[0], stride=1)
-        self.conv1 = ResizeConv2d(64, nc, kernel_size=3, scale_factor=2)
+        self.conv1 = ResizeConv2d(64, shape[0], kernel_size=3, scale_factor=2)
 
     def _make_layer(self, BasicBlockDec, planes, num_Blocks, stride):
         strides = [stride] + [1]*(num_Blocks-1)
@@ -141,13 +146,13 @@ class ResNet18Dec(Decoder):
     def forward(self, z):
         x = self.linear(z)
         x = x.view(z.size(0), 512, 1, 1)
-        x = F.interpolate(x, scale_factor=2)
+        x = F.interpolate(x, scale_factor=self.size//16)
         x = self.layer4(x)
         x = self.layer3(x)
         x = self.layer2(x)
         x = self.layer1(x)
         x = torch.sigmoid(self.conv1(x))
-        x = x.view(x.size(0), -1, 32, 32)
+        x = x.view(x.size(0), *self.shape)
         return x
 
     def decode(self, embedding: Tensor) -> Tensor:

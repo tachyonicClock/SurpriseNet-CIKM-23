@@ -38,14 +38,14 @@ def vanilla_cnn(
 
 def residual_network(
         n_classes: int,
-        in_channels: int,
         latent_dims: int = 128,
+        image_shape: t.Tuple[int, int, int] = (3, 32, 32),
         is_vae: bool = False) -> AEArchitecture:
     encoder_output_dims = latent_dims if not is_vae else latent_dims*2
     decoder_input_dims = latent_dims
 
-    encoder = ResNet18Enc(z_dim=encoder_output_dims, nc=in_channels)
-    decoder = ResNet18Dec(z_dim=decoder_input_dims, nc=in_channels)
+    encoder = ResNet18Enc(z_dim=encoder_output_dims, shape=image_shape)
+    decoder = ResNet18Dec(z_dim=decoder_input_dims, shape=image_shape)
     head = ClassifierHead(latent_dims, n_classes)
     if is_vae:
         bottleneck = VAEBottleneck(encoder_output_dims, latent_dims)

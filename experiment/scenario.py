@@ -100,14 +100,14 @@ def scenario(
 
     core50_train_transform = T.Compose(
         [
-            T.RandomCrop(32, padding=4),
+            T.RandomCrop(128, padding=4),
             T.RandomHorizontalFlip(),
             T.ToTensor()
         ]
     )
     core50_eval_transform = T.Compose(
         [
-            T.transforms.Resize((32, 32)),
+            T.transforms.Resize((128, 128)),
             T.ToTensor()
         ]
     )
@@ -140,12 +140,15 @@ def scenario(
             dataset_root=dataset_root
         )
     elif dataset == "CORe50_NC":
-        return CORe50(
-            scenario="nicv2_391",
+        core50 = CORe50(
+            scenario="nc",
+            run=0,
             train_transform=core50_train_transform,
             eval_transform=core50_eval_transform,
             dataset_root=dataset_root
         )
+        core50.n_classes = 50
+        return core50
     elif dataset == "BI_CIFAR100":
         return BI_CIFAR100(
             dataset_root=dataset_root,

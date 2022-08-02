@@ -22,8 +22,8 @@ class ExperimentConfiguration():
     """Whether to use the same class order for all runs"""
     n_experiences: int
     """Number of experiences in the scenario"""
-    input_channel_size: int
-    """The size of the input channel. 3 for RGB, 1 for grayscale"""
+    input_shape: t.Tuple[int, int, int]
+    """The dimensions of the image data"""
     is_image_data: bool
     """Whether the dataset is image data"""
 
@@ -92,7 +92,7 @@ class ExperimentConfiguration():
         self.learning_rate = 0.0001
         self.device = "cuda"
 
-    def configure_vanilla_cnn(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
+    def use_vanilla_cnn(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment to use a vanilla CNN"""
         self.latent_dims = 64
         self.network_architecture = "vanilla_cnn"
@@ -100,41 +100,72 @@ class ExperimentConfiguration():
         self.vanilla_cnn_config.base_channels = 128
         return self
 
-    def use_resnet(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
+    def use_resnet_cnn(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment to use a ResNet CNN"""
         self.network_architecture = "residual_network"
         self.latent_dims = 64
         return self
 
-    def fmnist(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
+    def use_fmnist(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment for the Fashion-MNIST dataset"""
         self.tensorboard_dir = "experiment_logs/fmnist"
         self.dataset_name = "FMNIST"
         self.dataset_root = "/Scratch/al183/datasets"
-        self.input_channel_size = 1
+        self.input_shape = (1, 32, 32)
         self.fixed_class_order = True
         self.is_image_data = True
         self.n_experiences = 5
 
         self.total_task_epochs = 20
         self.retrain_epochs = 5
-        return self.configure_vanilla_cnn()
+        return self.use_vanilla_cnn()
 
-    def cifar10(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
+    def use_cifar10(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment for the CIFAR10 dataset"""
         self.tensorboard_dir = "experiment_logs/cifar10"
         self.dataset_name = "CIFAR10"
         self.dataset_root = "/Scratch/al183/datasets"
-        self.input_channel_size = 3
+        self.input_shape = (3, 32, 32)
         self.fixed_class_order = True
         self.is_image_data = True
         self.n_experiences = 5
 
         self.total_task_epochs = 50
         self.retrain_epochs = 10
-        return self.use_resnet()
+        return self.use_resnet_cnn()
 
-    def configure_ae(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
+    def use_cifar100(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
+        """Configure the experiment for the CIFAR100 dataset"""
+        self.tensorboard_dir = "experiment_logs/cifar100"
+        self.dataset_name = "CIFAR100"
+        self.dataset_root = "/Scratch/al183/datasets"
+        self.input_shape = (3, 32, 32)
+        self.fixed_class_order = True
+        self.is_image_data = True
+        self.n_experiences = 10
+
+        self.total_task_epochs = 100
+        self.retrain_epochs = 20
+        return self.use_resnet_cnn()
+
+
+    def use_core50(self: "ExperimentConfiguration") -> 'ExperimentConfiguration':
+        """Configure the experiment for the Core50 dataset"""
+        self.tensorboard_dir = "experiment_logs/core50_nc"
+        self.dataset_name = "CORe50_NC"
+        self.dataset_root = "/Scratch/al183/datasets"
+        self.input_shape = (3, 128, 128)
+        self.fixed_class_order = True
+        self.is_image_data = True
+        self.n_experiences = 10
+
+        self.total_task_epochs = 1
+        self.retrain_epochs = 1
+        self.use_resnet_cnn()
+        return self
+
+
+    def use_auto_encoder(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment to use an AutoEncoder"""
         self.deep_generative_type = "AE"
         self.use_classifier_loss = True
@@ -144,7 +175,7 @@ class ExperimentConfiguration():
         self.reconstruction_loss_weight = 1.0
         return self
 
-    def configure_vae(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
+    def use_variational_auto_encoder(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment to use a variational AutoEncoder"""
         self.deep_generative_type = "VAE"
         self.use_classifier_loss = True
@@ -155,14 +186,14 @@ class ExperimentConfiguration():
         self.vae_loss_weight = 0.001
         return self
 
-    def configure_packnet(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
+    def enable_packnet(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment to use PackNet"""
         self.use_packnet = True
         self.prune_proportion = 0.5
         self.task_inference_strategy = "task_oracle"
         return self
 
-    def configure_transient(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
+    def use_transient_learning(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment to not do any continual learning"""
         self.use_packnet = False
         self.n_experiences = 1

@@ -100,7 +100,7 @@ class Experiment(BaseExperiment):
             vanilla_cnn_config = self.cfg.vanilla_cnn_config
             network = vanilla_cnn(
                 self.n_classes,
-                self.cfg.input_channel_size, 
+                self.cfg.input_shape[0], 
                 self.cfg.latent_dims,
                 vanilla_cnn_config.base_channels,
                 is_vae)
@@ -108,8 +108,8 @@ class Experiment(BaseExperiment):
         elif architecture == "residual_network":
             network = residual_network(
                 self.n_classes,
-                self.cfg.input_channel_size, 
                 self.cfg.latent_dims,
+                self.cfg.input_shape, 
                 is_vae)
             return self.setup_packnet(network)
         
@@ -193,9 +193,9 @@ def main(dataset, architecture, variant):
     elif variant == "finetuning":
         cfg.use_packnet = False
     elif variant == "task_oracle":
-        cfg.configure_packnet()
+        cfg.enable_packnet()
     elif variant == "task_inference":
-        cfg.configure_packnet()
+        cfg.enable_packnet()
         cfg.task_inference_strategy = "task_reconstruction_loss"
     else:
         raise NotImplementedError(f"Unknown variant {variant}")
