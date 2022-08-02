@@ -1,11 +1,6 @@
 from avalanche.core import SupervisedPlugin
-from experiment.strategy import Strategy
-from network.trait import PackNet
-import logging
 
-from .experiment import BaseExperiment
-
-log = logging.getLogger(__name__)
+from experiment.experiment import BaseExperiment
 
 class PackNetPlugin(SupervisedPlugin):
     """Plugin that implements the steps to implement PackNet"""
@@ -22,7 +17,7 @@ class PackNetPlugin(SupervisedPlugin):
         """Perform pruning"""
         self.capacity *= self.prune_proportion
 
-        log.info(f"Pruning Network, {self.capacity*100}% remaining")
+        print(f"Pruning Network, {self.capacity*100}% remaining")
         self.network.prune(self.prune_proportion)
 
         # Reset optimizer
@@ -34,7 +29,7 @@ class PackNetPlugin(SupervisedPlugin):
             strategy.training_epoch()
             strategy._after_training_epoch(**kwargs)
 
-        log.info("Pushing")
+        print("Pushing")
         self.network.push_pruned()
 
         # Reset optimizer

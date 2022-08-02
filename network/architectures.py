@@ -7,7 +7,6 @@ from .trait import AutoEncoder, Classifier, Decoder, Encoder, VariationalAutoEnc
 from .wrn import WideResNetDecoder, WideResNetEncoder
 from .vanilla_cnn import ClassifierHead, VAEBottleneck, VanillaCNNDecoder, VanillaCNNEncoder
 
-
 @dataclass
 class AEArchitecture():
     encoder: Encoder

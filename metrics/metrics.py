@@ -1,25 +1,17 @@
-
-
-import logging
 import pickle
 import typing as t
-from matplotlib import pyplot as plt
-from matplotlib.axes import Axes
-from matplotlib.figure import Figure
+
 import numpy as np
-from sympy import ones
-
-from torch import Tensor
 import torch
-from torchmetrics import ConfusionMatrix
-from avalanche.evaluation.metrics.loss import LossPluginMetric
 from avalanche.evaluation import PluginMetric
-from avalanche.evaluation.metric_definitions import Metric
-
 from avalanche.evaluation.metric_results import MetricValue
 from experiment.loss import LossObjective
 from experiment.strategy import Strategy
-from functional import figure_to_image
+from matplotlib import pyplot as plt
+from torch import Tensor
+from torchmetrics import ConfusionMatrix
+
+from .reconstructions import figure_to_image
 
 
 class _MyMetric(PluginMetric[float]):
@@ -44,8 +36,10 @@ class _MyMetric(PluginMetric[float]):
 
     def reset(self):
         pass
+
     def result(self):
         pass
+
 
 class EpochClock(_MyMetric):
 
@@ -94,7 +88,7 @@ class ExperienceIdentificationCM(_MyMetric):
         pred_exp_id = strategy.last_forward_output.pred_exp_id
         assert pred_exp_id != None, "Strategy did not output pred_exp_id"
         self.update(pred_exp_id, exp_id)
-    
+
     def after_eval(self, strategy: Strategy):
         return MetricValue(self, f"ExperienceIdentificationCM", self.result(), strategy.clock.total_iterations)
 
@@ -124,21 +118,19 @@ class ConditionalMetrics(_MyMetric):
         """P(correct_exp_id)"""
         return float(self.correct_task_id / (self.wrong_task_id + self.correct_task_id))
 
-
-    def update(self, y:Tensor, y_hat:Tensor, task_label:Tensor, task_pred:Tensor):
+    def update(self, y: Tensor, y_hat: Tensor, task_label: Tensor, task_pred: Tensor):
 
         correct_class = y_hat.eq(y)
-        correct_task  = task_pred.eq(task_label)
+        correct_task = task_pred.eq(task_label)
 
         self.correct_and_correct_task_id += \
-             (correct_class * correct_task).count_nonzero()
+            (correct_class * correct_task).count_nonzero()
 
         self.correct_and_wrong_task_id += \
-             (correct_class * ~correct_task).count_nonzero()
+            (correct_class * ~correct_task).count_nonzero()
 
         self.correct_task_id += correct_task.count_nonzero()
         self.wrong_task_id += (~correct_task).count_nonzero()
-
 
     def after_eval_iteration(self, strategy: Strategy) -> "MetricResult":
         exp_id = strategy.experience.current_experience
@@ -147,7 +139,8 @@ class ConditionalMetrics(_MyMetric):
         out = strategy.last_forward_output
         y_hat = out.y_hat.argmax(dim=1).cpu()
         task_label = exp_id * torch.ones(y_hat.size()).int()
-        self.update(strategy.mb_y.cpu(), y_hat, task_label, out.pred_exp_id.cpu())
+        self.update(strategy.mb_y.cpu(), y_hat,
+                    task_label, out.pred_exp_id.cpu())
 
     def before_eval(self, strategy):
         self.reset()
@@ -156,9 +149,12 @@ class ConditionalMetrics(_MyMetric):
         step = strategy.clock.total_iterations
 
         return [
-            MetricValue(self, f"Conditional/P(correct|correct_task_id)", self.correct_given_correct_task_id, step),
-            MetricValue(self, f"Conditional/P(correct|!correct_task_id)", self.correct_given_wrong_task_id, step),
-            MetricValue(self, f"Conditional/P(correct_task_id)", self.task_id_accuracy, step)
+            MetricValue(self, f"Conditional/P(correct|correct_task_id)",
+                        self.correct_given_correct_task_id, step),
+            MetricValue(self, f"Conditional/P(correct|!correct_task_id)",
+                        self.correct_given_wrong_task_id, step),
+            MetricValue(self, f"Conditional/P(correct_task_id)",
+                        self.task_id_accuracy, step)
         ]
 
     def reset(self):
@@ -171,8 +167,6 @@ class ConditionalMetrics(_MyMetric):
         return None
 
 
-        
-        
 class LossObjectiveMetric(_MyMetric):
 
     n_samples: int
@@ -200,6 +194,7 @@ class LossObjectiveMetric(_MyMetric):
         value = self.result()
         self.reset()
         return MetricValue(self, f"TrainLossPart/{self.name}", value, step)
+
 
 class EvalLossObjectiveMetric(_MyMetric):
 
@@ -237,18 +232,18 @@ class TaskInferenceMetrics(_MyMetric):
         self.logdir = logdir
         self.i = 0
 
-
     def after_eval_iteration(self, strategy: Strategy) -> "MetricResult":
         out = strategy.last_forward_output
         y_true = strategy.mb_y
         lbl = out.loss_by_layer
 
         assert lbl != None, "Expected loss by layer to be populated"
-        
+
         for k, instance in enumerate(range(lbl.shape[1])):
             for layer in range(lbl.shape[0]):
                 loss = lbl[layer, instance]
-                self.loss_points.add((self.i, int(y_true[k]), layer, self.test_experience, float(loss))) 
+                self.loss_points.add(
+                    (self.i, int(y_true[k]), layer, self.test_experience, float(loss)))
             self.i += 1
 
     def after_eval(self, strategy: Strategy) -> "MetricResult":
@@ -258,6 +253,3 @@ class TaskInferenceMetrics(_MyMetric):
             pickle.dump(self.loss_points, f)
 
         self.loss_points = set()
-
-
-

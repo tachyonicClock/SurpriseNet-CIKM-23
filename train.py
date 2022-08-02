@@ -1,6 +1,3 @@
-from difflib import context_diff
-import json
-import os
 import typing as t
 import click
 
@@ -9,44 +6,18 @@ import torch
 from experiment.experiment import BaseExperiment
 import avalanche as cl
 from config.config import ExperimentConfiguration
-from experiment.loss import LossObjective, MultipleObjectiveLoss, ReconstructionLoss, ClassifierLoss, VAELoss
-from experiment.plugins import PackNetPlugin
+from experiment.loss import MultipleObjectiveLoss, ReconstructionLoss, ClassifierLoss, VAELoss
+from packnet.plugin import PackNetPlugin
+from packnet.task_inference import TaskInferenceStrategy, TaskReconstruction, UseTaskOracle
 from experiment.scenario import scenario
 from experiment.strategy import Strategy
-from experiment.task_inference import TaskInferenceStrategy, TaskReconstruction, UseTaskOracle
-from network.mlp import MPLRectangularClassifierHead
-from network.trait import AutoEncoder, Classifier, Decoder, Encoder, VariationalAutoEncoder
+from network.trait import AutoEncoder, VariationalAutoEncoder
 from torch import nn
 from network.architectures import *
-import network.module.packnet as pn
-from network.vanilla_cnn import ClassifierHead, VAEBottleneck
+import packnet.packnet as pn
 
-# Make loss parts configurable
-# gin.external_configurable(ReconstructionLoss)
-# gin.external_configurable(ClassifierLoss)
-# gin.external_configurable(VAELoss)
-
-# gin.external_configurable(vanilla_cnn)
-# gin.external_configurable(wide_residual_network)
-# gin.external_configurable(residual_network)
-# gin.external_configurable(mlp_network)
-# gin.external_configurable(rectangular_network)
-
-# Setup configured functions
-# scenario = gin.configurable(scenario, "Experiment")
-
-
-random_search_hp: t.Dict[str, float] = dict()
-
-def uniform_rand(variable_name, var_range: t.Tuple[int, int], is_int=False) -> float:
-    value = np.random.uniform(var_range[0], var_range[1])
-    if is_int:
-        value = int(value)
-    random_search_hp[variable_name] = value
-    return value
 
 class Experiment(BaseExperiment):
-
 
     def make_scenario(self) -> cl.benchmarks.NCScenario:
         """Create a scenario from the config"""
@@ -83,12 +54,10 @@ class Experiment(BaseExperiment):
             )
 
         self.plugins.append(
-            PackNetPlugin(network, self, self.cfg.prune_proportion, self.cfg.retrain_epochs)
+            PackNetPlugin(network, self, self.cfg.prune_proportion,
+                          self.cfg.retrain_epochs)
         )
         return network
-
-    # def make_classifier_head(self, latent_dims, width: int) -> nn.Module:
-    #     return ClassifierHead(self.network.latent_dim, self.network.num_classes, width)
 
     def make_network(self) -> nn.Module:
         architecture = self.cfg.network_architecture
@@ -100,7 +69,7 @@ class Experiment(BaseExperiment):
             vanilla_cnn_config = self.cfg.vanilla_cnn_config
             network = vanilla_cnn(
                 self.n_classes,
-                self.cfg.input_shape[0], 
+                self.cfg.input_shape[0],
                 self.cfg.latent_dims,
                 vanilla_cnn_config.base_channels,
                 is_vae)
@@ -109,10 +78,9 @@ class Experiment(BaseExperiment):
             network = residual_network(
                 self.n_classes,
                 self.cfg.latent_dims,
-                self.cfg.input_shape, 
+                self.cfg.input_shape,
                 is_vae)
             return self.setup_packnet(network)
-        
 
     def make_objective(self) -> MultipleObjectiveLoss:
         """Create a loss objective from the config"""
@@ -152,7 +120,8 @@ class Experiment(BaseExperiment):
     def dump_config(self):
         with open(f"{self.logdir}/config.json", "w") as f:
             f.writelines(self.cfg.toJSON())
-        self.logger.writer.add_text("Config", f"<pre>{self.cfg.toJSON()}</pre>")
+        self.logger.writer.add_text(
+            "Config", f"<pre>{self.cfg.toJSON()}</pre>")
 
     # def save_checkpoint(self, checkpoint_name: str):
     #     torch.save({
@@ -168,6 +137,7 @@ class Experiment(BaseExperiment):
     # def after_training_epoch(self, strategy: Strategy, *args, **kwargs) -> "CallbackResult":
     #     self.save_checkpoint(f"experience_{self.clock.train_exp_counter:04d}")
 
+
 @click.command()
 @click.argument("dataset", nargs=1)
 @click.argument("architecture", nargs=1)
@@ -180,7 +150,7 @@ def main(dataset, architecture, variant):
         cfg = cfg.configure_fmnist()
     else:
         raise NotImplementedError(f"Unknown dataset {dataset}")
-    
+
     if architecture == "ae":
         cfg = cfg.configure_ae()
     elif architecture == "vae":
@@ -203,10 +173,8 @@ def main(dataset, architecture, variant):
     experiment = Experiment(cfg)
     experiment.train()
 
-        # Get all configurable parameters
+    # Get all configurable parameters
 
 
 if __name__ == '__main__':
     main()
-
-# Experiment.make_network()

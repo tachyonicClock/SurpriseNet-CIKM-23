@@ -1,5 +1,4 @@
 import io
-import logging
 import typing
 
 import matplotlib.pyplot as plt
@@ -8,11 +7,27 @@ import torch
 from avalanche.benchmarks.scenarios.new_classes.nc_scenario import NCExperience
 from avalanche.evaluation import PluginMetric
 from avalanche.evaluation.metric_definitions import MetricValue
-from matplotlib.axes import Axes
 from experiment.strategy import ForwardOutput, Strategy
-from functional import figure_to_image, MRAE
-from network.trait import Classifier, Encoder, Decoder, PackNet, Samplable, AutoEncoder
-from torchvision.transforms.functional import to_pil_image 
+from matplotlib.axes import Axes
+from network.trait import (AutoEncoder, Classifier, Samplable)
+from PIL import Image
+from torchvision.transforms.functional import to_pil_image
+
+def MRAE(x_hat: torch.Tensor, x: torch.Tensor, reduce_batch=True) -> torch.Tensor:
+    """Relative absolute error"""
+    start = 0 if reduce_batch else 1
+    x = x.flatten(start)
+    x_mu = x.mean()
+    x_hat = x_hat.flatten(start)
+    return (x_hat - x).abs().sum(dim=[start])/(x - x_mu).abs().sum()
+
+def figure_to_image(fig: plt.Figure) -> Image.Image:
+    """Convert a Matplotlib figure to a PIL Image and return it"""
+    buf = io.BytesIO()
+    fig.savefig(buf)
+    buf.seek(0)
+    return Image.open(buf)
+
 
 LabeledExample = typing.Tuple[int, torch.Tensor]
 

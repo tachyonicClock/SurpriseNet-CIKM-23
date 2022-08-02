@@ -1,10 +1,11 @@
-from math import prod
-from experiment.strategy import ForwardOutput
 import typing
-import torch
-from torch.nn import functional as F
-from torch import Tensor
 from abc import ABC, abstractmethod
+
+import torch
+from torch import Tensor
+from torch.nn import functional as F
+
+from experiment.strategy import ForwardOutput
 
 class LossObjective(ABC):
     name: str = "Untitled"

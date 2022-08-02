@@ -1,15 +1,14 @@
 import os
 import typing as t
-from torch import Tensor
+
 import torch
-
-from torch.utils.data import Dataset
-import torchvision.transforms as T 
-
-from avalanche.benchmarks.classic import SplitFMNIST, SplitCIFAR100, SplitCIFAR10
+import torchvision.transforms as T
+from avalanche.benchmarks import NCScenario, nc_benchmark
+from avalanche.benchmarks.classic import (SplitCIFAR10, SplitCIFAR100,
+                                          SplitFMNIST)
 from avalanche.benchmarks.datasets import CORe50Dataset
-from avalanche.benchmarks import NCScenario
-from avalanche.benchmarks import nc_benchmark
+from torch import Tensor
+from torch.utils.data import Dataset
 
 
 class FeatureMapDataset(Dataset):

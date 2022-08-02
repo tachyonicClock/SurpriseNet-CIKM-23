@@ -1,20 +1,16 @@
-from abc import abstractmethod
-from curses import wrapper
 import math
-from sre_parse import State
-from turtle import forward
 import typing as t
+from enum import Enum
 
 import torch
 import torch.nn as nn
+from experiment.strategy import ForwardOutput
+from network.trait import (AutoEncoder, InferTask, PackNet,
+                           VariationalAutoEncoder)
 from torch import Tensor
 from torch.nn import functional as F
 
-from enum import Enum
-from experiment.strategy import ForwardOutput
-from experiment.task_inference import TaskInferenceStrategy
-
-from network.trait import AutoEncoder, InferTask, PackNet, VariationalAutoEncoder
+from packnet.task_inference import TaskInferenceStrategy
 
 
 class ModuleDecorator(nn.Module):

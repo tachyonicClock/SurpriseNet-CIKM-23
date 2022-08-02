@@ -1,33 +1,26 @@
-import json
-from config.config import ExperimentConfiguration
-
 import os
-from dataclasses import dataclass
-from enum import Enum
-from typing import List, Sequence, Dict
+import typing as t
 
 import avalanche as av
-from avalanche.evaluation.metrics import (
-    loss_metrics,
-    forgetting_metrics,
-    confusion_matrix_metrics,
-    accuracy_metrics)
-from avalanche.training.plugins import EvaluationPlugin
-from avalanche.core import BasePlugin, SupervisedPlugin
-from avalanche.training.templates.supervised import SupervisedTemplate
+import setproctitle
 import torch
+from avalanche.core import BasePlugin, SupervisedPlugin
+from avalanche.evaluation.metrics import (accuracy_metrics,
+                                          confusion_matrix_metrics,
+                                          forgetting_metrics, loss_metrics)
+from avalanche.training.plugins import EvaluationPlugin
+from config.config import ExperimentConfiguration
+from metrics.metrics import (ConditionalMetrics, EpochClock,
+                             EvalLossObjectiveMetric,
+                             ExperienceIdentificationCM, LossObjectiveMetric)
+from metrics.reconstructions import GenerateReconstruction, GenerateSamples
+from network.trait import (NETWORK_TRAITS, AutoEncoder, Classifier,
+                           ConditionedSample, InferTask, Samplable)
 from torch import Tensor, nn
 from torch.utils.tensorboard.summary import hparams
+
 from experiment.loss import MultipleObjectiveLoss
 from experiment.strategy import ForwardOutput, Strategy
-
-from metrics.metrics import ConditionalMetrics, EpochClock, EvalLossObjectiveMetric, ExperienceIdentificationCM, LossObjectiveMetric
-
-from config import *
-from metrics.reconstructions import GenerateReconstruction, GenerateSamples
-
-import setproctitle
-from network.trait import AutoEncoder, Classifier, ConditionedSample, InferTask, PackNet, Samplable, NETWORK_TRAITS
 
 
 class BaseExperiment(SupervisedPlugin):
@@ -42,7 +35,7 @@ class BaseExperiment(SupervisedPlugin):
     optimizer: torch.optim.Optimizer
     evaluator: EvaluationPlugin
     objective: MultipleObjectiveLoss
-    plugins: List[BasePlugin]
+    plugins: t.List[BasePlugin]
     cfg: ExperimentConfiguration
 
     def __init__(self, cfg: ExperimentConfiguration) -> None:
@@ -129,12 +122,11 @@ class BaseExperiment(SupervisedPlugin):
             loss_metrics(epoch=True, epoch_running=True, experience=True, stream=True, minibatch=True),
             EpochClock(),
             *plugins,
-            loggers=loggers,
-            suppress_warnings=True
+            loggers=loggers
         )
 
     def dump_config(self):
-        log.warn("NOT DUMPING CONFIG ANYWHERE!!")
+        print("NOT DUMPING CONFIG ANYWHERE!!")
 
     def preflight(self):
         print(f"Network: {type(self.network)}")
@@ -178,7 +170,6 @@ class BaseExperiment(SupervisedPlugin):
             name,
             value,
             step if step else self.strategy.clock.total_iterations)
-
 
 
     @property

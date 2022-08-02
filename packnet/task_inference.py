@@ -1,24 +1,21 @@
-from abc import ABC, abstractclassmethod
 import typing as t
+from abc import ABC, abstractclassmethod
 from dataclasses import fields
 
-from torch import Tensor, nn
 import torch
 from experiment.experiment import BaseExperiment
-from experiment.loss import ReconstructionLoss
-
-from experiment.strategy import ForwardOutput, Strategy
-from metrics.metrics import TaskInferenceMetrics
-from network.trait import AutoEncoder, PackNet
+from experiment.strategy import ForwardOutput
+from network.trait import PackNet
+from torch import Tensor
 from torch.nn import functional as F
 
 
 class TaskInferenceStrategy(ABC):
 
     @abstractclassmethod
-    def forward_with_task_inference(self, 
-            forward_func: t.Callable[[Tensor], ForwardOutput] ,
-            x: Tensor) -> ForwardOutput:
+    def forward_with_task_inference(self,
+                                    forward_func: t.Callable[[Tensor], ForwardOutput],
+                                    x: Tensor) -> ForwardOutput:
         pass
 
 
@@ -31,15 +28,16 @@ class UseTaskOracle(TaskInferenceStrategy):
         super().__init__()
         self.experiment = experiment
 
-    def forward_with_task_inference(self, 
-            forward_func: t.Callable[[Tensor], ForwardOutput] ,
-            x: Tensor) -> ForwardOutput:
+    def forward_with_task_inference(self,
+                                    forward_func: t.Callable[[Tensor], ForwardOutput],
+                                    x: Tensor) -> ForwardOutput:
         model = self.experiment.strategy.model
         task_id = self.experiment.strategy.experience.current_experience
-        assert isinstance(model, PackNet), "Task inference only works on PackNet"
+        assert isinstance(
+            model, PackNet), "Task inference only works on PackNet"
 
         model.use_task_subset(task_id)
-        out : ForwardOutput = forward_func(x)
+        out: ForwardOutput = forward_func(x)
         out.pred_exp_id = (torch.ones((x.shape[0], 1)) * task_id).int()
         model.use_top_subset()
         return out
@@ -57,6 +55,7 @@ def _move_some(dest: ForwardOutput, src: ForwardOutput, swap_mask: Tensor):
             continue
         dest_tensor[swap_mask] = src_tensor[swap_mask]
 
+
 class TaskReconstruction(TaskInferenceStrategy):
     """
     Use instance reconstruction to infer task
@@ -71,21 +70,22 @@ class TaskReconstruction(TaskInferenceStrategy):
         #     TaskInferenceMetrics(experiment.logdir)
         # )
 
-    def forward_with_task_inference(self, 
-            forward_func: t.Callable[[Tensor], ForwardOutput],
-            x: Tensor) -> ForwardOutput:
+    def forward_with_task_inference(self,
+                                    forward_func: t.Callable[[Tensor], ForwardOutput],
+                                    x: Tensor) -> ForwardOutput:
         # Loss for each instance for each layer
         loss_by_layer = torch.zeros((self.n_experiences, x.shape[0]))
 
         model = self.experiment.strategy.model
         sample_size = 1
-        assert isinstance(model, PackNet), "Task inference only works on PackNet"
+        assert isinstance(
+            model, PackNet), "Task inference only works on PackNet"
         model.use_task_subset(0)
 
         best_loss, best_out = sample(forward_func, x, sample_size)
         loss_by_layer[0, :] = best_loss
-        best_out.pred_exp_id = torch.zeros(x.shape[0]).int().to(best_out.x_hat.device)
-
+        best_out.pred_exp_id = torch.zeros(
+            x.shape[0]).int().to(best_out.x_hat.device)
 
         for i in range(1, self.n_experiences):
             # Use a specific subset
@@ -107,9 +107,10 @@ class TaskReconstruction(TaskInferenceStrategy):
         best_out.loss_by_layer = loss_by_layer
         return best_out
 
+
 def bce_task_inference_loss(input: Tensor, target: Tensor) -> Tensor:
     # mse: Tensor = F.mse_loss(input, target, reduction="none")
-    # Mean each 
+    # Mean each
     return F.mse_loss(input, target)
 
 
@@ -117,9 +118,9 @@ def bce_task_inference_loss(input: Tensor, target: Tensor) -> Tensor:
 # probably use the mean
 @torch.no_grad()
 def sample(
-    forward_func: t.Callable[[Tensor], ForwardOutput],
-    x: Tensor,
-    sample_size: int) -> t.Tuple[Tensor, ForwardOutput]:
+        forward_func: t.Callable[[Tensor], ForwardOutput],
+        x: Tensor,
+        sample_size: int) -> t.Tuple[Tensor, ForwardOutput]:
 
     best_out: ForwardOutput = forward_func(x)
     best_loss: Tensor = bce_task_inference_loss(best_out.x_hat, x)

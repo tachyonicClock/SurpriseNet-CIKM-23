@@ -1,9 +1,10 @@
 
 from dataclasses import dataclass
 from typing import Protocol
-from torch import Tensor, nn
-from avalanche.training.templates.supervised import SupervisedTemplate
+
 from avalanche.models import avalanche_forward
+from avalanche.training.templates.supervised import SupervisedTemplate
+from torch import Tensor
 
 
 @dataclass

@@ -144,8 +144,8 @@ class ExperimentConfiguration():
         self.is_image_data = True
         self.n_experiences = 10
 
-        self.total_task_epochs = 100
-        self.retrain_epochs = 20
+        self.total_task_epochs = 1
+        self.retrain_epochs = 1
         return self.use_resnet_cnn()
 
 
@@ -159,8 +159,8 @@ class ExperimentConfiguration():
         self.is_image_data = True
         self.n_experiences = 10
 
-        self.total_task_epochs = 1
-        self.retrain_epochs = 1
+        self.total_task_epochs = 100
+        self.retrain_epochs = 20
         self.use_resnet_cnn()
         return self
 
