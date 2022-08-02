@@ -6,7 +6,8 @@ import torch
 from torch.utils.data import Dataset
 import torchvision.transforms as T 
 
-from avalanche.benchmarks.classic import SplitFMNIST, SplitCIFAR100, SplitCIFAR10, CORe50
+from avalanche.benchmarks.classic import SplitFMNIST, SplitCIFAR100, SplitCIFAR10
+from avalanche.benchmarks.datasets import CORe50Dataset
 from avalanche.benchmarks import NCScenario
 from avalanche.benchmarks import nc_benchmark
 
@@ -140,15 +141,14 @@ def scenario(
             dataset_root=dataset_root
         )
     elif dataset == "CORe50_NC":
-        core50 = CORe50(
-            scenario="nc",
-            run=0,
-            train_transform=core50_train_transform,
-            eval_transform=core50_eval_transform,
-            dataset_root=dataset_root
-        )
-        core50.n_classes = 50
-        return core50
+        train_set = CORe50Dataset(root=dataset_root, train=True, transform=core50_train_transform)
+        test_set  = CORe50Dataset(root=dataset_root, train=False, transform=core50_eval_transform)
+
+        return NCScenario(train_set, test_set,
+            task_labels=False,
+            n_experiences=n_experiences, 
+            fixed_class_order=list(range(50)) if fixed_class_order else None)
+
     elif dataset == "BI_CIFAR100":
         return BI_CIFAR100(
             dataset_root=dataset_root,
