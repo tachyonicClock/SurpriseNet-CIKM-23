@@ -8,15 +8,15 @@ class VanillaCNNConfig():
 class ExperimentConfiguration():
     name: str
     """Name of the experiment"""
-    tensorboard_dir: str
+    tensorboard_dir: str = "experiment_logs"
     """Directory to store tensorboard logs"""
 
     #
     # Dataset
     #
-    dataset_name: str
+    dataset_name: str 
     """Name of the dataset"""
-    dataset_root: str
+    dataset_root: str = "/Scratch/al183/datasets"
     """Root of the dataset"""
     fixed_class_order: bool
     """Whether to use the same class order for all runs"""
@@ -91,6 +91,8 @@ class ExperimentConfiguration():
         self.batch_size = 64
         self.learning_rate = 0.0001
         self.device = "cuda"
+        self.classifier_loss_weight = 1.0
+        self.reconstruction_loss_weight = 1.0
 
     def use_vanilla_cnn(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment to use a vanilla CNN"""
@@ -108,9 +110,7 @@ class ExperimentConfiguration():
 
     def use_fmnist(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment for the Fashion-MNIST dataset"""
-        self.tensorboard_dir = "experiment_logs/fmnist"
         self.dataset_name = "FMNIST"
-        self.dataset_root = "/Scratch/al183/datasets"
         self.input_shape = (1, 32, 32)
         self.fixed_class_order = True
         self.is_image_data = True
@@ -122,9 +122,7 @@ class ExperimentConfiguration():
 
     def use_cifar10(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment for the CIFAR10 dataset"""
-        self.tensorboard_dir = "experiment_logs/cifar10"
         self.dataset_name = "CIFAR10"
-        self.dataset_root = "/Scratch/al183/datasets"
         self.input_shape = (3, 32, 32)
         self.fixed_class_order = True
         self.is_image_data = True
@@ -136,32 +134,29 @@ class ExperimentConfiguration():
 
     def use_cifar100(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment for the CIFAR100 dataset"""
-        self.tensorboard_dir = "experiment_logs/cifar100"
         self.dataset_name = "CIFAR100"
-        self.dataset_root = "/Scratch/al183/datasets"
         self.input_shape = (3, 32, 32)
-        self.fixed_class_order = True
-        self.is_image_data = True
-        self.n_experiences = 10
-
-        self.total_task_epochs = 1
-        self.retrain_epochs = 1
-        return self.use_resnet_cnn()
-
-
-    def use_core50(self: "ExperimentConfiguration") -> 'ExperimentConfiguration':
-        """Configure the experiment for the Core50 dataset"""
-        self.tensorboard_dir = "experiment_logs/core50_nc"
-        self.dataset_name = "CORe50_NC"
-        self.dataset_root = "/Scratch/al183/datasets"
-        self.input_shape = (3, 128, 128)
         self.fixed_class_order = True
         self.is_image_data = True
         self.n_experiences = 10
 
         self.total_task_epochs = 100
         self.retrain_epochs = 20
+        return self.use_resnet_cnn()
+
+
+    def use_core50(self: "ExperimentConfiguration") -> 'ExperimentConfiguration':
+        """Configure the experiment for the Core50 dataset"""
+        self.dataset_name = "CORe50_NC"
+        self.input_shape = (3, 128, 128)
+        self.fixed_class_order = True
+        self.is_image_data = True
+        self.n_experiences = 10
+
+        self.total_task_epochs = 4
+        self.retrain_epochs = 1
         self.use_resnet_cnn()
+        self.latent_dims = 526
         return self
 
 
@@ -171,8 +166,6 @@ class ExperimentConfiguration():
         self.use_classifier_loss = True
         self.use_reconstruction_loss = True
         self.use_vae_loss = False
-        self.classifier_loss_weight = 1.0
-        self.reconstruction_loss_weight = 1.0
         return self
 
     def use_variational_auto_encoder(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
@@ -181,8 +174,6 @@ class ExperimentConfiguration():
         self.use_classifier_loss = True
         self.use_reconstruction_loss = True
         self.use_vae_loss = True
-        self.classifier_loss_weight = 1.0
-        self.reconstruction_loss_weight = 1.0
         self.vae_loss_weight = 0.001
         return self
 
@@ -193,7 +184,7 @@ class ExperimentConfiguration():
         self.task_inference_strategy = "task_oracle"
         return self
 
-    def use_transient_learning(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
+    def use_cumulative_learning(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment to not do any continual learning"""
         self.use_packnet = False
         self.n_experiences = 1

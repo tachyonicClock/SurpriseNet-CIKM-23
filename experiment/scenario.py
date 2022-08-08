@@ -143,10 +143,15 @@ def scenario(
         train_set = CORe50Dataset(root=dataset_root, train=True, transform=core50_train_transform)
         test_set  = CORe50Dataset(root=dataset_root, train=False, transform=core50_eval_transform)
 
+        default_core50 = [19, 30, 34, 22, 36, 23, 16, 15, 14, 49, 11, 3, 33, 28, 7, 35, 27, 18, 45, 8, 32, 9, 42, 48, 20, 17, 12, 10, 2, 21, 25, 43, 6, 1, 24, 38, 26, 44, 13, 41, 31, 40, 47, 0, 4, 37, 5, 29, 39, 46]
+
         return NCScenario(train_set, test_set,
             task_labels=False,
-            n_experiences=n_experiences, 
-            fixed_class_order=list(range(50)) if fixed_class_order else None)
+            n_experiences=n_experiences,
+            # CORE50 orders classes in a meaningful way, so we need to use a fixed random
+            # order to be representative
+            fixed_class_order=default_core50 if fixed_class_order else None
+        )
 
     elif dataset == "BI_CIFAR100":
         return BI_CIFAR100(

@@ -4,7 +4,7 @@ import typing as t
 import numpy as np
 import torch
 from avalanche.evaluation import PluginMetric
-from avalanche.evaluation.metric_results import MetricValue
+from avalanche.evaluation.metric_results import MetricValue, MetricResult
 from experiment.loss import LossObjective
 from experiment.strategy import Strategy
 from matplotlib import pyplot as plt
@@ -66,8 +66,8 @@ class ExperienceIdentificationCM(_MyMetric):
         self.reset()
         print("ExperienceIdentificationCM")
 
-    def update(self, preds: Tensor, target: int):
-        self.cm.update(preds.cpu(), torch.ones((preds.shape)).int() * target)
+    def update(self, predictions: Tensor, target: int):
+        self.cm.update(predictions.cpu(), torch.ones((predictions.shape)).int() * target)
 
     def result(self):
         cm = self.cm.compute()
@@ -226,10 +226,10 @@ class EvalLossObjectiveMetric(_MyMetric):
 
 
 class TaskInferenceMetrics(_MyMetric):
-    def __init__(self, logdir: str):
+    def __init__(self, log_dir: str):
         super().__init__()
         self.loss_points: t.Set[t.Tuple[int, int, int, int, float]] = set()
-        self.logdir = logdir
+        self.logdir = log_dir
         self.i = 0
 
     def after_eval_iteration(self, strategy: Strategy) -> "MetricResult":

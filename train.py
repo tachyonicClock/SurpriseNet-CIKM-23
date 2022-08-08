@@ -158,8 +158,8 @@ def main(dataset, architecture, variant):
     else:
         raise NotImplementedError(f"Unknown architecture {architecture}")
 
-    if variant == "transient":
-        cfg = cfg.configure_transient()
+    if variant == "cumulative":
+        cfg = cfg.configure_cumulative()
     elif variant == "finetuning":
         cfg.use_packnet = False
     elif variant == "task_oracle":
