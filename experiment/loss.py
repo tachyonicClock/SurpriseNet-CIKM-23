@@ -49,11 +49,27 @@ class MultipleObjectiveLoss():
             sum += 1/(len(self.objectives)) * objective.weighted
         return sum
 
-class ReconstructionLoss(LossObjective):
-    name = "Reconstruction"
+
+class BCEReconstructionLoss(LossObjective):
+    name = "BCEReconstruction"
+
+    def __init__(self, weighting: float = 1) -> None:
+        super().__init__(weighting)
 
     def update(self, out: ForwardOutput, target: Tensor = None):
-        self.loss = F.binary_cross_entropy(out.x_hat, out.x)
+        assert out.x.max() <= 1.0, "Input is not normalized"
+        assert out.x.min() >= 0.0, "Input is not normalized"
+        x_hat = out.x_hat.clamp(0, 1)
+        self.loss = F.binary_cross_entropy(x_hat, out.x)
+
+class MSEReconstructionLoss(LossObjective):
+    name = "MSEReconstruction"
+
+    def __init__(self, weighting: float = 1) -> None:
+        super().__init__(weighting)
+
+    def update(self, out: ForwardOutput, target: Tensor = None):
+        self.loss = F.mse_loss(out.x_hat, out.x)
 
 class ClassifierLoss(LossObjective):
     name = "Classifier"

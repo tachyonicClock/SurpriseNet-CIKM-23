@@ -113,8 +113,6 @@ class PackNetDecorator(PackNet, ModuleDecorator):
         assert self.bias != NotImplemented, "Concrete decorator must implement self.bias"
         self.weight.register_hook(self._remove_gradient_hook)
 
-        # if self.bias != None:
-        #     self.bias.requires_grad = False
 
     def _remove_gradient_hook(self, grad: Tensor) -> Tensor:
         """

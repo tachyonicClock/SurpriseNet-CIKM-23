@@ -4,8 +4,8 @@ from typing import Protocol
 
 from avalanche.models import avalanche_forward
 from avalanche.training.templates.supervised import SupervisedTemplate
-from torch import Tensor
-
+from torch import Tensor, nn
+import torch
 
 @dataclass
 class ForwardOutput():
@@ -50,8 +50,19 @@ class Strategy(SupervisedTemplate):
     subsystems.
     """
 
+    batch_transform: nn.Module = nn.Identity()
+    """
+    Transform the input before passing it to the model. Used for generating
+    embeddings on the fly.
+    """
+
     def forward(self):
         """Compute the model's output given the current mini-batch."""
+
+        # Perform transformation without recording gradient
+        with torch.no_grad():
+            self.mbatch[0] = self.batch_transform(self.mb_x)
+
         self.last_forward_output: ForwardOutput = \
             avalanche_forward(self.model, self.mb_x, self.mb_task_id)
         self.last_forward_output.x = self.mb_x

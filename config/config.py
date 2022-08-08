@@ -36,6 +36,8 @@ class ExperimentConfiguration():
     """Weight of the classifier loss"""
     use_reconstruction_loss: bool
     """Whether to use reconstruction loss for AE and VAE"""
+    recon_loss_type: t.Literal["mse", "bce"]
+    """Type of loss function to use"""
     reconstruction_loss_weight: float
     """Weight of the reconstruction loss"""
     use_vae_loss: bool
@@ -57,6 +59,8 @@ class ExperimentConfiguration():
     Config for the vanilla cnn network architecture. Only used if 
     network_architecture is vanilla_cnn
     """
+    embedding_module: t.Literal["None", "ResNet18"]
+    """Optionally configure the experiment to embed the dataset"""
 
     #
     # Training
@@ -87,12 +91,14 @@ class ExperimentConfiguration():
             sort_keys=True, indent=4)
 
     def __init__(self) -> None:
-        # Control variables held constant for all experiments
+        # Default Values
         self.batch_size = 64
         self.learning_rate = 0.0001
         self.device = "cuda"
         self.classifier_loss_weight = 1.0
         self.reconstruction_loss_weight = 1.0
+        self.recon_loss_type = "bce"
+        self.embedding_module = "None"
 
     def use_vanilla_cnn(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment to use a vanilla CNN"""
@@ -100,6 +106,12 @@ class ExperimentConfiguration():
         self.network_architecture = "vanilla_cnn"
         self.vanilla_cnn_config = VanillaCNNConfig()
         self.vanilla_cnn_config.base_channels = 128
+        return self
+
+    def use_mlp_network(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
+        """Configure the experiment to use an MLP network"""
+        self.network_architecture = "mlp"
+        self.latent_dims = 64
         return self
 
     def use_resnet_cnn(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
@@ -143,6 +155,22 @@ class ExperimentConfiguration():
         self.total_task_epochs = 100
         self.retrain_epochs = 20
         return self.use_resnet_cnn()
+
+    def use_embedded_cifar100(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
+        """Configure the experiment to use the embedded CIFAR100 dataset"""
+        self.dataset_name = "CIFAR100"
+
+        self.embedding_module = "ResNet18"
+        self.input_shape = 512
+        self.is_image_data = False
+        self.recon_loss_type = "mse"
+
+        self.fixed_class_order = True
+        self.n_experiences = 10
+
+        self.total_task_epochs = 20
+        self.retrain_epochs = 5
+        return self.use_mlp_network()
 
 
     def use_core50(self: "ExperimentConfiguration") -> 'ExperimentConfiguration':

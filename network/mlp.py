@@ -15,10 +15,13 @@ class MLPEncoder(Encoder):
 
         self.net = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(in_dimension, in_dimension*2),
+            nn.Linear(in_dimension, in_dimension*4),
             nn.ReLU(),
             nn.Dropout(0.5),
-            nn.Linear(in_dimension*2, in_dimension*4),
+            nn.Linear(in_dimension*4, in_dimension*4),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(in_dimension*4, in_dimension*4),
             nn.ReLU(),
             nn.Dropout(0.5),
             nn.Linear(in_dimension*4, latent_dims),
@@ -44,10 +47,13 @@ class MLPDecoder(Decoder):
             nn.Linear(latent_dims, out_dimension*4),
             nn.ReLU(),
             nn.Dropout(0.5),
-            nn.Linear(out_dimension*4, out_dimension*2),
+            nn.Linear(out_dimension*4, out_dimension*4),
             nn.ReLU(),
             nn.Dropout(0.5),
-            nn.Linear(out_dimension*2, out_dimension),
+            nn.Linear(out_dimension*4, out_dimension*4),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(out_dimension*4, out_dimension),
         )
 
 

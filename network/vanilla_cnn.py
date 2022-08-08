@@ -104,7 +104,7 @@ class VanillaCNNDecoder(Decoder):
         x = self.de_conv_03(x)
         x = self.de_conv_04(x)
 
-        return torch.sigmoid(x)
+        return x
 
     def decode(self, embedding: Tensor) -> Tensor:
         return self(embedding)

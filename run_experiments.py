@@ -9,10 +9,15 @@ def main():
     cfg = ExperimentConfiguration()
 
     for strategy, architecture, scenario in itertools.product(
-            ["finetuning", "taskOracle", "taskInference"],
-            ["AE", "VAE"],
-            ["splitFMNIST", "splitCIFAR10", "splitCIFAR100", "splitCORe50"]):
+            ["taskOracle", "taskInference"],
+            ["AE"],
+            ["splitEmbeddedCIFAR100"]):
             # ["fmnist"]):
+    # for strategy, architecture, scenario in itertools.product(
+    #         ["finetuning", "taskOracle", "taskInference"],
+    #         ["AE", "VAE"],
+    #         ["splitFMNIST", "splitCIFAR10", "splitCIFAR100", "splitCORe50"]):
+    #         # ["fmnist"]):
         cfg.name = f"{scenario}_{architecture}_{strategy}"
 
         # Select the dataset to use for the experiment
@@ -24,6 +29,8 @@ def main():
             cfg = cfg.use_cifar100()
         elif scenario == "splitCORe50":
             cfg = cfg.use_core50()
+        elif scenario == "splitEmbeddedCIFAR100":
+            cfg = cfg.use_embedded_cifar100()
         else:
             raise NotImplementedError(f"Unknown scenario {scenario}")
 

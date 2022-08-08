@@ -3,10 +3,11 @@ import click
 
 import numpy as np
 import torch
+from network.embedding_network import ResNet18FeatureExtractor
 from experiment.experiment import BaseExperiment
 import avalanche as cl
 from config.config import ExperimentConfiguration
-from experiment.loss import MultipleObjectiveLoss, ReconstructionLoss, ClassifierLoss, VAELoss
+from experiment.loss import BCEReconstructionLoss, MSEReconstructionLoss, MultipleObjectiveLoss, ClassifierLoss, VAELoss
 from packnet.plugin import PackNetPlugin
 from packnet.task_inference import TaskInferenceStrategy, TaskReconstruction, UseTaskOracle
 from experiment.scenario import scenario
@@ -81,6 +82,13 @@ class Experiment(BaseExperiment):
                 self.cfg.input_shape,
                 is_vae)
             return self.setup_packnet(network)
+        elif architecture == "mlp":
+            network = mlp_network(
+                self.n_classes,
+                self.cfg.latent_dims,
+                self.cfg.input_shape,
+                is_vae)
+            return self.setup_packnet(network)
 
     def make_objective(self) -> MultipleObjectiveLoss:
         """Create a loss objective from the config"""
@@ -88,7 +96,15 @@ class Experiment(BaseExperiment):
         if self.cfg.use_classifier_loss:
             loss.add(ClassifierLoss(self.cfg.classifier_loss_weight))
         if self.cfg.use_reconstruction_loss:
-            loss.add(ReconstructionLoss(self.cfg.reconstruction_loss_weight))
+
+            # Pick a type of reconstruction loss
+            if self.cfg.recon_loss_type == "mse":
+                loss.add(MSEReconstructionLoss(self.cfg.reconstruction_loss_weight))
+            elif self.cfg.recon_loss_type == "bce":
+                loss.add(BCEReconstructionLoss(self.cfg.reconstruction_loss_weight))
+            else:
+                raise NotImplementedError("Unknown reconstruction loss type")
+
         if self.cfg.use_vae_loss:
             loss.add(VAELoss(self.cfg.vae_loss_weight))
         return loss
@@ -104,7 +120,7 @@ class Experiment(BaseExperiment):
         train_epochs = cfg.total_task_epochs - cfg.retrain_epochs \
             if cfg.use_packnet else cfg.total_task_epochs
 
-        return Strategy(
+        strategy = Strategy(
             self.network,
             self.optimizer,
             criterion=self.make_criterion(),
@@ -116,6 +132,15 @@ class Experiment(BaseExperiment):
             plugins=[self, *self.plugins],
             evaluator=self.evaluator
         )
+
+        if cfg.embedding_module == "None":
+            return strategy
+        elif cfg.embedding_module == "ResNet18":
+            strategy.batch_transform = ResNet18FeatureExtractor().to(cfg.device)
+            return strategy
+        else:
+            raise NotImplementedError("Unknown embedding module")
+
 
     def dump_config(self):
         with open(f"{self.logdir}/config.json", "w") as f:
