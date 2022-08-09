@@ -52,7 +52,7 @@ class ExperimentConfiguration():
     """Latent dimensions of the VAE/AE"""
     deep_generative_type: t.Literal["AE", "VAE"]
     """Type of deep generative model to use"""
-    network_architecture: t.Literal["vanilla_cnn", "residual_network"]
+    network_architecture: t.Literal["vanilla_cnn", "residual_network", "mlp",  "rectangular_network"]
     """Type of network architecture to use"""
     vanilla_cnn_config: t.Optional[VanillaCNNConfig]
     """
@@ -99,6 +99,7 @@ class ExperimentConfiguration():
         self.reconstruction_loss_weight = 1.0
         self.recon_loss_type = "bce"
         self.embedding_module = "None"
+        self.prune_proportion = 0.5
 
     def use_vanilla_cnn(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment to use a vanilla CNN"""
@@ -112,6 +113,12 @@ class ExperimentConfiguration():
         """Configure the experiment to use an MLP network"""
         self.network_architecture = "mlp"
         self.latent_dims = 64
+        return self
+
+    def use_rectangular_network(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
+        """Configure the experiment to use a rectangular network"""
+        self.network_architecture = "rectangular_network"
+        self.latent_dims = 128
         return self
 
     def use_resnet_cnn(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
@@ -160,6 +167,8 @@ class ExperimentConfiguration():
         """Configure the experiment to use the embedded CIFAR100 dataset"""
         self.dataset_name = "CIFAR100"
 
+        self.prune_proportion = 0.7
+
         self.embedding_module = "ResNet18"
         self.input_shape = 512
         self.is_image_data = False
@@ -170,7 +179,7 @@ class ExperimentConfiguration():
 
         self.total_task_epochs = 20
         self.retrain_epochs = 5
-        return self.use_mlp_network()
+        return self.use_rectangular_network()
 
 
     def use_core50(self: "ExperimentConfiguration") -> 'ExperimentConfiguration':
@@ -208,7 +217,6 @@ class ExperimentConfiguration():
     def enable_packnet(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment to use PackNet"""
         self.use_packnet = True
-        self.prune_proportion = 0.5
         self.task_inference_strategy = "task_oracle"
         return self
 

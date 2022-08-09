@@ -89,6 +89,14 @@ class Experiment(BaseExperiment):
                 self.cfg.input_shape,
                 is_vae)
             return self.setup_packnet(network)
+        elif architecture == "rectangular_network":
+            network = rectangular_network(
+                self.n_classes,
+                self.cfg.latent_dims,
+                self.cfg.input_shape,
+                depth=4, width=1024,
+                is_vae=is_vae)
+            return self.setup_packnet(network)
 
     def make_objective(self) -> MultipleObjectiveLoss:
         """Create a loss objective from the config"""

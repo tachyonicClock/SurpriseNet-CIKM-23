@@ -64,25 +64,25 @@ def mlp_network(
     else:
         return AutoEncoder(encoder, decoder, head)
 
-# def rectangular_network(
-#         n_classes: int,
-#         in_features: int,
-#         latent_dims: int,
-#         depth: int,
-#         width: int,
-#         is_vae: bool = False) -> t.Union[AutoEncoder, VariationalAutoEncoder]:
-#     """Create a rectangular network for encoding and decoding"""
-#     encoder_output_dims = latent_dims if not is_vae else latent_dims*2
-#     decoder_input_dims = latent_dims
+def rectangular_network(
+        n_classes: int,
+        latent_dims: int,
+        in_features: int,
+        depth: int,
+        width: int,
+        is_vae: bool = False) -> t.Union[AutoEncoder, VariationalAutoEncoder]:
+    """Create a rectangular network for encoding and decoding"""
+    encoder_output_dims = latent_dims if not is_vae else latent_dims*2
+    decoder_input_dims = latent_dims
 
-#     encoder = UniformMLPEncoder(in_features, width, depth, encoder_output_dims)
-#     decoder = UniformMLPDecoder(in_features, width, depth, decoder_input_dims)
-#     head = MPLRectangularClassifierHead(latent_dims, width, n_classes)
-#     if is_vae:
-#         bottleneck = VAEBottleneck(encoder_output_dims, latent_dims)
-#         return VariationalAutoEncoder(encoder, bottleneck, decoder, head)
-#     else:
-#         return AutoEncoder(encoder, decoder, head)
+    encoder = UniformMLPEncoder(in_features, width, depth, encoder_output_dims)
+    decoder = UniformMLPDecoder(in_features, width, depth, decoder_input_dims)
+    head = MPLRectangularClassifierHead(latent_dims, width, n_classes)
+    if is_vae:
+        bottleneck = VAEBottleneck(encoder_output_dims, latent_dims)
+        return VariationalAutoEncoder(encoder, bottleneck, decoder, head)
+    else:
+        return AutoEncoder(encoder, decoder, head)
 
 # def wide_residual_network(
 #         n_classes: int,

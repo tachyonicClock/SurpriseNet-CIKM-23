@@ -9,8 +9,8 @@ def main():
     cfg = ExperimentConfiguration()
 
     for strategy, architecture, scenario in itertools.product(
-            ["taskOracle", "taskInference"],
-            ["AE"],
+            ["taskInference"],
+            ["AE", "VAE"],
             ["splitEmbeddedCIFAR100"]):
             # ["fmnist"]):
     # for strategy, architecture, scenario in itertools.product(
