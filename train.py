@@ -1,12 +1,7 @@
-import typing as t
-import click
-
-import numpy as np
 import torch
-from network.embedding_network import ResNet18FeatureExtractor
+from network.embedding_network import ResNet50FeatureExtractor
 from experiment.experiment import BaseExperiment
 import avalanche as cl
-from config.config import ExperimentConfiguration
 from experiment.loss import BCEReconstructionLoss, MSEReconstructionLoss, MultipleObjectiveLoss, ClassifierLoss, VAELoss
 from packnet.plugin import PackNetPlugin
 from packnet.task_inference import TaskInferenceStrategy, TaskReconstruction, UseTaskOracle
@@ -16,6 +11,18 @@ from network.trait import AutoEncoder, VariationalAutoEncoder
 from torch import nn
 from network.architectures import *
 import packnet.packnet as pn
+
+TASK_INFERENCE_STRATEGIES = {
+    "task_reconstruction_loss": TaskReconstruction,
+    "task_oracle": UseTaskOracle
+}
+
+NETWORKS = {
+    'vanilla_cnn': construct_vanilla_cnn,
+    'mlp': construct_mlp_network,
+    'residual': construct_resnet18_cnn,
+    'rectangular': construct_rectangular_network,
+}
 
 
 class Experiment(BaseExperiment):
@@ -29,12 +36,7 @@ class Experiment(BaseExperiment):
             self.cfg.fixed_class_order)
 
     def make_task_inference_strategy(self) -> TaskInferenceStrategy:
-        if self.cfg.task_inference_strategy == "task_oracle":
-            return UseTaskOracle(self)
-        elif self.cfg.task_inference_strategy == "task_reconstruction_loss":
-            return TaskReconstruction(self)
-        else:
-            raise NotImplementedError("Unknown task inference strategy")
+        return TASK_INFERENCE_STRATEGIES[self.cfg.task_inference_strategy](self)
 
     def setup_packnet(self, network: nn.Module) -> nn.Module:
         """Setup packnet"""
@@ -62,57 +64,35 @@ class Experiment(BaseExperiment):
 
     def make_network(self) -> nn.Module:
         architecture = self.cfg.network_architecture
-        is_vae = self.cfg.deep_generative_type == "VAE"
+        vae = self.cfg.deep_generative_type == "VAE"
 
-        if architecture == "vanilla_cnn":
-            assert self.cfg.vanilla_cnn_config is not None, \
-                "Vanilla CNN config must be provided when using vanilla CNN"
-            vanilla_cnn_config = self.cfg.vanilla_cnn_config
-            network = vanilla_cnn(
-                self.n_classes,
-                self.cfg.input_shape[0],
-                self.cfg.latent_dims,
-                vanilla_cnn_config.base_channels,
-                is_vae)
-            return self.setup_packnet(network)
-        elif architecture == "residual_network":
-            network = residual_network(
-                self.n_classes,
-                self.cfg.latent_dims,
-                self.cfg.input_shape,
-                is_vae)
-            return self.setup_packnet(network)
-        elif architecture == "mlp":
-            network = mlp_network(
-                self.n_classes,
-                self.cfg.latent_dims,
-                self.cfg.input_shape,
-                is_vae)
-            return self.setup_packnet(network)
-        elif architecture == "rectangular_network":
-            network = rectangular_network(
-                self.n_classes,
-                self.cfg.latent_dims,
-                self.cfg.input_shape,
-                depth=4, width=1024,
-                is_vae=is_vae)
-            return self.setup_packnet(network)
+        network = NETWORKS[architecture](
+            self.n_classes,
+            self.cfg.latent_dims,
+            self.cfg.input_shape,
+            vae,
+            self.cfg.network_cfg)
+        return self.setup_packnet(network)
 
     def make_objective(self) -> MultipleObjectiveLoss:
         """Create a loss objective from the config"""
         loss = MultipleObjectiveLoss()
+        # Add cross entropy loss
         if self.cfg.use_classifier_loss:
             loss.add(ClassifierLoss(self.cfg.classifier_loss_weight))
+        # Add reconstruction loss
         if self.cfg.use_reconstruction_loss:
 
             # Pick a type of reconstruction loss
             if self.cfg.recon_loss_type == "mse":
-                loss.add(MSEReconstructionLoss(self.cfg.reconstruction_loss_weight))
+                loss.add(MSEReconstructionLoss(
+                    self.cfg.reconstruction_loss_weight))
             elif self.cfg.recon_loss_type == "bce":
-                loss.add(BCEReconstructionLoss(self.cfg.reconstruction_loss_weight))
+                loss.add(BCEReconstructionLoss(
+                    self.cfg.reconstruction_loss_weight))
             else:
                 raise NotImplementedError("Unknown reconstruction loss type")
-
+        # Add VAE loss
         if self.cfg.use_vae_loss:
             loss.add(VAELoss(self.cfg.vae_loss_weight))
         return loss
@@ -143,71 +123,14 @@ class Experiment(BaseExperiment):
 
         if cfg.embedding_module == "None":
             return strategy
-        elif cfg.embedding_module == "ResNet18":
-            strategy.batch_transform = ResNet18FeatureExtractor().to(cfg.device)
+        elif cfg.embedding_module == "ResNet50":
+            strategy.batch_transform = ResNet50FeatureExtractor().to(cfg.device)
             return strategy
         else:
             raise NotImplementedError("Unknown embedding module")
-
 
     def dump_config(self):
         with open(f"{self.logdir}/config.json", "w") as f:
             f.writelines(self.cfg.toJSON())
         self.logger.writer.add_text(
             "Config", f"<pre>{self.cfg.toJSON()}</pre>")
-
-    # def save_checkpoint(self, checkpoint_name: str):
-    #     torch.save({
-    #         "network": self.network,
-    #         "gin_config": gin.operative_config_str()
-    #     }, f"{self.logdir}/{checkpoint_name}.pt")
-
-    # def load_checkpoint(self, path: str):
-    #     print(f"Attempting to load checkpoint {path}")
-    #     checkpoint = torch.load(path)
-    #     self.network = checkpoint["network"]
-
-    # def after_training_epoch(self, strategy: Strategy, *args, **kwargs) -> "CallbackResult":
-    #     self.save_checkpoint(f"experience_{self.clock.train_exp_counter:04d}")
-
-
-@click.command()
-@click.argument("dataset", nargs=1)
-@click.argument("architecture", nargs=1)
-@click.argument("variant", nargs=1)
-def main(dataset, architecture, variant):
-    cfg = ExperimentConfiguration()
-    cfg.name = f"{dataset}_{architecture}_{variant}"
-
-    if dataset == "fmnist":
-        cfg = cfg.configure_fmnist()
-    else:
-        raise NotImplementedError(f"Unknown dataset {dataset}")
-
-    if architecture == "ae":
-        cfg = cfg.configure_ae()
-    elif architecture == "vae":
-        cfg = cfg.configure_vae()
-    else:
-        raise NotImplementedError(f"Unknown architecture {architecture}")
-
-    if variant == "cumulative":
-        cfg = cfg.configure_cumulative()
-    elif variant == "finetuning":
-        cfg.use_packnet = False
-    elif variant == "task_oracle":
-        cfg.enable_packnet()
-    elif variant == "task_inference":
-        cfg.enable_packnet()
-        cfg.task_inference_strategy = "task_reconstruction_loss"
-    else:
-        raise NotImplementedError(f"Unknown variant {variant}")
-
-    experiment = Experiment(cfg)
-    experiment.train()
-
-    # Get all configurable parameters
-
-
-if __name__ == '__main__':
-    main()

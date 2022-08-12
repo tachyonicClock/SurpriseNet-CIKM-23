@@ -1,10 +1,6 @@
 import json
 import typing as t
 
-class VanillaCNNConfig():
-    base_channels: int
-    """The number of channels in the base convolutional layer"""
-
 class ExperimentConfiguration():
     name: str
     """Name of the experiment"""
@@ -52,15 +48,12 @@ class ExperimentConfiguration():
     """Latent dimensions of the VAE/AE"""
     deep_generative_type: t.Literal["AE", "VAE"]
     """Type of deep generative model to use"""
-    network_architecture: t.Literal["vanilla_cnn", "residual_network", "mlp",  "rectangular_network"]
+    network_architecture: t.Literal["vanilla_cnn", "residual", "mlp",  "rectangular"]
     """Type of network architecture to use"""
-    vanilla_cnn_config: t.Optional[VanillaCNNConfig]
-    """
-    Config for the vanilla cnn network architecture. Only used if 
-    network_architecture is vanilla_cnn
-    """
-    embedding_module: t.Literal["None", "ResNet18"]
+    embedding_module: t.Literal["None", "ResNet50"]
     """Optionally configure the experiment to embed the dataset"""
+    network_cfg = dict()
+    """Other network configuration options"""
 
     #
     # Training
@@ -106,7 +99,7 @@ class ExperimentConfiguration():
         self.latent_dims = 64
         self.network_architecture = "vanilla_cnn"
         self.vanilla_cnn_config = VanillaCNNConfig()
-        self.vanilla_cnn_config.base_channels = 128
+        self.network_cfg["base_channels"] = 128
         return self
 
     def use_mlp_network(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
@@ -117,13 +110,15 @@ class ExperimentConfiguration():
 
     def use_rectangular_network(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment to use a rectangular network"""
-        self.network_architecture = "rectangular_network"
-        self.latent_dims = 128
+        self.network_architecture = "rectangular"
+        self.latent_dims = 512
+        self.network_cfg["width"] = 512
+        self.network_cfg["depth"] = 4
         return self
 
     def use_resnet_cnn(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment to use a ResNet CNN"""
-        self.network_architecture = "residual_network"
+        self.network_architecture = "residual"
         self.latent_dims = 64
         return self
 
@@ -167,18 +162,18 @@ class ExperimentConfiguration():
         """Configure the experiment to use the embedded CIFAR100 dataset"""
         self.dataset_name = "CIFAR100"
 
-        self.prune_proportion = 0.7
+        self.prune_proportion = 0.5
 
-        self.embedding_module = "ResNet18"
-        self.input_shape = 512
+        self.embedding_module = "ResNet50"
+        self.input_shape = 2048
         self.is_image_data = False
         self.recon_loss_type = "mse"
 
         self.fixed_class_order = True
         self.n_experiences = 10
 
-        self.total_task_epochs = 20
-        self.retrain_epochs = 5
+        self.total_task_epochs = 100
+        self.retrain_epochs = 30
         return self.use_rectangular_network()
 
 
@@ -195,6 +190,24 @@ class ExperimentConfiguration():
         self.use_resnet_cnn()
         self.latent_dims = 526
         return self
+
+    def use_embedded_core50(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
+        """Configure the experiment to use the embedded CIFAR100 dataset"""
+        self.dataset_name = "CORe50_NC"
+
+        self.prune_proportion = 0.5
+
+        self.embedding_module = "ResNet50"
+        self.input_shape = 2048
+        self.is_image_data = False
+        self.recon_loss_type = "mse"
+
+        self.fixed_class_order = True
+        self.n_experiences = 10
+
+        self.total_task_epochs = 100
+        self.retrain_epochs = 30
+        return self.use_rectangular_network()
 
 
     def use_auto_encoder(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':

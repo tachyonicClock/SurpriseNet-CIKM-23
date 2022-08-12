@@ -1,5 +1,5 @@
 import typing as t
-from abc import ABC, abstractclassmethod
+from abc import ABC,  abstractmethod
 from dataclasses import fields
 
 import torch
@@ -10,9 +10,7 @@ from torch import Tensor
 from torch.nn import functional as F
 
 
-class TaskInferenceStrategy(ABC):
-
-    @abstractclassmethod
+class TaskInferenceStrategy():
     def forward_with_task_inference(self,
                                     forward_func: t.Callable[[Tensor], ForwardOutput],
                                     x: Tensor) -> ForwardOutput:
@@ -87,7 +85,7 @@ class TaskReconstruction(TaskInferenceStrategy):
         best_out.pred_exp_id = torch.zeros(
             x.shape[0]).int().to(best_out.x_hat.device)
 
-        for i in range(1, self.n_experiences):
+        for i in range(1, self.experiment.strategy.clock.train_exp_counter):
             # Use a specific subset
             model.use_task_subset(i)
 

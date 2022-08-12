@@ -69,7 +69,6 @@ class PackNetDecorator(PackNet, ModuleDecorator):
                 f"Function only valid for {previous} instead PackNet was in the {self.state} state")
         self.state = next
 
-    # TODO Rename to supermask
     z_mask: Tensor
     """
     Z mask is a depth index of weights in an imaginary "stack" that makes up the

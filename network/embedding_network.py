@@ -6,12 +6,12 @@ from torch.utils.data import Dataset
 from torchvision import transforms as T
 
 
-class ResNet18FeatureExtractor(nn.Module):
+class ResNet50FeatureExtractor(nn.Module):
     """A feature extractor using ResNet"""
 
     def __init__(self):
         super().__init__()
-        self.model = models.resnet18(pretrained=True)
+        self.model = models.resnet50(pretrained=True)
         self.eval()
         self.normalize = T.Normalize(
         mean=[0.485, 0.456, 0.406],
