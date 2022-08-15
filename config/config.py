@@ -72,7 +72,7 @@ class ExperimentConfiguration():
     #
     use_packnet: bool
     """Whether to use packnet"""
-    prune_proportion: float
+    prune_proportion: t.Union[float, t.List[float]]
     """Proportion of the network to prune"""
     retrain_epochs: int
     """Number of epochs post-pruning to retrain the network"""
@@ -98,7 +98,6 @@ class ExperimentConfiguration():
         """Configure the experiment to use a vanilla CNN"""
         self.latent_dims = 64
         self.network_architecture = "vanilla_cnn"
-        self.vanilla_cnn_config = VanillaCNNConfig()
         self.network_cfg["base_channels"] = 128
         return self
 
@@ -185,7 +184,7 @@ class ExperimentConfiguration():
         self.is_image_data = True
         self.n_experiences = 10
 
-        self.total_task_epochs = 4
+        self.total_task_epochs = 5
         self.retrain_epochs = 1
         self.use_resnet_cnn()
         self.latent_dims = 526
@@ -205,8 +204,8 @@ class ExperimentConfiguration():
         self.fixed_class_order = True
         self.n_experiences = 10
 
-        self.total_task_epochs = 100
-        self.retrain_epochs = 30
+        self.total_task_epochs = 10
+        self.retrain_epochs = 3
         return self.use_rectangular_network()
 
 

@@ -59,8 +59,7 @@ class BCEReconstructionLoss(LossObjective):
     def update(self, out: ForwardOutput, target: Tensor = None):
         assert out.x.max() <= 1.0, "Input is not normalized"
         assert out.x.min() >= 0.0, "Input is not normalized"
-        x_hat = out.x_hat.clamp(0, 1)
-        self.loss = F.binary_cross_entropy(x_hat, out.x)
+        self.loss = F.binary_cross_entropy(out.x_hat, out.x)
 
 class MSEReconstructionLoss(LossObjective):
     name = "MSEReconstruction"

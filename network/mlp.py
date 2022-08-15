@@ -54,6 +54,7 @@ class MLPDecoder(Decoder):
             nn.ReLU(),
             nn.Dropout(0.5),
             nn.Linear(out_dimension*4, out_dimension),
+            nn.Sigmoid(),
         )
 
 

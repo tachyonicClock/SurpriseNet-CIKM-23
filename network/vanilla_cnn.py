@@ -48,7 +48,7 @@ class VanillaCNNEncoder(Encoder):
         x = self.conv_04(x)
         x = x.flatten(start_dim=1)
         x = self.fc(x)
-        return torch.sigmoid(x)
+        return x
 
     def encode(self, observations: Tensor) -> Tensor:
         return self(observations)
@@ -104,7 +104,7 @@ class VanillaCNNDecoder(Decoder):
         x = self.de_conv_03(x)
         x = self.de_conv_04(x)
 
-        return x
+        return torch.sigmoid(x)
 
     def decode(self, embedding: Tensor) -> Tensor:
         return self(embedding)

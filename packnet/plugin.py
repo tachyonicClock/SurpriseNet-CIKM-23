@@ -1,24 +1,55 @@
+import typing as t
 from avalanche.core import SupervisedPlugin
+from torch import nn
+import numpy as np
+
 
 from experiment.experiment import BaseExperiment
+
+
+def equal_capacity_prune_schedule(n_experiences: int) -> t.List[float]:
+    target_proportion = 1.0 / (n_experiences+1)
+    return list(np.arange(1.0-target_proportion, 0.0, -target_proportion))
 
 class PackNetPlugin(SupervisedPlugin):
     """Plugin that implements the steps to implement PackNet"""
     capacity: float = 1.0
     """How much of the network is still trainable"""
 
-    def __init__(self, network, experiment: BaseExperiment, prune_proportion, post_prune_epochs):
+    def __init__(
+            self, 
+            network: nn.Module,
+            experiment: BaseExperiment,
+            prune_amount: t.Union[float, t.List[float]],
+            post_prune_epochs: int):
+        """Create a plugin to add PackNet functionality to an experiment
+
+        :param network: The network to prune
+        :param experiment: The experiment to add the plugin to
+        :param prune_amount: The proportion of the network to prune. 
+            If a list, the proportion to prune at each experience
+        :param post_prune_epochs: The number of epochs to train after pruning
+        """
         self.network = network
         self.experiment = experiment
-        self.prune_proportion = prune_proportion
+        self.prune_amount = prune_amount
         self.post_prune_epochs = post_prune_epochs
+        print(f"Configured prune: {prune_amount}")
 
     def after_training_exp(self, strategy, **kwargs):
         """Perform pruning"""
-        self.capacity *= self.prune_proportion
+        # If list
+        if isinstance(self.prune_amount, float):
+            prune_proportion = self.prune_amount
+        elif isinstance(self.prune_amount, list):
+            prune_proportion = self.prune_amount[strategy.experience.current_experience]
+        else:
+            raise ValueError("prune_schedule must be a float or a list")
 
-        print(f"Pruning Network, {self.capacity*100}% remaining")
-        self.network.prune(self.prune_proportion)
+        self.capacity *= prune_proportion
+        
+        print(f"Pruning {prune_proportion*100:0.2f} of network such that {self.capacity*100:0.2f}% remains unfrozen")
+        self.network.prune(prune_proportion)
 
         # Reset optimizer
         self.experiment.optimizer = self.experiment.make_optimizer(self.network.parameters())

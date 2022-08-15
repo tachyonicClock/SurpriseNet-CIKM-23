@@ -11,7 +11,7 @@ from torch import Tensor
 from torch.utils.data import Dataset
 
 def scenario(
-    dataset: t.Literal["FMNIST", "CIFAR10", "CIFAR100", "CORe50_NC", "EmbeddedCIFAR100"], 
+    dataset: t.Literal["FMNIST", "CIFAR10", "CIFAR100", "CORe50_NC"], 
     dataset_root: str,
     n_experiences: int = 5, 
     fixed_class_order: bool = True) -> NCScenario:

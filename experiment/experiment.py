@@ -119,7 +119,7 @@ class BaseExperiment(SupervisedPlugin):
 
 
         return EvaluationPlugin(
-            loss_metrics(epoch=True, epoch_running=True, experience=True, stream=True, minibatch=True),
+            loss_metrics(epoch=True, epoch_running=True, experience=True, stream=True, minibatch=False),
             EpochClock(),
             *plugins,
             loggers=loggers
