@@ -138,4 +138,4 @@ if __name__ == '__main__':
     assert repo.is_dirty() is False, "Cannot run experiment on dirty repo"
     repo_hash = repo.head.commit.hexsha[:8]
 
-    equal_prune()
+    prune_levels(repo_hash)
