@@ -15,6 +15,8 @@ ALL_SCENARIOS = ["splitFMNIST", "splitCIFAR10", "splitCIFAR100", "splitCORe50", 
 def get_experiment_name(experiment, scenario, architecture, strategy):
     hostname = os.uname()[1]
     repo_hash = REPOSITORY.head.commit.hexsha[:8]
+    if REPOSITORY.is_dirty():
+        repo_hash += "D"
     return f"{hostname}_{repo_hash}_{experiment}_{scenario}_{architecture}_{strategy}"
 
 def run(cfg: ExperimentConfiguration):
@@ -70,9 +72,12 @@ def choose_architecture(cfg: ExperimentConfiguration, architecture: str):
 #
 
 @click.group()
-def cli():
-    assert REPOSITORY.is_dirty() is False, \
-        "Please commit your changes before running experiments. This is best practice"
+@click.option("--ignore-dirty", is_flag=True, default=False)
+def cli(ignore_dirty):
+    if REPOSITORY.is_dirty() and not ignore_dirty:
+        print("Please commit your changes before running experiments. This is best practice")
+        print("Use --ignore-dirty to ignore this")
+        exit(1)
 
 @cli.command()
 def prune_levels():
@@ -96,7 +101,7 @@ def equal_prune():
 
     for strategy, architecture, scenario in itertools.product(
             ["taskOracle", "taskInference"],
-            ["AE", "VAE"],
+            ["VAE"],
             ALL_SCENARIOS):
         cfg.name = get_experiment_name("EP", scenario, architecture, strategy)
 
