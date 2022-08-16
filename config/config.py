@@ -223,7 +223,7 @@ class ExperimentConfiguration():
         self.use_classifier_loss = True
         self.use_reconstruction_loss = True
         self.use_vae_loss = True
-        self.vae_loss_weight = 0.001
+        self.vae_loss_weight = 1.0
         return self
 
     def enable_packnet(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
