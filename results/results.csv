@@ -1,131 +1,168 @@
-,dataset,architecture,strategy,prune_strategy,id,loss,final_accuracy
-0,splitEmbeddedCIFAR100,AE,cumulative,EXP,0057,1.2672789096832275,0.32670000195503235
-1,splitEmbeddedCIFAR100,AE,finetuning,EXP,0068,0.6800261735916138,0.14239999651908875
-2,splitEmbeddedCIFAR100,AE,cumulative,EXP,0106,,
-3,splitCORe50,VAE,finetuning,EXP,0030,0.23960508406162262,0.07506892830133438
-4,splitEmbeddedCIFAR100,AE,taskInference,EXP,0071,0.835625410079956,0.1615000069141388
-5,splitFMNIST,VAE,cumulative,EXP,0002,,
-6,splitEmbeddedCIFAR100,AE,taskInference,EXP,0086,,
-7,splitEmbeddedCIFAR100,AE,taskInference,EXP,0075,0.5921602845191956,0.5680000185966492
-8,splitEmbeddedCIFAR100,AE,taskInference,EXP,0089,1.353154182434082,
-9,splitFMNIST,VAE,taskInference,EXP,0006,,
-10,splitEmbeddedCIFAR100,VAE,taskOracle,EXP,0094,2.184070587158203,0.44999998807907104
-11,splitCORe50,AE,cumulative,EXP,0017,0.33973777294158936,0.35599929094314575
-12,splitEmbeddedCIFAR100,AE,taskInference,EXP,0079,0.9676615595817566,0.44670000672340393
-13,splitFMNIST,AE,taskOracle,EXP,0003,,
-14,splitEmbeddedCIFAR100,VAE,taskInference,EXP,0096,2.1972098350524902,0.34360000491142273
-15,splitCIFAR10,AE,finetuning,EXP,0024,0.2365797460079193,0.193900004029274
-16,splitFMNIST,VAE,taskOracle,EXP,0004,,
-17,splitFMNIST,AE,finetuning,EXP,0023,0.15173551440238953,0.19949999451637268
-18,splitCIFAR100,AE,finetuning,EXP,0025,0.29133960604667664,0.08990000188350677
-19,splitFMNIST,AE,taskInference,EXP,0005,,
-20,splitEmbeddedCIFAR100,AE,taskInference,EXP,0069,1.205246925354004,0.4358333349227905
-21,splitFMNIST,VAE,taskOracle,EP,0138,,0.9934999942779541
-22,splitEmbeddedCIFAR100,VAE,taskOracle,EXP,0117,,0.47350001335144043
-23,splitEmbeddedCORe50,AE,taskOracle,EXP,0104,,0.9045131206512451
-24,splitEmbeddedCIFAR100,VAE,finetuning,EXP,0064,0.1902931034564972,0.07760000228881836
-25,splitCIFAR100,AE,taskInference,EXP,0041,2.531424045562744,0.23510000109672546
-26,splitEmbeddedCIFAR100,AE,finetuning,EXP,0055,0.33017653226852417,0.0763000026345253
-27,splitFMNIST,AE,cumulative,EXP,0001,,
-28,splitEmbeddedCIFAR100,VAE,cumulative,EXP,0050,0.7941743731498718,0.30799999833106995
-29,splitEmbeddedCIFAR100,VAE,cumulative,EXP,0066,0.8690359592437744,
-30,splitEmbeddedCIFAR100,VAE,taskInference,EXP,0121,,0.3625999987125397
-31,splitEmbeddedCIFAR100,VAE,taskInference,EXP,0062,1.900261402130127,0.3571999967098236
-32,splitCIFAR100,VAE,taskInference,EP,0148,,0.4275999963283539
-33,splitCIFAR10,VAE,taskOracle,EXP,0036,0.23006802797317505,0.9381999969482422
-34,splitFMNIST,VAE,taskInference,EXP,0043,0.25268563628196716,0.9926999807357788
-35,splitFMNIST,VAE,taskInference,EP,0146,,0.9929999709129333
-36,splitFMNIST,AE,taskInference,EP,0142,,0.9930999875068665
-37,splitCORe50,AE,taskInference,EXP,0042,3.921793222427368,0.05532331392168999
-38,splitFMNIST,VAE,cumulative,EXP,0018,0.15503361821174622,0.8988999724388123
-39,splitEmbeddedCIFAR100,AE,taskInference,EXP,0119,,0.4392000138759613
-40,splitFMNIST,AE,cumulative,EXP,0014,0.15796227753162384,0.9150999784469604
-41,splitEmbeddedCIFAR100,AE,taskOracle,EXP,0115,,0.5512999892234802
-42,splitEmbeddedCORe50,AE,taskInference,EXP,0120,,0.4191496968269348
-43,splitEmbeddedCIFAR100,AE,finetuning,EXP,0067,,
-44,splitCIFAR10,AE,cumulative,EXP,0015,0.286853551864624,0.8720999956130981
-45,splitCIFAR100,VAE,taskOracle,EP,0140,,0.5302000045776367
-46,splitEmbeddedCIFAR100,VAE,taskOracle,EXP,0098,0.7020010352134705,0.6603000164031982
-47,splitEmbeddedCORe50,AE,taskOracle,EXP,0103,0.25983887910842896,
-48,splitCIFAR100,AE,cumulative,EXP,0016,0.3840615153312683,0.6166999936103821
-49,splitEmbeddedCIFAR100,AE,taskInference,EXP,0053,2.840611696243286,0.21940000355243683
-50,splitCORe50,AE,finetuning,EXP,0026,0.3073922395706177,0.07453526556491852
-51,splitEmbeddedCIFAR100,AE,taskInference,EXP,0085,0.777350902557373,
-52,splitCORe50,AE,taskOracle,EXP,0034,2.755154609680176,0.4322022497653961
-53,splitCIFAR100,VAE,taskInference,EXP,0045,1.4831913709640503,0.3091000020503998
-54,splitCORe50,AE,taskInference,EP,0145,,0.08247353881597519
-55,splitEmbeddedCIFAR100,VAE,taskInference,EXP,0080,0.5658161044120789,0.7559999823570251
-56,splitEmbeddedCIFAR100,AE,finetuning,EXP,0063,0.19057071208953857,0.07850000262260437
-57,splitFMNIST,AE,taskOracle,EP,0134,,0.9930999875068665
-58,splitEmbeddedCIFAR100,VAE,taskOracle,EXP,0060,1.9613066911697388,0.476500004529953
-59,splitEmbeddedCORe50,VAE,cumulative,EXP,0110,,0.7593169212341309
-60,splitEmbeddedCIFAR100,AE,taskInference,EXP,0082,,
-61,splitEmbeddedCORe50,VAE,taskInference,EXP,0122,,0.37561148405075073
-62,splitEmbeddedCIFAR100,AE,cumulative,EXP,0107,,0.42100000381469727
-63,splitFMNIST,AE,taskOracle,EXP,0031,0.4827209413051605,0.9937999844551086
-64,splitEmbeddedCORe50,AE,cumulative,EXP,0108,,0.7720359563827515
-65,splitCORe50,VAE,cumulative,EXP,0021,0.3218110203742981,0.3603575527667999
-66,splitCORe50,VAE,taskInference,EXP,0046,1.8032320737838745,0.05309970676898956
-67,splitEmbeddedCORe50,VAE,finetuning,EXP,0114,,0.057791516184806824
-68,splitEmbeddedCIFAR100,AE,taskInference,EXP,0099,1.020917534828186,0.6855999827384949
-69,splitFMNIST,AE,finetuning,EXP,0022,0.9667370915412903,
-70,splitEmbeddedCORe50,AE,taskOracle,EXP,0105,,0.9693197011947632
-71,splitFMNIST,VAE,taskOracle,EXP,0035,0.16933488845825195,0.9936000108718872
-72,splitEmbeddedCIFAR100,AE,taskInference,EXP,0102,4.853724479675293,0.5084285736083984
-73,splitEmbeddedCIFAR100,VAE,finetuning,EXP,0113,,0.08489999920129776
-74,splitEmbeddedCIFAR100,AE,taskOracle,EXP,0059,0.9004504084587097,0.5310999751091003
-75,splitCIFAR100,AE,taskInference,EP,0144,,0.2565999925136566
-76,splitCIFAR10,AE,taskOracle,EXP,0032,0.42214205861091614,0.9375
-77,splitEmbeddedCORe50,VAE,taskOracle,EXP,0118,,0.5190563201904297
-78,splitCIFAR10,VAE,finetuning,EXP,0028,0.19626764953136444,0.19449999928474426
-79,splitEmbeddedCIFAR100,AE,taskInference,EXP,0088,1.4928386211395264,
-80,splitEmbeddedCIFAR100,VAE,taskInference,EXP,0078,0.5074913501739502,
-81,splitEmbeddedCIFAR100,VAE,taskInference,EXP,0100,0.40473294258117676,0.6365000009536743
-82,splitEmbeddedCIFAR100,AE,finetuning,EXP,0047,0.33436766266822815,0.07519999891519547
-83,splitEmbeddedCIFAR100,AE,taskInference,EXP,0072,2.5149543285369873,0.5077999830245972
-84,splitCIFAR10,VAE,taskInference,EXP,0044,0.27405431866645813,0.7294999957084656
-85,splitEmbeddedCIFAR100,VAE,cumulative,EXP,0109,,0.39739999175071716
-86,splitCIFAR10,AE,taskOracle,EP,0135,,0.9337000250816345
-87,splitEmbeddedCIFAR100,VAE,taskInference,EXP,0054,1.9303606748580933,0.21570000052452087
-88,splitCORe50,VAE,taskOracle,EP,0141,,0.5406475067138672
-89,splitCIFAR10,AE,taskInference,EP,0143,,0.4302999973297119
-90,splitEmbeddedCIFAR100,AE,taskInference,EXP,0083,,
-91,splitEmbeddedCIFAR100,AE,taskInference,EXP,0073,1.0296512842178345,0.3970000147819519
-92,splitCIFAR100,VAE,cumulative,EXP,0020,0.25842806696891785,0.6105999946594238
-93,splitFMNIST,VAE,finetuning,EXP,0027,0.11536383628845215,0.19949999451637268
-94,splitEmbeddedCIFAR100,AE,taskInference,EXP,0090,2.855851650238037,0.04324999824166298
-95,splitCIFAR100,AE,taskOracle,EP,0136,,0.5566999912261963
-96,splitCIFAR10,VAE,taskInference,EP,0147,,0.7731000185012817
-97,splitEmbeddedCIFAR100,VAE,finetuning,EXP,0048,0.3762861490249634,0.0746999979019165
-98,splitEmbeddedCIFAR100,AE,taskInference,EXP,0076,,
-99,splitEmbeddedCIFAR100,AE,taskInference,EXP,0091,1.0957646369934082,0.6769999861717224
-100,splitEmbeddedCORe50,AE,finetuning,EXP,0112,,0.08805479109287262
-101,splitEmbeddedCIFAR100,VAE,finetuning,EXP,0056,0.1026090756058693,0.07519999891519547
-102,splitEmbeddedCIFAR100,AE,finetuning,EXP,0111,,0.08410000056028366
-103,splitEmbeddedCIFAR100,AE,taskInference,EXP,0077,1.4017610549926758,0.4068000018596649
-104,splitCIFAR10,VAE,taskOracle,EP,0139,,0.9172000288963318
-105,splitCIFAR100,AE,taskOracle,EXP,0033,1.8039507865905762,0.5475000143051147
-106,splitCIFAR100,VAE,finetuning,EXP,0029,0.2149050086736679,0.08910000324249268
-107,splitEmbeddedCIFAR100,AE,cumulative,EXP,0065,1.4210737943649292,0.36480000615119934
-108,splitCORe50,AE,taskOracle,EP,0137,,0.506759762763977
-109,splitEmbeddedCIFAR100,AE,taskOracle,EXP,0097,0.8700445890426636,0.7139999866485596
-110,splitEmbeddedCIFAR100,AE,taskOracle,EXP,0101,,
-111,splitCORe50,VAE,taskOracle,EXP,0038,1.7686599493026733,0.40322867035865784
-112,splitFMNIST,AE,taskInference,EXP,0039,1.06833815574646,0.9596999883651733
-113,splitEmbeddedCIFAR100,AE,taskInference,EXP,0081,,
-114,splitEmbeddedCIFAR100,AE,taskInference,EXP,0084,,
-115,splitEmbeddedCORe50,AE,taskOracle,EXP,0116,,0.6042426228523254
-116,splitCIFAR10,VAE,cumulative,EXP,0019,0.47625693678855896,0.8725000023841858
-117,splitEmbeddedCIFAR100,AE,taskOracle,EXP,0093,2.783972978591919,0.5390999913215637
-118,splitEmbeddedCIFAR100,AE,taskInference,EXP,0087,0.6389474868774414,0.7620000243186951
-119,splitEmbeddedCIFAR100,VAE,taskInference,EXP,0074,0.49069657921791077,
-120,splitEmbeddedCIFAR100,VAE,taskOracle,EXP,0052,2.048435926437378,0.2849999964237213
-121,splitEmbeddedCIFAR100,AE,taskOracle,EXP,0051,3.059985399246216,0.36880001425743103
-122,splitEmbeddedCIFAR100,AE,taskInference,EXP,0092,2.5131449699401855,0.7885000109672546
-123,splitEmbeddedCIFAR100,AE,taskInference,EXP,0095,2.274977207183838,0.3465999960899353
-124,splitEmbeddedCIFAR100,VAE,cumulative,EXP,0058,1.014315128326416,0.31380000710487366
-125,splitCIFAR10,AE,taskInference,EXP,0040,0.34290045499801636,0.7123000025749207
-126,splitEmbeddedCIFAR100,AE,cumulative,EXP,0049,1.52059006690979,0.323199987411499
-127,splitEmbeddedCIFAR100,AE,taskInference,EXP,0070,0.6421566009521484,0.7059999704360962
-128,splitCIFAR100,VAE,taskOracle,EXP,0037,1.664222240447998,0.5910000205039978
-129,splitEmbeddedCIFAR100,AE,taskInference,EXP,0061,1.1740829944610596,0.28929999470710754
+,dataset,architecture,strategy,experiment_category,id,repo_hash,final_accuracy,batch_size,classifier_loss_weight,dataset_name,deep_generative_type,device,embedding_module,fixed_class_order,input_shape,is_image_data,latent_dims,learning_rate,n_experiences,name,network_architecture,prune_proportion,recon_loss_type,reconstruction_loss_weight,retrain_epochs,task_inference_strategy,total_task_epochs,use_classifier_loss,use_packnet,use_reconstruction_loss,use_vae_loss,rectangular_mlp_config,loss,vae_loss_weight,vanilla_cnn_config
+0,splitCIFAR100,AE,taskOracle,EP,0003,b7711e62,0.5669000148773193,64.0,1.0,CIFAR100,AE,cuda,None,True,"[3, 32, 32]",True,64.0,0.0001,10.0,ml-22_b7711e62_EP_splitCIFAR100_AE_taskOracle,residual,"[0.9090909090909091, 0.8181818181818181, 0.7272727272727272, 0.6363636363636362, 0.5454545454545453, 0.45454545454545436, 0.3636363636363634, 0.2727272727272725, 0.18181818181818155, 0.0909090909090906]",bce,1.0,20.0,task_oracle,100.0,True,True,True,False,,,,
+1,splitEmbeddedCIFAR100,AE,taskInference,N,0076,dd88ddf,,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,512,False,128.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_taskInference,rectangular_network,0.7,mse,1.0,5.0,task_reconstruction_loss,20.0,True,True,True,False,"{'depth': 4, 'width': 512}",,,
+2,splitCIFAR100,AE,taskOracle,EP,0136,dd88ddf,0.5566999912261963,64.0,1.0,CIFAR100,AE,cuda,None,True,"[3, 32, 32]",True,64.0,0.0001,10.0,EP_splitCIFAR100_AE_taskOracle,residual,"[0.9090909090909091, 0.8181818181818181, 0.7272727272727272, 0.6363636363636362, 0.5454545454545453, 0.45454545454545436, 0.3636363636363634, 0.2727272727272725, 0.18181818181818155, 0.0909090909090906]",bce,1.0,20.0,task_oracle,100.0,True,True,True,False,,,,
+3,splitEmbeddedCORe50,AE,taskInference,PL,0008,7ee898bd,0.44111892580986023,64.0,1.0,CORe50_NC,AE,cuda,ResNet50,True,2048,False,512.0,0.0001,10.0,ml-23_7ee898bd_PL_splitEmbeddedCORe50_AE_taskInference,rectangular,0.5,mse,1.0,3.0,task_reconstruction_loss,10.0,True,True,True,False,,,,
+4,splitEmbeddedCIFAR100,AE,taskInference,N,0087,dd88ddf,0.7620000243186951,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,2048,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_taskInference,rectangular,0.7,mse,1.0,20.0,task_reconstruction_loss,50.0,True,True,True,False,,0.6389474868774414,,
+5,splitCIFAR10,AE,taskInference,PL,0157,55dff8e1,0.7864999771118164,64.0,1.0,CIFAR10,AE,cuda,None,True,"[3, 32, 32]",True,64.0,0.0001,5.0,55dff8e1_PL_splitCIFAR10_AE_taskInference,residual,0.6,bce,1.0,10.0,task_reconstruction_loss,50.0,True,True,True,False,,,,
+6,splitCORe50,VAE,finetuning,N,0030,dd88ddf,0.07506892830133438,64.0,1.0,CORe50_NC,VAE,cuda,,True,"[3, 128, 128]",True,526.0,0.0001,10.0,splitCORe50_VAE_finetuning,residual_network,,,1.0,1.0,,4.0,True,False,True,True,,0.23960508406162262,0.001,{'base_channels': 128}
+7,splitCIFAR100,AE,taskInference,N,0041,dd88ddf,0.23510000109672546,64.0,1.0,CIFAR100,AE,cuda,,True,"[3, 32, 32]",True,64.0,0.0001,10.0,splitCIFAR100_AE_taskInference,residual_network,0.5,,1.0,20.0,task_reconstruction_loss,100.0,True,True,True,False,,2.531424045562744,0.001,{'base_channels': 128}
+8,splitEmbeddedCIFAR100,AE,cumulative,N,0107,dd88ddf,0.42100000381469727,64.0,1.0,CIFAR100,AE,cuda,ResNet50,True,2048,False,512.0,0.0001,1.0,splitEmbeddedCIFAR100_AE_cumulative,rectangular,0.5,mse,1.0,30.0,,100.0,True,False,True,False,,,,
+9,splitEmbeddedCIFAR100,AE,finetuning,N,0055,dd88ddf,0.0763000026345253,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,512,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_finetuning,rectangular_network,0.7,mse,1.0,5.0,,20.0,True,False,True,False,,0.33017653226852417,,
+10,splitEmbeddedCIFAR100,VAE,finetuning,N,0113,dd88ddf,0.08489999920129776,64.0,1.0,CIFAR100,VAE,cuda,ResNet50,True,2048,False,512.0,0.0001,10.0,splitEmbeddedCIFAR100_VAE_finetuning,rectangular,0.5,mse,1.0,30.0,,100.0,True,False,True,True,,,0.001,
+11,splitCORe50,AE,taskInference,PL,0165,55dff8e1,0.05859201401472092,64.0,1.0,CORe50_NC,AE,cuda,None,True,"[3, 128, 128]",True,526.0,0.0001,10.0,55dff8e1_PL_splitCORe50_AE_taskInference,residual,0.4,bce,1.0,1.0,task_reconstruction_loss,5.0,True,True,True,False,,,,
+12,splitEmbeddedCIFAR100,AE,taskOracle,N,0115,dd88ddf,0.5512999892234802,64.0,1.0,CIFAR100,AE,cuda,ResNet50,True,2048,False,512.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_taskOracle,rectangular,0.5,mse,1.0,30.0,task_oracle,100.0,True,True,True,False,,,0.001,
+13,splitEmbeddedCIFAR100,AE,taskInference,PL,0003,7ee898bd,0.4058000147342682,64.0,1.0,CIFAR100,AE,cuda,ResNet50,True,2048,False,512.0,0.0001,10.0,ml-23_7ee898bd_PL_splitEmbeddedCIFAR100_AE_taskInference,rectangular,0.5,mse,1.0,30.0,task_reconstruction_loss,100.0,True,True,True,False,,,,
+14,splitEmbeddedCIFAR100,VAE,taskOracle,N,0098,dd88ddf,0.6603000164031982,64.0,1.0,CIFAR100,VAE,cuda,ResNet18,True,2048,False,512.0,0.0001,10.0,splitEmbeddedCIFAR100_VAE_taskOracle,rectangular,0.7,mse,1.0,30.0,task_oracle,100.0,True,True,True,True,,0.7020010352134705,0.001,
+15,splitFMNIST,AE,finetuning,N,0023,dd88ddf,0.19949999451637268,64.0,1.0,FMNIST,AE,cuda,,True,"[1, 32, 32]",True,64.0,0.0001,5.0,splitFMNIST_AE_finetuning,vanilla_cnn,,,1.0,5.0,,20.0,True,False,True,False,,0.15173551440238953,,{'base_channels': 128}
+16,splitFMNIST,AE,taskInference,PL,0151,55dff8e1,0.9929999709129333,64.0,1.0,FMNIST,AE,cuda,None,True,"[1, 32, 32]",True,64.0,0.0001,5.0,55dff8e1_PL_splitFMNIST_AE_taskInference,vanilla_cnn,0.5,bce,1.0,5.0,task_reconstruction_loss,20.0,True,True,True,False,,,,
+17,splitEmbeddedCIFAR100,AE,taskInference,PL,0004,7ee898bd,0.5109000205993652,64.0,1.0,CIFAR100,AE,cuda,ResNet50,True,2048,False,512.0,0.0001,10.0,ml-23_7ee898bd_PL_splitEmbeddedCIFAR100_AE_taskInference,rectangular,0.6,mse,1.0,30.0,task_reconstruction_loss,100.0,True,True,True,False,,,,
+18,splitEmbeddedCIFAR100,AE,taskInference,N,0099,dd88ddf,0.6855999827384949,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,2048,False,512.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_taskInference,rectangular,0.7,mse,1.0,30.0,task_reconstruction_loss,100.0,True,True,True,False,,1.020917534828186,0.001,
+19,splitEmbeddedCIFAR100,AE,taskInference,N,0079,dd88ddf,0.44670000672340393,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,2048,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_taskInference,rectangular_network,0.7,mse,1.0,10.0,task_reconstruction_loss,50.0,True,True,True,False,"{'depth': 4, 'width': 512}",0.9676615595817566,,
+20,splitEmbeddedCIFAR100,VAE,taskInference,N,0054,dd88ddf,0.21570000052452087,64.0,1.0,CIFAR100,VAE,cuda,ResNet18,True,512,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_VAE_taskInference,rectangular_network,0.5,mse,1.0,5.0,task_reconstruction_loss,20.0,True,True,True,True,,1.9303606748580933,0.001,
+21,splitCORe50,VAE,taskOracle,N,0038,dd88ddf,0.40322867035865784,64.0,1.0,CORe50_NC,VAE,cuda,,True,"[3, 128, 128]",True,526.0,0.0001,10.0,splitCORe50_VAE_taskOracle,residual_network,0.5,,1.0,1.0,task_oracle,4.0,True,True,True,True,,1.7686599493026733,0.001,{'base_channels': 128}
+22,splitEmbeddedCIFAR100,AE,finetuning,N,0067,dd88ddf,,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,512,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_finetuning,rectangular_network,0.7,mse,1.0,2.0,,10.0,True,False,True,False,,,,
+23,splitFMNIST,VAE,taskOracle,EP,0007,b7711e62,,64.0,1.0,FMNIST,VAE,cuda,ResNet50,True,"[1, 32, 32]",True,64.0,0.0001,5.0,ml-22_b7711e62_EP_splitFMNIST_VAE_taskOracle,vanilla_cnn,"[0.8333333333333334, 0.6666666666666667, 0.5000000000000001, 0.3333333333333335, 0.16666666666666685, 2.220446049250313e-16]",mse,1.0,5.0,task_oracle,20.0,True,True,True,True,,,0.001,
+24,splitEmbeddedCORe50,AE,taskInference,N,0120,dd88ddf,0.4191496968269348,64.0,1.0,CORe50_NC,AE,cuda,ResNet50,True,2048,False,512.0,0.0001,10.0,splitEmbeddedCORe50_AE_taskInference,rectangular,0.5,mse,1.0,3.0,task_reconstruction_loss,10.0,True,True,True,False,,,0.001,
+25,splitCORe50,AE,taskOracle,N,0034,dd88ddf,0.4322022497653961,64.0,1.0,CORe50_NC,AE,cuda,,True,"[3, 128, 128]",True,526.0,0.0001,10.0,splitCORe50_AE_taskOracle,residual_network,0.5,,1.0,1.0,task_oracle,4.0,True,True,True,False,,2.755154609680176,0.001,{'base_channels': 128}
+26,splitFMNIST,VAE,taskOracle,N,0035,dd88ddf,0.9936000108718872,64.0,1.0,FMNIST,VAE,cuda,,True,"[1, 32, 32]",True,64.0,0.0001,5.0,splitFMNIST_VAE_taskOracle,vanilla_cnn,0.5,,1.0,5.0,task_oracle,20.0,True,True,True,True,,0.16933488845825195,0.001,{'base_channels': 128}
+27,splitCORe50,AE,taskInference,PL,0166,55dff8e1,0.06381748616695404,64.0,1.0,CORe50_NC,AE,cuda,None,True,"[3, 128, 128]",True,526.0,0.0001,10.0,55dff8e1_PL_splitCORe50_AE_taskInference,residual,0.5,bce,1.0,1.0,task_reconstruction_loss,5.0,True,True,True,False,,,,
+28,splitEmbeddedCIFAR100,VAE,taskInference,N,0100,dd88ddf,0.6365000009536743,64.0,1.0,CIFAR100,VAE,cuda,ResNet18,True,2048,False,512.0,0.0001,10.0,splitEmbeddedCIFAR100_VAE_taskInference,rectangular,0.7,mse,1.0,30.0,task_reconstruction_loss,100.0,True,True,True,True,,0.40473294258117676,0.001,
+29,splitFMNIST,VAE,finetuning,N,0027,dd88ddf,0.19949999451637268,64.0,1.0,FMNIST,VAE,cuda,,True,"[1, 32, 32]",True,64.0,0.0001,5.0,splitFMNIST_VAE_finetuning,vanilla_cnn,,,1.0,5.0,,20.0,True,False,True,True,,0.11536383628845215,0.001,{'base_channels': 128}
+30,splitEmbeddedCIFAR100,AE,taskInference,N,0070,dd88ddf,0.7059999704360962,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,512,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_taskInference,rectangular_network,0.7,mse,1.0,2.0,task_reconstruction_loss,10.0,True,True,True,False,,0.6421566009521484,,
+31,splitEmbeddedCIFAR100,AE,taskInference,PL,0005,7ee898bd,0.7444000244140625,64.0,1.0,CIFAR100,AE,cuda,ResNet50,True,2048,False,512.0,0.0001,10.0,ml-23_7ee898bd_PL_splitEmbeddedCIFAR100_AE_taskInference,rectangular,0.8,mse,1.0,30.0,task_reconstruction_loss,100.0,True,True,True,False,,,,
+32,splitEmbeddedCIFAR100,VAE,taskInference,N,0096,dd88ddf,0.34360000491142273,64.0,1.0,CIFAR100,VAE,cuda,ResNet18,True,2048,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_VAE_taskInference,rectangular,0.5,mse,1.0,25.0,task_reconstruction_loss,100.0,True,True,True,True,,2.1972098350524902,0.001,
+33,splitCIFAR100,AE,taskInference,EP,0144,dd88ddf,0.2565999925136566,64.0,1.0,CIFAR100,AE,cuda,None,True,"[3, 32, 32]",True,64.0,0.0001,10.0,EP_splitCIFAR100_AE_taskInference,residual,"[0.9090909090909091, 0.8181818181818181, 0.7272727272727272, 0.6363636363636362, 0.5454545454545453, 0.45454545454545436, 0.3636363636363634, 0.2727272727272725, 0.18181818181818155, 0.0909090909090906]",bce,1.0,20.0,task_reconstruction_loss,100.0,True,True,True,False,,,0.001,
+34,splitCORe50,VAE,taskOracle,EP,0141,dd88ddf,0.5406475067138672,64.0,1.0,CORe50_NC,VAE,cuda,None,True,"[3, 128, 128]",True,526.0,0.0001,10.0,EP_splitCORe50_VAE_taskOracle,residual,"[0.9090909090909091, 0.8181818181818181, 0.7272727272727272, 0.6363636363636362, 0.5454545454545453, 0.45454545454545436, 0.3636363636363634, 0.2727272727272725, 0.18181818181818155, 0.0909090909090906]",bce,1.0,10.0,task_oracle,50.0,True,True,True,True,,,0.001,
+35,splitCIFAR100,VAE,finetuning,N,0029,dd88ddf,0.08910000324249268,64.0,1.0,CIFAR100,VAE,cuda,,True,"[3, 32, 32]",True,64.0,0.0001,10.0,splitCIFAR100_VAE_finetuning,residual_network,,,1.0,20.0,,100.0,True,False,True,True,,0.2149050086736679,0.001,{'base_channels': 128}
+36,splitEmbeddedCORe50,AE,cumulative,N,0108,dd88ddf,0.7720359563827515,64.0,1.0,CORe50_NC,AE,cuda,ResNet50,True,2048,False,512.0,0.0001,1.0,splitEmbeddedCORe50_AE_cumulative,rectangular,0.5,mse,1.0,3.0,,10.0,True,False,True,False,,,,
+37,splitCIFAR100,VAE,taskInference,EP,0148,dd88ddf,0.35866665840148926,64.0,1.0,CIFAR100,VAE,cuda,None,True,"[3, 32, 32]",True,64.0,0.0001,10.0,EP_splitCIFAR100_VAE_taskInference,residual,"[0.9090909090909091, 0.8181818181818181, 0.7272727272727272, 0.6363636363636362, 0.5454545454545453, 0.45454545454545436, 0.3636363636363634, 0.2727272727272725, 0.18181818181818155, 0.0909090909090906]",bce,1.0,20.0,task_reconstruction_loss,100.0,True,True,True,True,,,0.001,
+38,splitFMNIST,VAE,taskInference,N,0006,dd88ddf,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+39,splitCIFAR10,AE,taskOracle,EP,0002,b7711e62,0.9276999831199646,64.0,1.0,CIFAR10,AE,cuda,None,True,"[3, 32, 32]",True,64.0,0.0001,5.0,ml-22_b7711e62_EP_splitCIFAR10_AE_taskOracle,residual,"[0.8333333333333334, 0.6666666666666667, 0.5000000000000001, 0.3333333333333335, 0.16666666666666685, 2.220446049250313e-16]",bce,1.0,10.0,task_oracle,50.0,True,True,True,False,,,,
+40,splitEmbeddedCIFAR100,VAE,finetuning,N,0048,dd88ddf,0.0746999979019165,64.0,1.0,CIFAR100,VAE,cuda,ResNet18,True,512,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_VAE_finetuning,rectangular_network,,mse,1.0,5.0,,20.0,True,False,True,True,,0.3762861490249634,0.001,
+41,splitEmbeddedCIFAR100,VAE,taskOracle,N,0060,dd88ddf,0.476500004529953,64.0,1.0,CIFAR100,VAE,cuda,ResNet18,True,512,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_VAE_taskOracle,rectangular_network,0.7,mse,1.0,5.0,task_oracle,20.0,True,True,True,True,,1.9613066911697388,0.001,
+42,splitFMNIST,AE,cumulative,N,0014,dd88ddf,0.9150999784469604,64.0,1.0,FMNIST,AE,cuda,,True,"[1, 32, 32]",True,64.0,0.0001,1.0,splitFMNIST_AE_cumulative,vanilla_cnn,,,1.0,5.0,,20.0,True,False,True,False,,0.15796227753162384,,{'base_channels': 128}
+43,splitEmbeddedCIFAR100,AE,taskInference,N,0084,dd88ddf,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+44,splitCIFAR10,VAE,taskOracle,EP,0139,dd88ddf,0.9172000288963318,64.0,1.0,CIFAR10,VAE,cuda,None,True,"[3, 32, 32]",True,64.0,0.0001,5.0,EP_splitCIFAR10_VAE_taskOracle,residual,"[0.8333333333333334, 0.6666666666666667, 0.5000000000000001, 0.3333333333333335, 0.16666666666666685, 2.220446049250313e-16]",bce,1.0,10.0,task_oracle,50.0,True,True,True,True,,,0.001,
+45,splitEmbeddedCIFAR100,AE,taskInference,N,0073,dd88ddf,0.3970000147819519,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,512,False,128.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_taskInference,rectangular_network,0.7,mse,1.0,5.0,task_reconstruction_loss,20.0,True,True,True,False,,1.0296512842178345,,
+46,splitEmbeddedCIFAR100,AE,finetuning,N,0047,dd88ddf,0.07519999891519547,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,512,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_finetuning,rectangular_network,,mse,1.0,5.0,,20.0,True,False,True,False,,0.33436766266822815,,
+47,splitEmbeddedCORe50,AE,taskInference,PL,0010,7ee898bd,0.7624966502189636,64.0,1.0,CORe50_NC,AE,cuda,ResNet50,True,2048,False,512.0,0.0001,10.0,ml-23_7ee898bd_PL_splitEmbeddedCORe50_AE_taskInference,rectangular,0.8,mse,1.0,3.0,task_reconstruction_loss,10.0,True,True,True,False,,,,
+48,splitEmbeddedCIFAR100,AE,finetuning,N,0063,dd88ddf,0.07850000262260437,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,512,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_finetuning,rectangular_network,0.7,mse,1.0,10.0,,50.0,True,False,True,False,,0.19057071208953857,,
+49,splitEmbeddedCIFAR100,AE,taskInference,N,0091,dd88ddf,0.6769999861717224,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,2048,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_taskInference,rectangular,0.5,mse,1.0,5.0,task_reconstruction_loss,10.0,True,True,True,False,,1.0957646369934082,,
+50,splitCIFAR10,VAE,taskInference,EP,0147,dd88ddf,0.7731000185012817,64.0,1.0,CIFAR10,VAE,cuda,None,True,"[3, 32, 32]",True,64.0,0.0001,5.0,EP_splitCIFAR10_VAE_taskInference,residual,"[0.8333333333333334, 0.6666666666666667, 0.5000000000000001, 0.3333333333333335, 0.16666666666666685, 2.220446049250313e-16]",bce,1.0,10.0,task_reconstruction_loss,50.0,True,True,True,True,,,0.001,
+51,splitCIFAR100,AE,taskInference,PL,0161,55dff8e1,0.2870999872684479,64.0,1.0,CIFAR100,AE,cuda,None,True,"[3, 32, 32]",True,64.0,0.0001,10.0,55dff8e1_PL_splitCIFAR100_AE_taskInference,residual,0.5,bce,1.0,20.0,task_reconstruction_loss,100.0,True,True,True,False,,,,
+52,splitEmbeddedCIFAR100,AE,taskInference,N,0095,dd88ddf,0.3465999960899353,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,2048,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_taskInference,rectangular,0.5,mse,1.0,25.0,task_reconstruction_loss,100.0,True,True,True,False,,2.274977207183838,0.001,
+53,splitCIFAR10,VAE,taskInference,N,0044,dd88ddf,0.7294999957084656,64.0,1.0,CIFAR10,VAE,cuda,,True,"[3, 32, 32]",True,64.0,0.0001,5.0,splitCIFAR10_VAE_taskInference,residual_network,0.5,,1.0,10.0,task_reconstruction_loss,50.0,True,True,True,True,,0.27405431866645813,0.001,{'base_channels': 128}
+54,splitCORe50,AE,taskOracle,EP,0004,b7711e62,0.3669171929359436,64.0,1.0,CORe50_NC,AE,cuda,None,True,"[3, 128, 128]",True,526.0,0.0001,10.0,ml-22_b7711e62_EP_splitCORe50_AE_taskOracle,residual,"[0.9090909090909091, 0.8181818181818181, 0.7272727272727272, 0.6363636363636362, 0.5454545454545453, 0.45454545454545436, 0.3636363636363634, 0.2727272727272725, 0.18181818181818155, 0.0909090909090906]",bce,1.0,1.0,task_oracle,5.0,True,True,True,False,,,,
+55,splitEmbeddedCIFAR100,AE,taskInference,N,0069,dd88ddf,0.4358333349227905,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,512,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_taskInference,rectangular_network,0.7,mse,1.0,2.0,task_reconstruction_loss,10.0,True,True,True,False,,1.205246925354004,,
+56,splitCIFAR10,AE,cumulative,N,0015,dd88ddf,0.8720999956130981,64.0,1.0,CIFAR10,AE,cuda,,True,"[3, 32, 32]",True,64.0,0.0001,1.0,splitCIFAR10_AE_cumulative,residual_network,,,1.0,10.0,,50.0,True,False,True,False,,0.286853551864624,,{'base_channels': 128}
+57,splitEmbeddedCIFAR100,AE,finetuning,N,0111,dd88ddf,0.08410000056028366,64.0,1.0,CIFAR100,AE,cuda,ResNet50,True,2048,False,512.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_finetuning,rectangular,0.5,mse,1.0,30.0,,100.0,True,False,True,False,,,0.001,
+58,splitEmbeddedCIFAR100,VAE,taskOracle,N,0117,dd88ddf,0.47350001335144043,64.0,1.0,CIFAR100,VAE,cuda,ResNet50,True,2048,False,512.0,0.0001,10.0,splitEmbeddedCIFAR100_VAE_taskOracle,rectangular,0.5,mse,1.0,30.0,task_oracle,100.0,True,True,True,True,,,0.001,
+59,splitEmbeddedCIFAR100,VAE,cumulative,N,0066,dd88ddf,,64.0,1.0,CIFAR100,VAE,cuda,ResNet18,True,512,False,64.0,0.0001,1.0,splitEmbeddedCIFAR100_VAE_cumulative,rectangular_network,0.7,mse,1.0,10.0,,50.0,True,False,True,True,,0.8690359592437744,0.001,
+60,splitEmbeddedCIFAR100,AE,taskOracle,N,0101,dd88ddf,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+61,splitEmbeddedCIFAR100,VAE,taskInference,N,0121,dd88ddf,0.3625999987125397,64.0,1.0,CIFAR100,VAE,cuda,ResNet50,True,2048,False,512.0,0.0001,10.0,splitEmbeddedCIFAR100_VAE_taskInference,rectangular,0.5,mse,1.0,30.0,task_reconstruction_loss,100.0,True,True,True,True,,,0.001,
+62,splitCORe50,AE,taskInference,PL,0164,55dff8e1,0.06684158742427826,64.0,1.0,CORe50_NC,AE,cuda,None,True,"[3, 128, 128]",True,526.0,0.0001,10.0,55dff8e1_PL_splitCORe50_AE_taskInference,residual,0.2,bce,1.0,1.0,task_reconstruction_loss,5.0,True,True,True,False,,,,
+63,splitCIFAR100,VAE,taskInference,N,0045,dd88ddf,0.3091000020503998,64.0,1.0,CIFAR100,VAE,cuda,,True,"[3, 32, 32]",True,64.0,0.0001,10.0,splitCIFAR100_VAE_taskInference,residual_network,0.5,,1.0,20.0,task_reconstruction_loss,100.0,True,True,True,True,,1.4831913709640503,0.001,{'base_channels': 128}
+64,splitEmbeddedCIFAR100,VAE,taskInference,N,0078,dd88ddf,,64.0,1.0,CIFAR100,VAE,cuda,ResNet18,True,2048,False,128.0,0.0001,10.0,splitEmbeddedCIFAR100_VAE_taskInference,rectangular_network,0.7,mse,1.0,5.0,task_reconstruction_loss,20.0,True,True,True,True,"{'depth': 4, 'width': 512}",0.5074913501739502,0.001,
+65,splitEmbeddedCIFAR100,VAE,finetuning,N,0056,dd88ddf,0.07519999891519547,64.0,1.0,CIFAR100,VAE,cuda,ResNet18,True,512,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_VAE_finetuning,rectangular_network,0.7,mse,1.0,5.0,,20.0,True,False,True,True,,0.1026090756058693,0.001,
+66,splitFMNIST,VAE,taskOracle,N,0004,dd88ddf,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+67,splitEmbeddedCORe50,AE,taskOracle,N,0104,dd88ddf,0.9045131206512451,64.0,1.0,CORe50_NC,AE,cuda,ResNet50,True,2048,False,512.0,0.0001,10.0,splitEmbeddedCORe50_AE_taskOracle,rectangular,0.5,mse,1.0,30.0,task_oracle,100.0,True,True,True,False,,,,
+68,splitEmbeddedCIFAR100,AE,taskInference,N,0075,dd88ddf,0.5680000185966492,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,512,False,128.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_taskInference,rectangular_network,0.7,mse,1.0,5.0,task_reconstruction_loss,20.0,True,True,True,False,,0.5921602845191956,,
+69,splitEmbeddedCIFAR100,VAE,taskInference,N,0062,dd88ddf,0.3571999967098236,64.0,1.0,CIFAR100,VAE,cuda,ResNet18,True,512,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_VAE_taskInference,rectangular_network,0.7,mse,1.0,5.0,task_reconstruction_loss,20.0,True,True,True,True,,1.900261402130127,0.001,
+70,splitEmbeddedCORe50,AE,taskOracle,N,0103,dd88ddf,,64.0,1.0,CORe50_NC,AE,cuda,ResNet50,True,2048,False,512.0,0.0001,10.0,splitEmbeddedCORe50_AE_taskOracle,rectangular,0.5,mse,1.0,30.0,task_oracle,100.0,True,True,True,False,,0.25983887910842896,,
+71,splitCIFAR10,AE,taskInference,EP,0143,dd88ddf,0.4302999973297119,64.0,1.0,CIFAR10,AE,cuda,None,True,"[3, 32, 32]",True,64.0,0.0001,5.0,EP_splitCIFAR10_AE_taskInference,residual,"[0.8333333333333334, 0.6666666666666667, 0.5000000000000001, 0.3333333333333335, 0.16666666666666685, 2.220446049250313e-16]",bce,1.0,10.0,task_reconstruction_loss,50.0,True,True,True,False,,,0.001,
+72,splitEmbeddedCIFAR100,AE,taskInference,N,0053,dd88ddf,0.21940000355243683,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,512,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_taskInference,rectangular_network,0.5,mse,1.0,5.0,task_reconstruction_loss,20.0,True,True,True,False,,2.840611696243286,0.001,
+73,splitEmbeddedCIFAR100,AE,taskOracle,N,0059,dd88ddf,0.5310999751091003,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,512,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_taskOracle,rectangular_network,0.7,mse,1.0,5.0,task_oracle,20.0,True,True,True,False,,0.9004504084587097,0.001,
+74,splitEmbeddedCIFAR100,AE,cumulative,N,0049,dd88ddf,0.323199987411499,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,512,False,64.0,0.0001,1.0,splitEmbeddedCIFAR100_AE_cumulative,rectangular_network,,mse,1.0,5.0,,20.0,True,False,True,False,,1.52059006690979,0.001,
+75,splitCIFAR10,VAE,cumulative,N,0019,dd88ddf,0.8725000023841858,64.0,1.0,CIFAR10,VAE,cuda,,True,"[3, 32, 32]",True,64.0,0.0001,1.0,splitCIFAR10_VAE_cumulative,residual_network,,,1.0,10.0,,50.0,True,False,True,True,,0.47625693678855896,0.001,{'base_channels': 128}
+76,splitEmbeddedCORe50,AE,taskOracle,EP,0006,b7711e62,0.759227991104126,64.0,1.0,CORe50_NC,AE,cuda,ResNet50,True,2048,False,512.0,0.0001,10.0,ml-22_b7711e62_EP_splitEmbeddedCORe50_AE_taskOracle,rectangular,"[0.9090909090909091, 0.8181818181818181, 0.7272727272727272, 0.6363636363636362, 0.5454545454545453, 0.45454545454545436, 0.3636363636363634, 0.2727272727272725, 0.18181818181818155, 0.0909090909090906]",mse,1.0,3.0,task_oracle,10.0,True,True,True,False,,,,
+77,splitCORe50,AE,taskInference,PL,0167,55dff8e1,0.09010050445795059,64.0,1.0,CORe50_NC,AE,cuda,None,True,"[3, 128, 128]",True,526.0,0.0001,10.0,55dff8e1_PL_splitCORe50_AE_taskInference,residual,0.6,bce,1.0,1.0,task_reconstruction_loss,5.0,True,True,True,False,,,,
+78,splitEmbeddedCIFAR100,AE,taskInference,N,0072,dd88ddf,0.5077999830245972,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,512,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_taskInference,rectangular_network,0.5,mse,1.0,5.0,task_reconstruction_loss,20.0,True,True,True,False,,2.5149543285369873,,
+79,splitFMNIST,AE,taskInference,N,0005,dd88ddf,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+80,splitEmbeddedCIFAR100,AE,taskInference,N,0090,dd88ddf,0.04324999824166298,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,2048,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_taskInference,rectangular,0.5,mse,1.0,5.0,task_reconstruction_loss,10.0,True,True,True,False,,2.855851650238037,,
+81,splitEmbeddedCIFAR100,AE,cumulative,N,0065,dd88ddf,0.36480000615119934,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,512,False,64.0,0.0001,1.0,splitEmbeddedCIFAR100_AE_cumulative,rectangular_network,0.7,mse,1.0,10.0,,50.0,True,False,True,False,,1.4210737943649292,0.001,
+82,splitEmbeddedCORe50,VAE,cumulative,N,0110,dd88ddf,0.7593169212341309,64.0,1.0,CORe50_NC,VAE,cuda,ResNet50,True,2048,False,512.0,0.0001,1.0,splitEmbeddedCORe50_VAE_cumulative,rectangular,0.5,mse,1.0,3.0,,10.0,True,False,True,True,,,0.001,
+83,splitEmbeddedCIFAR100,AE,cumulative,N,0106,dd88ddf,,64.0,1.0,CIFAR100,AE,cuda,ResNet50,True,2048,False,512.0,0.0001,1.0,splitEmbeddedCIFAR100_AE_cumulative,rectangular,0.5,mse,1.0,30.0,,100.0,True,False,True,False,,,,
+84,splitEmbeddedCIFAR100,VAE,cumulative,N,0058,dd88ddf,0.31380000710487366,64.0,1.0,CIFAR100,VAE,cuda,ResNet18,True,512,False,64.0,0.0001,1.0,splitEmbeddedCIFAR100_VAE_cumulative,rectangular_network,0.7,mse,1.0,5.0,,20.0,True,False,True,True,,1.014315128326416,0.001,
+85,splitEmbeddedCIFAR100,AE,taskInference,N,0082,dd88ddf,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+86,splitEmbeddedCIFAR100,AE,taskInference,N,0071,dd88ddf,0.1615000069141388,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,512,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_taskInference,rectangular_network,0.9,mse,1.0,2.0,task_reconstruction_loss,10.0,True,True,True,False,,0.835625410079956,,
+87,splitFMNIST,AE,taskInference,PL,0149,55dff8e1,0.7357000112533569,64.0,1.0,FMNIST,AE,cuda,None,True,"[1, 32, 32]",True,64.0,0.0001,5.0,55dff8e1_PL_splitFMNIST_AE_taskInference,vanilla_cnn,0.2,bce,1.0,5.0,task_reconstruction_loss,20.0,True,True,True,False,,,,
+88,splitEmbeddedCIFAR100,AE,taskInference,PL,0002,7ee898bd,0.33480000495910645,64.0,1.0,CIFAR100,AE,cuda,ResNet50,True,2048,False,512.0,0.0001,10.0,ml-23_7ee898bd_PL_splitEmbeddedCIFAR100_AE_taskInference,rectangular,0.4,mse,1.0,30.0,task_reconstruction_loss,100.0,True,True,True,False,,,,
+89,splitEmbeddedCIFAR100,AE,taskInference,N,0086,dd88ddf,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+90,splitEmbeddedCORe50,AE,taskInference,PL,0006,7ee898bd,0.2167348563671112,64.0,1.0,CORe50_NC,AE,cuda,ResNet50,True,2048,False,512.0,0.0001,10.0,ml-23_7ee898bd_PL_splitEmbeddedCORe50_AE_taskInference,rectangular,0.2,mse,1.0,3.0,task_reconstruction_loss,10.0,True,True,True,False,,,,
+91,splitCIFAR10,VAE,finetuning,N,0028,dd88ddf,0.19449999928474426,64.0,1.0,CIFAR10,VAE,cuda,,True,"[3, 32, 32]",True,64.0,0.0001,5.0,splitCIFAR10_VAE_finetuning,residual_network,,,1.0,10.0,,50.0,True,False,True,True,,0.19626764953136444,0.001,{'base_channels': 128}
+92,splitFMNIST,AE,taskInference,EP,0142,dd88ddf,0.9930999875068665,64.0,1.0,FMNIST,AE,cuda,None,True,"[1, 32, 32]",True,64.0,0.0001,5.0,EP_splitFMNIST_AE_taskInference,vanilla_cnn,"[0.8333333333333334, 0.6666666666666667, 0.5000000000000001, 0.3333333333333335, 0.16666666666666685, 2.220446049250313e-16]",bce,1.0,5.0,task_reconstruction_loss,20.0,True,True,True,False,,,0.001,
+93,splitEmbeddedCIFAR100,VAE,cumulative,N,0050,dd88ddf,0.30799999833106995,64.0,1.0,CIFAR100,VAE,cuda,ResNet18,True,512,False,64.0,0.0001,1.0,splitEmbeddedCIFAR100_VAE_cumulative,rectangular_network,,mse,1.0,5.0,,20.0,True,False,True,True,,0.7941743731498718,0.001,
+94,splitEmbeddedCORe50,AE,finetuning,N,0112,dd88ddf,0.08805479109287262,64.0,1.0,CORe50_NC,AE,cuda,ResNet50,True,2048,False,512.0,0.0001,10.0,splitEmbeddedCORe50_AE_finetuning,rectangular,0.5,mse,1.0,3.0,,10.0,True,False,True,False,,,0.001,
+95,splitFMNIST,AE,taskOracle,EP,0134,dd88ddf,0.9930999875068665,64.0,1.0,FMNIST,AE,cuda,None,True,"[1, 32, 32]",True,64.0,0.0001,5.0,EP_splitFMNIST_AE_taskOracle,vanilla_cnn,"[0.8333333333333334, 0.6666666666666667, 0.5000000000000001, 0.3333333333333335, 0.16666666666666685, 2.220446049250313e-16]",bce,1.0,5.0,task_oracle,20.0,True,True,True,False,,,,
+96,splitCORe50,VAE,cumulative,N,0021,dd88ddf,0.3603575527667999,64.0,1.0,CORe50_NC,VAE,cuda,,True,"[3, 128, 128]",True,526.0,0.0001,1.0,splitCORe50_VAE_cumulative,residual_network,,,1.0,1.0,,4.0,True,False,True,True,,0.3218110203742981,0.001,{'base_channels': 128}
+97,splitCIFAR100,AE,taskInference,PL,0160,55dff8e1,0.21459999680519104,64.0,1.0,CIFAR100,AE,cuda,None,True,"[3, 32, 32]",True,64.0,0.0001,10.0,55dff8e1_PL_splitCIFAR100_AE_taskInference,residual,0.4,bce,1.0,20.0,task_reconstruction_loss,100.0,True,True,True,False,,,,
+98,splitEmbeddedCORe50,AE,taskOracle,N,0116,dd88ddf,0.6042426228523254,64.0,1.0,CORe50_NC,AE,cuda,ResNet50,True,2048,False,512.0,0.0001,10.0,splitEmbeddedCORe50_AE_taskOracle,rectangular,0.5,mse,1.0,3.0,task_oracle,10.0,True,True,True,False,,,0.001,
+99,splitEmbeddedCIFAR100,AE,taskInference,N,0077,dd88ddf,0.4068000018596649,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,2048,False,128.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_taskInference,rectangular_network,0.7,mse,1.0,5.0,task_reconstruction_loss,20.0,True,True,True,False,"{'depth': 4, 'width': 512}",1.4017610549926758,,
+100,splitCIFAR100,AE,cumulative,N,0016,dd88ddf,0.6166999936103821,64.0,1.0,CIFAR100,AE,cuda,,True,"[3, 32, 32]",True,64.0,0.0001,1.0,splitCIFAR100_AE_cumulative,residual_network,,,1.0,20.0,,100.0,True,False,True,False,,0.3840615153312683,,{'base_channels': 128}
+101,splitEmbeddedCIFAR100,AE,taskInference,N,0102,dd88ddf,0.5084285736083984,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,2048,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_taskInference,rectangular,0.5,mse,1.0,30.0,task_reconstruction_loss,100.0,True,True,True,False,,4.853724479675293,,
+102,splitEmbeddedCORe50,VAE,taskOracle,N,0118,dd88ddf,0.5190563201904297,64.0,1.0,CORe50_NC,VAE,cuda,ResNet50,True,2048,False,512.0,0.0001,10.0,splitEmbeddedCORe50_VAE_taskOracle,rectangular,0.5,mse,1.0,3.0,task_oracle,10.0,True,True,True,True,,,0.001,
+103,splitCIFAR100,AE,taskInference,PL,0162,55dff8e1,0.17319999635219574,64.0,1.0,CIFAR100,AE,cuda,None,True,"[3, 32, 32]",True,64.0,0.0001,10.0,55dff8e1_PL_splitCIFAR100_AE_taskInference,residual,0.6,bce,1.0,20.0,task_reconstruction_loss,100.0,True,True,True,False,,,,
+104,splitFMNIST,VAE,taskOracle,EP,0138,dd88ddf,0.9934999942779541,64.0,1.0,FMNIST,VAE,cuda,None,True,"[1, 32, 32]",True,64.0,0.0001,5.0,EP_splitFMNIST_VAE_taskOracle,vanilla_cnn,"[0.8333333333333334, 0.6666666666666667, 0.5000000000000001, 0.3333333333333335, 0.16666666666666685, 2.220446049250313e-16]",bce,1.0,5.0,task_oracle,20.0,True,True,True,True,,,0.001,
+105,splitCORe50,AE,taskInference,EP,0145,dd88ddf,0.08247353881597519,64.0,1.0,CORe50_NC,AE,cuda,None,True,"[3, 128, 128]",True,526.0,0.0001,10.0,EP_splitCORe50_AE_taskInference,residual,"[0.9090909090909091, 0.8181818181818181, 0.7272727272727272, 0.6363636363636362, 0.5454545454545453, 0.45454545454545436, 0.3636363636363634, 0.2727272727272725, 0.18181818181818155, 0.0909090909090906]",bce,1.0,10.0,task_reconstruction_loss,50.0,True,True,True,False,,,0.001,
+106,splitFMNIST,AE,taskOracle,N,0003,dd88ddf,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+107,splitEmbeddedCORe50,VAE,taskInference,N,0122,dd88ddf,0.37561148405075073,64.0,1.0,CORe50_NC,VAE,cuda,ResNet50,True,2048,False,512.0,0.0001,10.0,splitEmbeddedCORe50_VAE_taskInference,rectangular,0.5,mse,1.0,3.0,task_reconstruction_loss,10.0,True,True,True,True,,,0.001,
+108,splitFMNIST,AE,taskInference,N,0039,dd88ddf,0.9596999883651733,64.0,1.0,FMNIST,AE,cuda,,True,"[1, 32, 32]",True,64.0,0.0001,5.0,splitFMNIST_AE_taskInference,vanilla_cnn,0.5,,1.0,5.0,task_reconstruction_loss,20.0,True,True,True,False,,1.06833815574646,0.001,{'base_channels': 128}
+109,splitEmbeddedCIFAR100,AE,taskInference,N,0061,dd88ddf,0.28929999470710754,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,512,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_taskInference,rectangular_network,0.7,mse,1.0,5.0,task_reconstruction_loss,20.0,True,True,True,False,,1.1740829944610596,0.001,
+110,splitEmbeddedCIFAR100,AE,taskInference,N,0081,dd88ddf,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+111,splitFMNIST,AE,cumulative,N,0001,dd88ddf,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+112,splitEmbeddedCIFAR100,AE,taskOracle,EP,0005,b7711e62,0.5605999827384949,64.0,1.0,CIFAR100,AE,cuda,ResNet50,True,2048,False,512.0,0.0001,10.0,ml-22_b7711e62_EP_splitEmbeddedCIFAR100_AE_taskOracle,rectangular,"[0.9090909090909091, 0.8181818181818181, 0.7272727272727272, 0.6363636363636362, 0.5454545454545453, 0.45454545454545436, 0.3636363636363634, 0.2727272727272725, 0.18181818181818155, 0.0909090909090906]",mse,1.0,30.0,task_oracle,100.0,True,True,True,False,,,,
+113,splitFMNIST,AE,taskOracle,EP,0001,b7711e62,0.9927999973297119,64.0,1.0,FMNIST,AE,cuda,None,True,"[1, 32, 32]",True,64.0,0.0001,5.0,ml-22_b7711e62_EP_splitFMNIST_AE_taskOracle,vanilla_cnn,"[0.8333333333333334, 0.6666666666666667, 0.5000000000000001, 0.3333333333333335, 0.16666666666666685, 2.220446049250313e-16]",bce,1.0,5.0,task_oracle,20.0,True,True,True,False,,,,
+114,splitEmbeddedCIFAR100,AE,taskOracle,N,0093,dd88ddf,0.5390999913215637,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,2048,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_taskOracle,rectangular,0.5,mse,1.0,25.0,task_oracle,100.0,True,True,True,False,,2.783972978591919,,
+115,splitCIFAR10,AE,taskInference,PL,0158,55dff8e1,0.5939000248908997,64.0,1.0,CIFAR10,AE,cuda,None,True,"[3, 32, 32]",True,64.0,0.0001,5.0,55dff8e1_PL_splitCIFAR10_AE_taskInference,residual,0.8,bce,1.0,10.0,task_reconstruction_loss,50.0,True,True,True,False,,,,
+116,splitCIFAR10,AE,taskInference,PL,0156,55dff8e1,0.5627999901771545,64.0,1.0,CIFAR10,AE,cuda,None,True,"[3, 32, 32]",True,64.0,0.0001,5.0,55dff8e1_PL_splitCIFAR10_AE_taskInference,residual,0.5,bce,1.0,10.0,task_reconstruction_loss,50.0,True,True,True,False,,,,
+117,splitEmbeddedCORe50,AE,taskOracle,N,0105,dd88ddf,0.9693197011947632,64.0,1.0,CORe50_NC,AE,cuda,ResNet50,True,2048,False,512.0,0.0001,10.0,splitEmbeddedCORe50_AE_taskOracle,rectangular,0.5,mse,1.0,3.0,task_oracle,10.0,True,True,True,False,,,,
+118,splitCIFAR100,VAE,taskOracle,EP,0140,dd88ddf,0.5302000045776367,64.0,1.0,CIFAR100,VAE,cuda,None,True,"[3, 32, 32]",True,64.0,0.0001,10.0,EP_splitCIFAR100_VAE_taskOracle,residual,"[0.9090909090909091, 0.8181818181818181, 0.7272727272727272, 0.6363636363636362, 0.5454545454545453, 0.45454545454545436, 0.3636363636363634, 0.2727272727272725, 0.18181818181818155, 0.0909090909090906]",bce,1.0,20.0,task_oracle,100.0,True,True,True,True,,,0.001,
+119,splitCIFAR100,AE,taskInference,PL,0159,55dff8e1,0.17069999873638153,64.0,1.0,CIFAR100,AE,cuda,None,True,"[3, 32, 32]",True,64.0,0.0001,10.0,55dff8e1_PL_splitCIFAR100_AE_taskInference,residual,0.2,bce,1.0,20.0,task_reconstruction_loss,100.0,True,True,True,False,,,,
+120,splitEmbeddedCIFAR100,AE,taskInference,N,0088,dd88ddf,,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,2048,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_taskInference,rectangular,0.7,mse,1.0,20.0,task_reconstruction_loss,50.0,True,True,True,False,,1.4928386211395264,,
+121,splitCIFAR10,AE,finetuning,N,0024,dd88ddf,0.193900004029274,64.0,1.0,CIFAR10,AE,cuda,,True,"[3, 32, 32]",True,64.0,0.0001,5.0,splitCIFAR10_AE_finetuning,residual_network,,,1.0,10.0,,50.0,True,False,True,False,,0.2365797460079193,,{'base_channels': 128}
+122,splitCORe50,AE,taskInference,N,0042,dd88ddf,0.05532331392168999,64.0,1.0,CORe50_NC,AE,cuda,,True,"[3, 128, 128]",True,526.0,0.0001,10.0,splitCORe50_AE_taskInference,residual_network,0.5,,1.0,1.0,task_reconstruction_loss,4.0,True,True,True,False,,3.921793222427368,0.001,{'base_channels': 128}
+123,splitEmbeddedCIFAR100,VAE,taskInference,N,0080,dd88ddf,0.7559999823570251,64.0,1.0,CIFAR100,VAE,cuda,ResNet18,True,2048,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_VAE_taskInference,rectangular_network,0.7,mse,1.0,10.0,task_reconstruction_loss,50.0,True,True,True,True,"{'depth': 4, 'width': 512}",0.5658161044120789,0.001,
+124,splitFMNIST,AE,taskInference,PL,0153,55dff8e1,0.9941999912261963,64.0,1.0,FMNIST,AE,cuda,None,True,"[1, 32, 32]",True,64.0,0.0001,5.0,55dff8e1_PL_splitFMNIST_AE_taskInference,vanilla_cnn,0.8,bce,1.0,5.0,task_reconstruction_loss,20.0,True,True,True,False,,,,
+125,splitEmbeddedCIFAR100,AE,taskInference,PL,0001,7ee898bd,0.1737000048160553,64.0,1.0,CIFAR100,AE,cuda,ResNet50,True,2048,False,512.0,0.0001,10.0,ml-23_7ee898bd_PL_splitEmbeddedCIFAR100_AE_taskInference,rectangular,0.2,mse,1.0,30.0,task_reconstruction_loss,100.0,True,True,True,False,,,,
+126,splitCIFAR10,AE,taskOracle,EP,0135,dd88ddf,0.9337000250816345,64.0,1.0,CIFAR10,AE,cuda,None,True,"[3, 32, 32]",True,64.0,0.0001,5.0,EP_splitCIFAR10_AE_taskOracle,residual,"[0.8333333333333334, 0.6666666666666667, 0.5000000000000001, 0.3333333333333335, 0.16666666666666685, 2.220446049250313e-16]",bce,1.0,10.0,task_oracle,50.0,True,True,True,False,,,,
+127,splitCIFAR10,AE,taskInference,PL,0155,55dff8e1,0.43540000915527344,64.0,1.0,CIFAR10,AE,cuda,None,True,"[3, 32, 32]",True,64.0,0.0001,5.0,55dff8e1_PL_splitCIFAR10_AE_taskInference,residual,0.4,bce,1.0,10.0,task_reconstruction_loss,50.0,True,True,True,False,,,,
+128,splitCORe50,AE,taskInference,PL,0168,55dff8e1,0.07095526158809662,64.0,1.0,CORe50_NC,AE,cuda,None,True,"[3, 128, 128]",True,526.0,0.0001,10.0,55dff8e1_PL_splitCORe50_AE_taskInference,residual,0.8,bce,1.0,1.0,task_reconstruction_loss,5.0,True,True,True,False,,,,
+129,splitCIFAR100,VAE,cumulative,N,0020,dd88ddf,0.6105999946594238,64.0,1.0,CIFAR100,VAE,cuda,,True,"[3, 32, 32]",True,64.0,0.0001,1.0,splitCIFAR100_VAE_cumulative,residual_network,,,1.0,20.0,,100.0,True,False,True,True,,0.25842806696891785,0.001,{'base_channels': 128}
+130,splitEmbeddedCIFAR100,AE,taskInference,N,0085,dd88ddf,,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,2048,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_taskInference,rectangular,0.7,mse,1.0,20.0,task_reconstruction_loss,50.0,True,True,True,False,,0.777350902557373,,
+131,splitCORe50,AE,cumulative,N,0017,dd88ddf,0.35599929094314575,64.0,1.0,CORe50_NC,AE,cuda,,True,"[3, 128, 128]",True,526.0,0.0001,1.0,splitCORe50_AE_cumulative,residual_network,,,1.0,1.0,,4.0,True,False,True,False,,0.33973777294158936,,{'base_channels': 128}
+132,splitFMNIST,VAE,taskInference,N,0043,dd88ddf,0.9926999807357788,64.0,1.0,FMNIST,VAE,cuda,,True,"[1, 32, 32]",True,64.0,0.0001,5.0,splitFMNIST_VAE_taskInference,vanilla_cnn,0.5,,1.0,5.0,task_reconstruction_loss,20.0,True,True,True,True,,0.25268563628196716,0.001,{'base_channels': 128}
+133,splitFMNIST,VAE,cumulative,N,0002,dd88ddf,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+134,splitCIFAR100,AE,taskInference,PL,0163,55dff8e1,0.4512999951839447,64.0,1.0,CIFAR100,AE,cuda,None,True,"[3, 32, 32]",True,64.0,0.0001,10.0,55dff8e1_PL_splitCIFAR100_AE_taskInference,residual,0.8,bce,1.0,20.0,task_reconstruction_loss,100.0,True,True,True,False,,,,
+135,splitEmbeddedCIFAR100,AE,taskOracle,N,0051,dd88ddf,0.36880001425743103,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,512,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_taskOracle,rectangular_network,0.5,mse,1.0,5.0,task_oracle,20.0,True,True,True,False,,3.059985399246216,0.001,
+136,splitEmbeddedCORe50,AE,taskInference,PL,0009,7ee898bd,0.5482966899871826,64.0,1.0,CORe50_NC,AE,cuda,ResNet50,True,2048,False,512.0,0.0001,10.0,ml-23_7ee898bd_PL_splitEmbeddedCORe50_AE_taskInference,rectangular,0.6,mse,1.0,3.0,task_reconstruction_loss,10.0,True,True,True,False,,,,
+137,splitCIFAR10,AE,taskInference,N,0040,dd88ddf,0.7123000025749207,64.0,1.0,CIFAR10,AE,cuda,,True,"[3, 32, 32]",True,64.0,0.0001,5.0,splitCIFAR10_AE_taskInference,residual_network,0.5,,1.0,10.0,task_reconstruction_loss,50.0,True,True,True,False,,0.34290045499801636,0.001,{'base_channels': 128}
+138,splitEmbeddedCIFAR100,VAE,taskOracle,N,0052,dd88ddf,0.2849999964237213,64.0,1.0,CIFAR100,VAE,cuda,ResNet18,True,512,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_VAE_taskOracle,rectangular_network,0.5,mse,1.0,5.0,task_oracle,20.0,True,True,True,True,,2.048435926437378,0.001,
+139,splitFMNIST,AE,finetuning,N,0022,dd88ddf,,64.0,1.0,FMNIST,AE,cuda,,True,"[1, 32, 32]",True,64.0,0.0001,5.0,splitFMNIST_AE_finetuning,vanilla_cnn,,,1.0,5.0,,20.0,True,False,True,False,,0.9667370915412903,,{'base_channels': 128}
+140,splitEmbeddedCIFAR100,AE,taskInference,N,0089,dd88ddf,,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,2048,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_taskInference,rectangular,0.7,mse,1.0,5.0,task_reconstruction_loss,10.0,True,True,True,False,,1.353154182434082,,
+141,splitEmbeddedCIFAR100,AE,taskInference,N,0092,dd88ddf,0.7885000109672546,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,2048,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_taskInference,rectangular,0.5,mse,1.0,25.0,task_reconstruction_loss,100.0,True,True,True,False,,2.5131449699401855,,
+142,splitEmbeddedCIFAR100,AE,taskOracle,N,0097,dd88ddf,0.7139999866485596,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,2048,False,512.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_taskOracle,rectangular,0.7,mse,1.0,30.0,task_oracle,100.0,True,True,True,False,,0.8700445890426636,,
+143,splitEmbeddedCIFAR100,VAE,taskOracle,N,0094,dd88ddf,0.44999998807907104,64.0,1.0,CIFAR100,VAE,cuda,ResNet18,True,2048,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_VAE_taskOracle,rectangular,0.5,mse,1.0,25.0,task_oracle,100.0,True,True,True,True,,2.184070587158203,0.001,
+144,splitEmbeddedCIFAR100,AE,taskInference,N,0083,dd88ddf,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+145,splitFMNIST,AE,taskOracle,N,0031,dd88ddf,0.9937999844551086,64.0,1.0,FMNIST,AE,cuda,,True,"[1, 32, 32]",True,64.0,0.0001,5.0,splitFMNIST_AE_taskOracle,vanilla_cnn,0.5,,1.0,5.0,task_oracle,20.0,True,True,True,False,,0.4827209413051605,0.001,{'base_channels': 128}
+146,splitCORe50,AE,taskOracle,EP,0137,dd88ddf,0.506759762763977,64.0,1.0,CORe50_NC,AE,cuda,None,True,"[3, 128, 128]",True,526.0,0.0001,10.0,EP_splitCORe50_AE_taskOracle,residual,"[0.9090909090909091, 0.8181818181818181, 0.7272727272727272, 0.6363636363636362, 0.5454545454545453, 0.45454545454545436, 0.3636363636363634, 0.2727272727272725, 0.18181818181818155, 0.0909090909090906]",bce,1.0,10.0,task_oracle,50.0,True,True,True,False,,,,
+147,splitCIFAR100,VAE,taskOracle,N,0037,dd88ddf,0.5910000205039978,64.0,1.0,CIFAR100,VAE,cuda,,True,"[3, 32, 32]",True,64.0,0.0001,10.0,splitCIFAR100_VAE_taskOracle,residual_network,0.5,,1.0,20.0,task_oracle,100.0,True,True,True,True,,1.664222240447998,0.001,{'base_channels': 128}
+148,splitEmbeddedCIFAR100,AE,cumulative,N,0057,dd88ddf,0.32670000195503235,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,512,False,64.0,0.0001,1.0,splitEmbeddedCIFAR100_AE_cumulative,rectangular_network,0.7,mse,1.0,5.0,,20.0,True,False,True,False,,1.2672789096832275,0.001,
+149,splitEmbeddedCORe50,AE,taskInference,PL,0007,7ee898bd,0.3509961664676666,64.0,1.0,CORe50_NC,AE,cuda,ResNet50,True,2048,False,512.0,0.0001,10.0,ml-23_7ee898bd_PL_splitEmbeddedCORe50_AE_taskInference,rectangular,0.4,mse,1.0,3.0,task_reconstruction_loss,10.0,True,True,True,False,,,,
+150,splitEmbeddedCORe50,VAE,finetuning,N,0114,dd88ddf,0.057791516184806824,64.0,1.0,CORe50_NC,VAE,cuda,ResNet50,True,2048,False,512.0,0.0001,10.0,splitEmbeddedCORe50_VAE_finetuning,rectangular,0.5,mse,1.0,3.0,,10.0,True,False,True,True,,,0.001,
+151,splitCIFAR10,AE,taskInference,PL,0154,55dff8e1,0.36719998717308044,64.0,1.0,CIFAR10,AE,cuda,None,True,"[3, 32, 32]",True,64.0,0.0001,5.0,55dff8e1_PL_splitCIFAR10_AE_taskInference,residual,0.2,bce,1.0,10.0,task_reconstruction_loss,50.0,True,True,True,False,,,,
+152,splitEmbeddedCIFAR100,AE,taskInference,N,0119,dd88ddf,0.4392000138759613,64.0,1.0,CIFAR100,AE,cuda,ResNet50,True,2048,False,512.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_taskInference,rectangular,0.5,mse,1.0,30.0,task_reconstruction_loss,100.0,True,True,True,False,,,0.001,
+153,splitEmbeddedCIFAR100,AE,finetuning,N,0068,dd88ddf,0.14239999651908875,64.0,1.0,CIFAR100,AE,cuda,ResNet18,True,512,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_AE_finetuning,rectangular_network,0.7,mse,1.0,2.0,,10.0,True,False,True,False,,0.6800261735916138,,
+154,splitFMNIST,AE,taskInference,PL,0152,55dff8e1,0.9937000274658203,64.0,1.0,FMNIST,AE,cuda,None,True,"[1, 32, 32]",True,64.0,0.0001,5.0,55dff8e1_PL_splitFMNIST_AE_taskInference,vanilla_cnn,0.6,bce,1.0,5.0,task_reconstruction_loss,20.0,True,True,True,False,,,,
+155,splitEmbeddedCIFAR100,VAE,taskInference,N,0074,dd88ddf,,64.0,1.0,CIFAR100,VAE,cuda,ResNet18,True,512,False,128.0,0.0001,10.0,splitEmbeddedCIFAR100_VAE_taskInference,rectangular_network,0.7,mse,1.0,5.0,task_reconstruction_loss,20.0,True,True,True,True,,0.49069657921791077,0.001,
+156,splitCORe50,VAE,taskInference,N,0046,dd88ddf,0.05309970676898956,64.0,1.0,CORe50_NC,VAE,cuda,,True,"[3, 128, 128]",True,526.0,0.0001,10.0,splitCORe50_VAE_taskInference,residual_network,0.5,,1.0,1.0,task_reconstruction_loss,4.0,True,True,True,True,,1.8032320737838745,0.001,{'base_channels': 128}
+157,splitFMNIST,VAE,taskInference,EP,0146,dd88ddf,0.9929999709129333,64.0,1.0,FMNIST,VAE,cuda,None,True,"[1, 32, 32]",True,64.0,0.0001,5.0,EP_splitFMNIST_VAE_taskInference,vanilla_cnn,"[0.8333333333333334, 0.6666666666666667, 0.5000000000000001, 0.3333333333333335, 0.16666666666666685, 2.220446049250313e-16]",bce,1.0,5.0,task_reconstruction_loss,20.0,True,True,True,True,,,0.001,
+158,splitCIFAR10,VAE,taskOracle,N,0036,dd88ddf,0.9381999969482422,64.0,1.0,CIFAR10,VAE,cuda,,True,"[3, 32, 32]",True,64.0,0.0001,5.0,splitCIFAR10_VAE_taskOracle,residual_network,0.5,,1.0,10.0,task_oracle,50.0,True,True,True,True,,0.23006802797317505,0.001,{'base_channels': 128}
+159,splitEmbeddedCIFAR100,VAE,cumulative,N,0109,dd88ddf,0.39739999175071716,64.0,1.0,CIFAR100,VAE,cuda,ResNet50,True,2048,False,512.0,0.0001,1.0,splitEmbeddedCIFAR100_VAE_cumulative,rectangular,0.5,mse,1.0,30.0,,100.0,True,False,True,True,,,0.001,
+160,splitCIFAR100,AE,taskOracle,N,0033,dd88ddf,0.5475000143051147,64.0,1.0,CIFAR100,AE,cuda,,True,"[3, 32, 32]",True,64.0,0.0001,10.0,splitCIFAR100_AE_taskOracle,residual_network,0.5,,1.0,20.0,task_oracle,100.0,True,True,True,False,,1.8039507865905762,0.001,{'base_channels': 128}
+161,splitFMNIST,VAE,cumulative,N,0018,dd88ddf,0.8988999724388123,64.0,1.0,FMNIST,VAE,cuda,,True,"[1, 32, 32]",True,64.0,0.0001,1.0,splitFMNIST_VAE_cumulative,vanilla_cnn,,,1.0,5.0,,20.0,True,False,True,True,,0.15503361821174622,0.001,{'base_channels': 128}
+162,splitCIFAR100,AE,finetuning,N,0025,dd88ddf,0.08990000188350677,64.0,1.0,CIFAR100,AE,cuda,,True,"[3, 32, 32]",True,64.0,0.0001,10.0,splitCIFAR100_AE_finetuning,residual_network,,,1.0,20.0,,100.0,True,False,True,False,,0.29133960604667664,,{'base_channels': 128}
+163,splitFMNIST,AE,taskInference,PL,0150,55dff8e1,0.9940000176429749,64.0,1.0,FMNIST,AE,cuda,None,True,"[1, 32, 32]",True,64.0,0.0001,5.0,55dff8e1_PL_splitFMNIST_AE_taskInference,vanilla_cnn,0.4,bce,1.0,5.0,task_reconstruction_loss,20.0,True,True,True,False,,,,
+164,splitCORe50,AE,finetuning,N,0026,dd88ddf,0.07453526556491852,64.0,1.0,CORe50_NC,AE,cuda,,True,"[3, 128, 128]",True,526.0,0.0001,10.0,splitCORe50_AE_finetuning,residual_network,,,1.0,1.0,,4.0,True,False,True,False,,0.3073922395706177,,{'base_channels': 128}
+165,splitEmbeddedCIFAR100,VAE,finetuning,N,0064,dd88ddf,0.07760000228881836,64.0,1.0,CIFAR100,VAE,cuda,ResNet18,True,512,False,64.0,0.0001,10.0,splitEmbeddedCIFAR100_VAE_finetuning,rectangular_network,0.7,mse,1.0,10.0,,50.0,True,False,True,True,,0.1902931034564972,0.001,
+166,splitCIFAR10,AE,taskOracle,N,0032,dd88ddf,0.9375,64.0,1.0,CIFAR10,AE,cuda,,True,"[3, 32, 32]",True,64.0,0.0001,5.0,splitCIFAR10_AE_taskOracle,residual_network,0.5,,1.0,10.0,task_oracle,50.0,True,True,True,False,,0.42214205861091614,0.001,{'base_channels': 128}
