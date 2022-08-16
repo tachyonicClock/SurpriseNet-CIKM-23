@@ -3,6 +3,7 @@ from config.config import ExperimentConfiguration
 from packnet.plugin import equal_capacity_prune_schedule
 from train import Experiment
 import git
+import os
 
 
 PRUNE_LEVELS = [0.2, 0.4, 0.5, 0.6, 0.8]
@@ -12,7 +13,8 @@ ALL_SCENARIOS = ["splitFMNIST", "splitCIFAR10", "splitCIFAR100", "splitCORe50", 
 
 
 def get_experiment_name(repo_hash, experiment, scenario, architecture, strategy):
-    return f"{repo_hash}_{experiment}_{scenario}_{architecture}_{strategy}"
+    hostname = os.uname()[1]
+    return f"{hostname}_{repo_hash}_{experiment}_{scenario}_{architecture}_{strategy}"
 
 def run(cfg: ExperimentConfiguration):
         print("--------------------------------------------------------------")
@@ -54,7 +56,7 @@ def prune_levels(repo_hash):
     for strategy, architecture, scenario, prune_level in itertools.product(
             ["taskInference"],
             ["AE"],
-            ALL_SCENARIOS,
+            ["splitEmbeddedCIFAR100", "splitEmbeddedCORe50"],
             PRUNE_LEVELS):
         cfg.name = get_experiment_name(repo_hash, "PL", scenario, architecture, strategy)
         cfg = choose_scenario(cfg, scenario)
