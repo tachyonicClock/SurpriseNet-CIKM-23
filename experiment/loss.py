@@ -74,6 +74,9 @@ class ClassifierLoss(LossObjective):
     name = "Classifier"
 
     def update(self, out: ForwardOutput, target: Tensor = None):
+        # I ran into an issue when using the GenerativeReplay plugin
+        # where the wrong type is used
+        target = target.type(torch.LongTensor).to(out.y_hat.device)
         self.loss = F.cross_entropy(out.y_hat, target)
 
 class VAELoss(LossObjective):

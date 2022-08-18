@@ -90,7 +90,10 @@ class ExperimentConfiguration():
 
     # Learning without forgetting
     use_learning_without_forgetting: bool
-    lwf_lambda: float
+    lwf_alpha: float
+
+    # generative replay
+    use_generative_replay_strategy: bool
 
     def toJSON(self):
         return json.dumps(self, default=lambda o: o.__dict__, 
@@ -108,8 +111,15 @@ class ExperimentConfiguration():
         self.prune_proportion = 0.5
 
         self.use_experience_replay = False
+        self.replay_buffer = 1_000
+
         self.use_synaptic_intelligence = False
+        self.si_lambda = 1_000
+
         self.use_learning_without_forgetting = False
+        self.lwf_alpha = 32
+
+        self.use_generative_replay_strategy = False
 
 
     def use_vanilla_cnn(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
@@ -241,7 +251,7 @@ class ExperimentConfiguration():
         self.use_classifier_loss = True
         self.use_reconstruction_loss = True
         self.use_vae_loss = True
-        self.vae_loss_weight = 1.0
+        self.vae_loss_weight = 0.001
         return self
 
     def enable_packnet(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':

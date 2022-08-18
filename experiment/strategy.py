@@ -37,6 +37,10 @@ class ForwardOutput():
     containing the loss for the appropriate instance
     """
 
+    # NOTE: This is a hack to trick the learning without forgetting plugin
+    # to work with ForwardOutput since it expects the y_hat tensor instead
+    def __getitem__(self, i):
+         return self.y_hat[i]
 
 class Network(Protocol):
     def forward(self, x: Tensor) -> ForwardOutput:

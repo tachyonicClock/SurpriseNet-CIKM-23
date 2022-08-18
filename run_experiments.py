@@ -134,6 +134,33 @@ def best_results():
         experiment = Experiment(cfg)
         experiment.train()
 
+@cli.command()
+def other_strategies():
+
+    for scenario, strategy in itertools.product(
+        ALL_SCENARIOS,
+        ["replay", "genReplay", "SI", "LwF"]):
+        architecture = "AE" if strategy != "genReplay" else "VAE"
+        cfg = ExperimentConfiguration()
+        cfg.name = get_experiment_name("OS", "splitFMNIST", architecture, "strategy")
+
+        cfg = choose_scenario(cfg, scenario)
+        cfg = choose_architecture(cfg, architecture)
+
+        if strategy == "replay":
+            cfg.use_experience_replay = True
+        elif strategy == "genReplay":
+            cfg.use_generative_replay = True
+        elif strategy == "SI":
+            cfg.use_synaptic_intelligence = True
+        elif strategy == "LwF":
+            cfg.use_learning_without_forgetting = True
+
+        print("################")
+        print(f"{cfg.name}")
+        print("################")
+        experiment = Experiment(cfg)
+        experiment.train()
 
 
 # Main

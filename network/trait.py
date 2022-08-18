@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 import typing as t
 from torch import Tensor, TensorType, nn
 import torch
+from avalanche.models.generator import Generator
 
 from experiment.strategy import ForwardOutput
 
@@ -44,7 +45,7 @@ class InferTask():
     Does the classifier try to identify the experience of an observation
     """
 
-class Samplable(ABC):
+class Samplable(Generator, ABC):
     """Something that can generate instances"""
 
     @abstractmethod
@@ -55,14 +56,21 @@ class Samplable(ABC):
         :return: A generated sample
         """
 
-class ConditionedSample(ABC):
+    def generate(self, batch_size=None, condition=None):
+        return self.sample(batch_size)
+    
+    def get_features(self):
+        raise NotImplemented("get features not implemented")
+
+class ConditionedSample(Samplable):
     """Something that can generate instances"""
 
     @abstractmethod
     def conditioned_sample(self, n: int = 1, given_task: int = 0) -> Tensor:
         pass
 
-
+    def generate(self, batch_size=None, condition=None):
+        return self.conditioned_sample(batch_size, condition)
 
 class Sampler(Samplable, nn.Module):
     """

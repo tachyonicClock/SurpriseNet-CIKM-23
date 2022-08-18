@@ -2,6 +2,8 @@ import torch
 from network.embedding_network import ResNet50FeatureExtractor
 from experiment.experiment import BaseExperiment
 import avalanche as cl
+import avalanche.training.plugins as cl_plugins
+
 from experiment.loss import BCEReconstructionLoss, MSEReconstructionLoss, MultipleObjectiveLoss, ClassifierLoss, VAELoss
 from packnet.plugin import PackNetPlugin
 from packnet.task_inference import TaskInferenceStrategy, TaskReconstruction, UseTaskOracle
@@ -101,12 +103,39 @@ class Experiment(BaseExperiment):
         optimizer = torch.optim.Adam(parameters, self.cfg.learning_rate)
         return optimizer
 
+    def add_strategy_plugins(self):
+        cfg = self.cfg
+        if cfg.use_synaptic_intelligence:
+            print("! Using Synaptic Intelligence")
+            self.plugins.append(
+                cl_plugins.SynapticIntelligencePlugin(cfg.si_lambda)
+            )
+        if cfg.use_learning_without_forgetting:
+            print("! Using Learning without Forgetting")
+            self.plugins.append(
+                cl_plugins.LwFPlugin(cfg.lwf_alpha)
+            )
+        if cfg.use_experience_replay:
+            print("! Using Experience Replay")
+            self.plugins.append(
+                cl_plugins.ReplayPlugin(
+                    cfg.replay_buffer, 
+                    storage_policy=cl.training.storage_policy.ClassBalancedBuffer(cfg.replay_buffer))
+            )
+        if cfg.use_generative_replay_strategy:
+            print("! Using Deep Generative Replay")
+            self.plugins.append(
+                cl_plugins.GenerativeReplayPlugin()
+            )
+
     def make_strategy(self) -> Strategy:
         cfg = self.cfg
 
         # Ensure that total epochs takes the retrain_epochs into account
         train_epochs = cfg.total_task_epochs - cfg.retrain_epochs \
             if cfg.use_packnet else cfg.total_task_epochs
+
+        self.add_strategy_plugins()
 
         strategy = Strategy(
             self.network,
