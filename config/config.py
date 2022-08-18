@@ -79,6 +79,19 @@ class ExperimentConfiguration():
     task_inference_strategy: t.Literal["task_oracle", "task_reconstruction_loss"]
     """Type of task inference strategy to use"""
 
+    # Baselines
+    # Experience replay
+    use_experience_replay: bool
+    replay_buffer: int
+
+    # Synaptic intelligence
+    use_synaptic_intelligence: bool
+    si_lambda: float
+
+    # Learning without forgetting
+    use_learning_without_forgetting: bool
+    lwf_lambda: float
+
     def toJSON(self):
         return json.dumps(self, default=lambda o: o.__dict__, 
             sort_keys=True, indent=4)
@@ -93,6 +106,11 @@ class ExperimentConfiguration():
         self.recon_loss_type = "bce"
         self.embedding_module = "None"
         self.prune_proportion = 0.5
+
+        self.use_experience_replay = False
+        self.use_synaptic_intelligence = False
+        self.use_learning_without_forgetting = False
+
 
     def use_vanilla_cnn(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment to use a vanilla CNN"""

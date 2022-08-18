@@ -2,7 +2,7 @@
 # Exit on first error
 set -e
 
-remotes="ml-23 ml-24"
+remotes="ml-23 ml-24 ml-22"
 user_dir="/Scratch/al183"
 conda_dir="$user_dir/miniconda3"
 avalanche_dir="$user_dir/avalanche"
