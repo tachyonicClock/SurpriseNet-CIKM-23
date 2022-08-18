@@ -81,13 +81,12 @@ def cli(ignore_dirty):
 
 @cli.command()
 def prune_levels():
-    cfg = ExperimentConfiguration()
-
     for strategy, architecture, scenario, prune_level in itertools.product(
             ["taskInference"],
             ["AE"],
             ["splitEmbeddedCIFAR100", "splitEmbeddedCORe50"],
             PRUNE_LEVELS):
+        cfg = ExperimentConfiguration()
         cfg.name = get_experiment_name("PL", scenario, architecture, strategy)
         cfg = choose_scenario(cfg, scenario)
         cfg = choose_architecture(cfg, architecture)
@@ -97,12 +96,11 @@ def prune_levels():
 
 @cli.command()
 def equal_prune():
-    cfg = ExperimentConfiguration()
-
     for strategy, architecture, scenario in itertools.product(
-            ["taskOracle", "taskInference"],
+            ["taskInference"],
             ["VAE"],
             ALL_SCENARIOS):
+        cfg = ExperimentConfiguration()
         cfg.name = get_experiment_name("EP", scenario, architecture, strategy)
 
         cfg = choose_scenario(cfg, scenario)
@@ -118,12 +116,11 @@ def equal_prune():
 
 @cli.command()
 def best_results():
-    cfg = ExperimentConfiguration()
-
     for strategy, architecture, scenario in itertools.product(
             ["cumulative", "finetuning", "taskOracle", "taskInference"],
             ["AE", "VAE"],
             ALL_SCENARIOS):
+        cfg = ExperimentConfiguration()
         cfg.name = f"{scenario}_{architecture}_{strategy}"
 
         # Select the dataset to use for the experiment
