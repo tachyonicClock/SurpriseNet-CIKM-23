@@ -5,7 +5,7 @@ from enum import Enum
 import torch
 import torch.nn as nn
 from experiment.strategy import ForwardOutput
-from network.trait import (AutoEncoder, InferTask, PackNet,
+from network.trait import (AutoEncoder, ConditionedSample, InferTask, PackNet,
                            VariationalAutoEncoder)
 from torch import Tensor
 from torch.nn import functional as F
@@ -401,7 +401,7 @@ class PackNetAutoEncoder(InferTask, AutoEncoder, _PackNetParent):
                        .forward_with_task_inference(super().forward, x)
 
 
-class PackNetVariationalAutoEncoder(InferTask, VariationalAutoEncoder, _PackNetParent):
+class PackNetVariationalAutoEncoder(InferTask, VariationalAutoEncoder, _PackNetParent, ConditionedSample):
     """
     A wrapper for VariationalAutoEncoder adding the InferTask trait and PackNet
     functionality.
@@ -422,3 +422,7 @@ class PackNetVariationalAutoEncoder(InferTask, VariationalAutoEncoder, _PackNetP
             """At eval time we need to try infer the task somehow?"""
             return self.task_inference_strategy \
                        .forward_with_task_inference(super().forward, x)
+
+    def conditioned_sample(self, n: int = 1, given_task: int = 0) -> Tensor:
+        self.use_task_subset(given_task)
+        return self.sample(n)

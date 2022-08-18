@@ -142,7 +142,8 @@ def other_strategies():
         ["replay", "genReplay", "SI", "LwF"]):
         architecture = "AE" if strategy != "genReplay" else "VAE"
         cfg = ExperimentConfiguration()
-        cfg.name = get_experiment_name("OS", "splitFMNIST", architecture, "strategy")
+        cfg.name = get_experiment_name("OS", scenario, architecture, strategy)
+        cfg.use_packnet = False
 
         cfg = choose_scenario(cfg, scenario)
         cfg = choose_architecture(cfg, architecture)
