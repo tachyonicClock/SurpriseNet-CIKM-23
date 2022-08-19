@@ -97,8 +97,8 @@ def prune_levels():
 @cli.command()
 def equal_prune():
     for strategy, architecture, scenario in itertools.product(
-            ["taskInference"],
-            ["VAE"],
+            ["taskOracle" ,"taskInference"],
+            ["AE", "VAE"],
             ALL_SCENARIOS):
         cfg = ExperimentConfiguration()
         cfg.name = get_experiment_name("EP", scenario, architecture, strategy)
