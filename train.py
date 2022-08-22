@@ -100,7 +100,10 @@ class Experiment(BaseExperiment):
         return loss
 
     def make_optimizer(self, parameters) -> torch.optim.Optimizer:
-        optimizer = torch.optim.Adam(parameters, self.cfg.learning_rate)
+        if self.cfg.use_adam:
+            optimizer = torch.optim.Adam(parameters, self.cfg.learning_rate)
+        else:
+            optimizer = torch.optim.SGD(parameters, self.cfg.learning_rate)
         return optimizer
 
     def add_strategy_plugins(self):

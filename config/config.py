@@ -66,6 +66,11 @@ class ExperimentConfiguration():
     """Learning rate"""
     device: str
     """Device to use for training"""
+    use_adam: bool
+    """
+    Configure the experiment to use the Adam optimizer. If false, the SGD 
+    optimizer is used instead
+    """
 
     #
     # PackNet
@@ -120,6 +125,7 @@ class ExperimentConfiguration():
         self.lwf_alpha = 32
 
         self.use_generative_replay_strategy = False
+        self.use_adam = True
 
 
     def use_vanilla_cnn(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':

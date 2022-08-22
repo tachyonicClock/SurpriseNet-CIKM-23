@@ -140,11 +140,16 @@ def other_strategies():
 
     for scenario, strategy in itertools.product(
         ALL_SCENARIOS,
-        ["replay", "genReplay", "SI", "LwF"]):
+        ["SI", "LwF"]):
         architecture = "AE" if strategy != "genReplay" else "VAE"
+            
+
         cfg = ExperimentConfiguration()
         cfg.name = get_experiment_name("OS", scenario, architecture, strategy)
         cfg.use_packnet = False
+
+        if strategy in ["SI", "LwF"]:
+            cfg.use_adam = False
 
         cfg = choose_scenario(cfg, scenario)
         cfg = choose_architecture(cfg, architecture)
