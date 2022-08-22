@@ -1,3 +1,4 @@
+from cgitb import text
 import itertools
 import pandas as pd
 import os
@@ -16,13 +17,23 @@ CITE_KEYS = {
     "replay": "",
 }
 
-ALL_DATASETS = ["splitFMNIST", "splitCIFAR10", "splitCIFAR100", "splitCORe50", "splitEmbeddedCIFAR100", "splitEmbeddedCORe50"]
+ALL_DATASETS = ["splitFMNIST", "splitCIFAR10", "splitCIFAR100",
+                "splitCORe50", "splitEmbeddedCIFAR100", "splitEmbeddedCORe50"]
 
+DATASET_NAME_MAP = {
+    "splitFMNIST": "S-FMNIST",
+    "splitCIFAR10": "S-CIFAR10",
+    "splitCIFAR100": "S-CIFAR100",
+    "splitCORe50": "S-CORe50",
+    "splitEmbeddedCIFAR100": "SE-CIFAR100",
+    "splitEmbeddedCORe50": "SE-CORe50",
+}
 
 tags = {
     "loss": "Loss_MB/train_phase/train_stream/Task000",
     "final_accuracy": "Accuracy_On_Trained_Experiences/eval_phase/test_stream/Task000",
 }
+
 
 def final_metrics(ea: EventAccumulator) -> dict:
     """
@@ -38,6 +49,7 @@ def final_metrics(ea: EventAccumulator) -> dict:
 def match_listdir(directory, pattern) -> t.List[str]:
     return list([x for x in os.listdir(os.path.join(directory)) if re.match(pattern, x)])
 
+
 def load_events_to_df(pattern: str) -> pd.DataFrame:
     experiment_logs = "experiment_logs"
 
@@ -47,7 +59,6 @@ def load_events_to_df(pattern: str) -> pd.DataFrame:
     for experiment in tqdm(match_listdir(os.path.join(experiment_logs), pattern)):
         experiment_code = experiment.split("_")
         i, host, repo_hash, experiment_category, dataset, arch, strategy = experiment_code
-
 
         record = {
             "dataset": dataset,
@@ -78,71 +89,98 @@ def load_events_to_df(pattern: str) -> pd.DataFrame:
     return pd.DataFrame.from_dict(records)
 
 
-def table_equal_prune():
-    df = load_events_to_df(".*(6d14d70a).*EP.*")
-    df.to_csv("results/experiments_equal_prune.csv")
-    tbl = texttable.Texttable()
-    tbl.header(["", ""] + ALL_DATASETS)
+class TableGenerator():
+    def __init__(self, df: pd.DataFrame):
+        self.df = df
 
-    for strategy in ["taskOracle", "taskInference"]:
-        for arch in ["AE", "VAE"]:
-            row = [strategy, arch]
-            for dataset in ALL_DATASETS:
-                try:
-                    result = df.loc[
-                        (df['dataset'] == dataset) &
-                        (df['strategy'] == strategy) &
-                        (df['architecture'] == arch)
-                    ]
-                    accuracy = result.sort_values(by='id').iloc[-1]["final_accuracy"]
-                    row.append(f"{accuracy*100:0.1f}\%")
-                except:
-                    row.append(f"NA")
-            tbl.add_row(row)
+    def generate_table(self) -> texttable.Texttable:
+        self.tt = texttable.Texttable(max_width=180)
+        tt = self.tt
 
-    print(tbl.draw())
-    print(latextable.draw_latex(
-        tbl,
-        caption="Equal Prune Experiment",
-        label="tab:equal_prune_experiment",
-        use_booktabs=True
-    ))
+        # Create Table Header
+        dataset_headers = map(DATASET_NAME_MAP.get, ALL_DATASETS)
+        tt.header(["CL Strategy", "AE/VAE", "", *dataset_headers])
 
+        self._add_baselines()
+        self._add_50_prune()
+        self._add_prune_levels()
+        self._add_equal_prune()
+        return tt
 
-def table_other_strategies():
-    df = load_events_to_df(".*(6d14d70a|05b6f96cD|05b6f96c)_OS.*")
-    tbl = texttable.Texttable()
-    df.to_csv("results/experiments_other_strategies.csv")
-    # df = pd.read_csv("results/experiments_other_strategies.csv")
-
-    tbl = texttable.Texttable()
-    tbl.header([""] + ALL_DATASETS)
-
-
-    for strategy in ["SI", "LwF", "replay", "genReplay"]:
-        row = [strategy] 
+    def _add_row(self, strategy: str, arch: str, hp: str, row_data: pd.DataFrame) -> t.List[str]:
+        df = row_data
+        row = [strategy, arch, hp]
         for dataset in ALL_DATASETS:
             try:
-                df_row = df.loc[
-                    (df['dataset'] == dataset) &
-                    (df['strategy'] == strategy)
-                ]
-                accuracy = df_row.sort_values(by='id').iloc[-1]["final_accuracy"]
+                result = df[df["dataset"] == dataset]
+                accuracy = result.sort_values(by='id').iloc[-1]["final_accuracy"]
                 row.append(f"{accuracy*100:0.1f}\%")
             except:
-                row.append(f"NA")
-        tbl.add_row(row)
+                row.append("x")
+        self.tt.add_row(row)
+
+    def relevant_experiments(self, repo_hash, experiment_category) -> pd.DataFrame:
+        return self.df[
+            (self.df["repo_hash"].str.match(repo_hash)) & 
+            (self.df["experiment_category"] == experiment_category)]
+    
+
+    def _add_baselines(self):
+
+        # Add Cumulative and finetuning baselines
+        df = self.relevant_experiments("dd88ddf", "N")
+        for strategy in ["cumulative", "taskOracle", "finetuning"]:
+            for arch in ["AE", "VAE"]:
+                row_df = df[(df["architecture"] == arch) & (df["strategy"] == strategy)]
+                self._add_row(strategy, arch, "", row_df)
+
+        # Add other baselines
+        df = self.relevant_experiments("6d14d70a", "OS")
+
+        row_data = df[(df["strategy"] == "SI")]
+        self._add_row("SI", "AE", f"$\\lambda$={row_data['si_lambda'].values[0]}", row_data)
+        row_data = df[(df["strategy"] == "LwF")]
+        self._add_row("LwF", "AE", f"$\\alpha$={row_data['lwf_alpha'].values[0]}", row_data)
+        row_data = df[(df["strategy"] == "replay")]
+        self._add_row("Replay", "AE", f"mem={row_data['replay_buffer'].values[0]}", row_data)
+        row_data = df[(df["strategy"] == "genReplay")]
+        self._add_row("genReplay", "VAE", f"", row_data)
+
+    def _add_50_prune(self):
+        df = self.relevant_experiments("dd88ddf", "N")
+        for strategy in ["taskInference"]:
+            for arch in ["AE", "VAE"]:
+                row_df = df[(df["architecture"] == arch) & (df["strategy"] == strategy)]
+                self._add_row(strategy, arch, "$\\lambda$=0.5", row_df)
+
+    def _add_prune_levels(self):
+        df = self.relevant_experiments("(7ee898bd|55dff8e1)", "PL")
+        for prune_level in ["0.2", "0.4", "0.6", "0.8"]:
+            row_df = df[
+                (df["strategy"] == "taskInference") & 
+                (df["prune_proportion"] == prune_level)]
+            self._add_row("taskInference", "AE", f"$\\lambda$={prune_level}", row_df)
+
+    def _add_equal_prune(self):
+        df = self.relevant_experiments("(6d14d70a)", "EP")
+        for strategy in ["taskInference"]:
+            for arch in ["AE", "VAE"]:
+                row_df = df[(df["architecture"] == arch) & (df["strategy"] == strategy)]
+                self._add_row(strategy, arch, "EP", row_df)
         
-    print(tbl.draw())
-    print(latextable.draw_latex(
-        tbl,
-        caption="Equal Prune Experiment",
-        label="tab:equal_prune_experiment",
-        use_booktabs=True
-    ))
 
 
-# table_other_strategies()
+df = pd.read_csv("results/all_experiments.csv")
+tt = TableGenerator(df).generate_table()
+tt.draw()
 
-all = load_events_to_df(".*")
-all.to_csv("results/all_experiments.csv")
+print(latextable.draw_latex(
+        tt,
+        caption="Experimental Results",
+        label="tab:experiment_results",
+        use_booktabs=True,
+        caption_above=True
+))
+
+# df = load_events_to_df(".*")
+# df.to_csv("results/all_experiments.csv", index=False)
