@@ -7,6 +7,10 @@ import os
 import click
 
 REPOSITORY = git.Repo('')
+REPO_HASH = REPOSITORY.head.commit.hexsha[:8]
+if REPOSITORY.is_dirty():
+    REPO_HASH += "D"
+
 PRUNE_LEVELS = [0.2, 0.4, 0.5, 0.6, 0.8]
 LATENT_DIMS = [32, 64, 128, 256, 512]
 
@@ -14,10 +18,7 @@ ALL_SCENARIOS = ["splitFMNIST", "splitCIFAR10", "splitCIFAR100", "splitCORe50", 
 
 def get_experiment_name(experiment, scenario, architecture, strategy):
     hostname = os.uname()[1]
-    repo_hash = REPOSITORY.head.commit.hexsha[:8]
-    if REPOSITORY.is_dirty():
-        repo_hash += "D"
-    return f"{hostname}_{repo_hash}_{experiment}_{scenario}_{architecture}_{strategy}"
+    return f"{hostname}_{REPO_HASH}_{experiment}_{scenario}_{architecture}_{strategy}"
 
 def run(cfg: ExperimentConfiguration):
         print("--------------------------------------------------------------")
