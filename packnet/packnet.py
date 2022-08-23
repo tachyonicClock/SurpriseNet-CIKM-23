@@ -120,6 +120,7 @@ class PackNetDecorator(PackNet, ModuleDecorator):
         used, since they can cause parameters to be modified even when no 
         gradient exists
         """
+        grad = grad.clone()
         grad[~self.top_mask] = 0.0
         return grad
 
