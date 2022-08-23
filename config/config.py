@@ -221,7 +221,6 @@ class ExperimentConfiguration():
         self.total_task_epochs = 5
         self.retrain_epochs = 1
         self.use_resnet_cnn()
-        self.latent_dims = 526
         return self
 
     def use_embedded_core50(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
