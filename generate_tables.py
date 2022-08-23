@@ -1,14 +1,15 @@
 from cgitb import text
-import itertools
 import pandas as pd
+from pandas.io.formats.style import Styler
 import os
 from tqdm import tqdm
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
-import texttable
-import latextable
 import json
 import re
 import typing as t
+from matplotlib import pyplot as plt
+import seaborn as sns
+
 
 CITE_KEYS = {
     "si": "Zenke_Poole_Ganguli_2017",
@@ -93,19 +94,20 @@ class TableGenerator():
     def __init__(self, df: pd.DataFrame):
         self.df = df
 
-    def generate_table(self) -> texttable.Texttable:
-        self.tt = texttable.Texttable(max_width=180)
-        tt = self.tt
+    def generate_table(self) -> pd.DataFrame:
 
         # Create Table Header
         dataset_headers = map(DATASET_NAME_MAP.get, ALL_DATASETS)
-        tt.header(["CL Strategy", "AE/VAE", "", *dataset_headers])
+        self.columns = list(["CL Strategy", "AE/VAE", "HP", *dataset_headers])
+        self.rows = []
 
         self._add_baselines()
         self._add_50_prune()
         self._add_prune_levels()
         self._add_equal_prune()
-        return tt
+        table = pd.DataFrame(self.rows, columns=self.columns)
+
+        return table
 
     def _add_row(self, strategy: str, arch: str, hp: str, row_data: pd.DataFrame) -> t.List[str]:
         df = row_data
@@ -114,10 +116,10 @@ class TableGenerator():
             try:
                 result = df[df["dataset"] == dataset]
                 accuracy = result.sort_values(by='id').iloc[-1]["final_accuracy"]
-                row.append(f"{accuracy*100:0.1f}\%")
+                row.append(accuracy)
             except:
-                row.append("x")
-        self.tt.add_row(row)
+                row.append(None)
+        self.rows.append(row)
 
     def relevant_experiments(self, repo_hash, experiment_category) -> pd.DataFrame:
         return self.df[
@@ -168,19 +170,47 @@ class TableGenerator():
                 row_df = df[(df["architecture"] == arch) & (df["strategy"] == strategy)]
                 self._add_row(strategy, arch, "EP", row_df)
         
+def create_styler(df: pd.DataFrame):
+    styler = df.style
+    styler: Styler = styler.format({col: lambda x : f"{x*100:.2f}\%" for col in DATASET_NAME_MAP.values()})
+    styler.caption = "Experimental Results"
+    return styler
 
 
 df = pd.read_csv("results/all_experiments.csv")
-tt = TableGenerator(df).generate_table()
-tt.draw()
+table = TableGenerator(df).generate_table()
 
-print(latextable.draw_latex(
-        tt,
-        caption="Experimental Results",
-        label="tab:experiment_results",
-        use_booktabs=True,
-        caption_above=True
-))
+table = table.set_index(["CL Strategy", "AE/VAE", "HP"])
+
+cols = sns.color_palette("cubehelix", 7)
+plt.figure(figsize=(15, 10))
+figs, (ax0, ax1, ax2) = plt.subplots(ncols=3, sharey=True, figsize=(15, 10))
+table.plot.bar(y=[0, 1], ax=ax0, color=[cols[5], cols[0]])
+table.plot.bar(y=[2, 4], ax=ax1, color=[cols[4], cols[1]])
+table.plot.bar(y=[3, 5], ax=ax2, color=[cols[3], cols[2]])
+ax0.grid(axis="y")
+ax1.grid(axis="y")
+ax2.grid(axis="y")
+ax0.set_yticks([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])
+plt.tight_layout(pad=2)
+plt.savefig("tmp.png")
+plt.savefig("experiment_results.pdf")
+
+
+print(table)
+# print(table.style.to_latex())
+
+
+# table = pd.DataFrame(tt._rows, columns=tt._header)
+
+
+# print(latextable.draw_latex(
+#         tt,
+#         caption="Experimental Results",
+#         label="tab:experiment_results",
+#         use_booktabs=True,
+#         caption_above=True
+# ))
 
 # df = load_events_to_df(".*")
 # df.to_csv("results/all_experiments.csv", index=False)
