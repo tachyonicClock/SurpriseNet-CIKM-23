@@ -20,13 +20,6 @@ def get_experiment_name(experiment, scenario, architecture, strategy):
     hostname = os.uname()[1]
     return f"{hostname}_{REPO_HASH}_{experiment}_{scenario}_{architecture}_{strategy}"
 
-def run(cfg: ExperimentConfiguration):
-        print("--------------------------------------------------------------")
-        print(f"Running Experiment '{cfg.name}'")
-        print("--------------------------------------------------------------")
-        experiment = Experiment(cfg)
-        experiment.train()
-
 def choose_scenario(cfg: ExperimentConfiguration, scenario: str):
     if scenario == "splitFMNIST":
         cfg = cfg.use_fmnist()
@@ -66,6 +59,13 @@ def choose_architecture(cfg: ExperimentConfiguration, architecture: str):
     else:
         raise NotImplementedError(f"Unknown architecture {architecture}")
     return cfg
+
+def run(cfg: ExperimentConfiguration):
+    print("--------------------------------------------------------------")
+    print(f"Running Experiment '{cfg.name}'")
+    print("--------------------------------------------------------------")
+    experiment = Experiment(cfg)
+    experiment.train()
 
 
 # 
@@ -109,11 +109,8 @@ def equal_prune():
         cfg = choose_strategy(cfg, strategy)
         cfg.prune_proportion = equal_capacity_prune_schedule(cfg.n_experiences)
 
-        print("################")
-        print(f"{cfg.name}")
-        print("################")
-        experiment = Experiment(cfg)
-        experiment.train()
+        run(cfg)
+
 
 @cli.command()
 def best_results():
@@ -129,45 +126,73 @@ def best_results():
         cfg = choose_architecture(cfg, architecture)
         cfg = choose_strategy(cfg, strategy)
 
-        print("################")
-        print(f"{cfg.name}")
-        print("################")
-        experiment = Experiment(cfg)
-        experiment.train()
+        run(cfg)
+
 
 @cli.command()
 def other_strategies():
 
-    for scenario, strategy in itertools.product(
-        ALL_SCENARIOS,
-        ["SI", "LwF"]):
-        architecture = "AE" if strategy != "genReplay" else "VAE"
+    for scenario, si_lambda in itertools.product(ALL_SCENARIOS, [1_000, 2_000, 4_000, 8_000, 16_000, 32_000, 64_000]):
+        cfg = ExperimentConfiguration()
+        cfg.name = get_experiment_name("OS", scenario, "SI", "AE")
+        cfg.use_packnet = False
+        cfg = choose_scenario(cfg, scenario)
+        cfg = choose_architecture(cfg, "AE")
+
+        cfg.use_synaptic_intelligence = True
+
+        cfg.use_adam = False
+        cfg.learning_rate = 0.01
+        cfg.si_lambda = si_lambda
+        run(cfg)
+
+    for scenario, lwf_alpha in itertools.product(ALL_SCENARIOS, [0.5, 1, 2, 4, 8, 16, 32, 64, 128]):
+        cfg = ExperimentConfiguration()
+        cfg.name = get_experiment_name("OS", scenario, "LwF", "AE")
+        cfg.use_packnet = False
+        cfg = choose_scenario(cfg, scenario)
+        cfg = choose_architecture(cfg, "AE")
+
+        cfg.use_learning_without_forgetting = True
+
+        cfg.use_adam = False
+        cfg.learning_rate = 0.01
+        cfg.lwf_alpha = lwf_alpha
+        run(cfg)
+
+    # for scenario, strategy in itertools.product(
+    #     ["splitFMNIST"],
+    #     ["SI", "LwF"]):
+    #     architecture = "AE" if strategy != "genReplay" else "VAE"
             
 
-        cfg = ExperimentConfiguration()
-        cfg.name = get_experiment_name("OS", scenario, architecture, strategy)
-        cfg.use_packnet = False
+    #     cfg = ExperimentConfiguration()
+    #     cfg.name = get_experiment_name("OS", scenario, architecture, strategy)
+    #     cfg.use_packnet = False
 
-        if strategy in ["SI", "LwF"]:
-            cfg.use_adam = False
 
-        cfg = choose_scenario(cfg, scenario)
-        cfg = choose_architecture(cfg, architecture)
+    #     cfg = choose_scenario(cfg, scenario)
+    #     cfg = choose_architecture(cfg, architecture)
 
-        if strategy == "replay":
-            cfg.use_experience_replay = True
-        elif strategy == "genReplay":
-            cfg.use_generative_replay = True
-        elif strategy == "SI":
-            cfg.use_synaptic_intelligence = True
-        elif strategy == "LwF":
-            cfg.use_learning_without_forgetting = True
+    #     if strategy == "replay":
+    #         cfg.use_experience_replay = True
+    #     elif strategy == "genReplay":
+    #         cfg.use_generative_replay = True
+    #     elif strategy == "SI":
+    #         cfg.use_synaptic_intelligence = True
+    #     elif strategy == "LwF":
+    #         cfg.use_learning_without_forgetting = True
 
-        print("################")
-        print(f"{cfg.name}")
-        print("################")
-        experiment = Experiment(cfg)
-        experiment.train()
+    #     if strategy in ["SI", "LwF"]:
+    #         cfg.use_adam = False
+    #         cfg.learning_rate = 0.01
+    #         cfg.use_reconstruction_loss = False
+
+    #     print("################")
+    #     print(f"{cfg.name}")
+    #     print("################")
+    #     experiment = Experiment(cfg)
+    #     experiment.train()
 
 
 # Main
