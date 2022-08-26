@@ -134,7 +134,9 @@ class TableGenerator():
         for strategy in ["cumulative", "taskOracle", "finetuning"]:
             for arch in ["AE", "VAE"]:
                 row_df = df[(df["architecture"] == arch) & (df["strategy"] == strategy)]
-                self._add_row(strategy, arch, "", row_df)
+                hp = "$\lambda=0.5$" if strategy == "taskOracle" else ""
+
+                self._add_row(strategy, arch, hp, row_df)
 
         # Add other baselines
         df = self.relevant_experiments("6d14d70a", "OS")
@@ -150,18 +152,20 @@ class TableGenerator():
 
     def _add_50_prune(self):
         df = self.relevant_experiments("dd88ddf", "N")
-        for strategy in ["taskInference"]:
-            for arch in ["AE", "VAE"]:
-                row_df = df[(df["architecture"] == arch) & (df["strategy"] == strategy)]
-                self._add_row(strategy, arch, "$\\lambda$=0.5", row_df)
+        # for strategy in ["taskInference"]:
+        #     for arch in ["AE", "VAE"]:
+        #         row_df = df[(df["architecture"] == arch) & (df["strategy"] == strategy)]
+        #         self._add_row(strategy, arch, "$\\lambda$=0.5", row_df)
 
     def _add_prune_levels(self):
-        df = self.relevant_experiments("(7ee898bd|55dff8e1)", "PL")
-        for prune_level in ["0.2", "0.4", "0.6", "0.8"]:
-            row_df = df[
-                (df["strategy"] == "taskInference") & 
-                (df["prune_proportion"] == prune_level)]
-            self._add_row("taskInference", "AE", f"$\\lambda$={prune_level}", row_df)
+        df = self.relevant_experiments("(44424907)", "PL")
+        for prune_level in ["0.2", "0.4", "0.5", "0.6", "0.8"]:
+            for arch in ["AE", "VAE"]:
+                row_df = df[
+                    (df["architecture"] == arch) &
+                    (df["strategy"] == "taskInference") & 
+                    (df["prune_proportion"] == prune_level)]
+                self._add_row("taskInference", arch, f"$\\lambda$={prune_level}", row_df)
 
     def _add_equal_prune(self):
         df = self.relevant_experiments("(6d14d70a)", "EP")
@@ -169,9 +173,17 @@ class TableGenerator():
             for arch in ["AE", "VAE"]:
                 row_df = df[(df["architecture"] == arch) & (df["strategy"] == strategy)]
                 self._add_row(strategy, arch, "EP", row_df)
-        
+
+def bold_column(ignore_rows: t.List[int]):
+    def _bold_column(col: pd.Series):
+        col = col.copy()
+        col.values[ignore_rows] = col.min()
+        return [ "font-weight: bold;" if v == col.max() else "" for i, v in enumerate(col)]
+    return _bold_column
+
 def create_styler(df: pd.DataFrame):
     styler = df.style
+    styler.apply(bold_column(list(range(0, 4))))
     styler: Styler = styler.format({col: lambda x : f"{x*100:.2f}\%" for col in DATASET_NAME_MAP.values()})
     styler.caption = "Experimental Results"
     return styler
@@ -182,23 +194,29 @@ table = TableGenerator(df).generate_table()
 
 table = table.set_index(["CL Strategy", "AE/VAE", "HP"])
 
-cols = sns.color_palette("cubehelix", 7)
-plt.figure(figsize=(15, 10))
-figs, (ax0, ax1, ax2) = plt.subplots(ncols=3, sharey=True, figsize=(15, 10))
-table.plot.bar(y=[0, 1], ax=ax0, color=[cols[5], cols[0]])
-table.plot.bar(y=[2, 4], ax=ax1, color=[cols[4], cols[1]])
-table.plot.bar(y=[3, 5], ax=ax2, color=[cols[3], cols[2]])
-ax0.grid(axis="y")
-ax1.grid(axis="y")
-ax2.grid(axis="y")
-ax0.set_yticks([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])
-plt.tight_layout(pad=2)
-plt.savefig("tmp.png")
-plt.savefig("experiment_results.pdf")
+# cols = sns.color_palette("cubehelix", 7)
+# plt.figure(figsize=(15, 10))
+# figs, (ax0, ax1, ax2) = plt.subplots(ncols=3, sharey=True, figsize=(15, 10))
+# table.plot.bar(y=[0, 1], ax=ax0, color=[cols[5], cols[0]])
+# table.plot.bar(y=[2, 4], ax=ax1, color=[cols[4], cols[1]])
+# table.plot.bar(y=[3, 5], ax=ax2, color=[cols[3], cols[2]])
+# ax0.grid(axis="y")
+# ax1.grid(axis="y")
+# ax2.grid(axis="y")
+# ax0.set_yticks([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])
+# plt.tight_layout(pad=2)
+# plt.savefig("tmp.png")
+# plt.savefig("experiment_results.pdf")
 
-
+style = create_styler(table)
 print(table)
-# print(table.style.to_latex())
+print(style.to_latex(
+    hrules=True, 
+    convert_css=True, 
+    position_float="centering",
+    multirow_align="t"
+
+))
 
 
 # table = pd.DataFrame(tt._rows, columns=tt._header)

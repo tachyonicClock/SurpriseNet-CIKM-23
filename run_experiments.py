@@ -96,12 +96,16 @@ def prune_levels():
         run(cfg)
 
 @cli.command()
-def equal_prune():
-    for strategy, architecture, scenario in itertools.product(
+@click.option("--shuffle-tasks", is_flag=True, default=False)
+@click.option("--n-runs", type=int, default=1)
+def equal_prune(shuffle_tasks: bool, n_runs: int):
+    for strategy, architecture, scenario, _ in itertools.product(
             ["taskOracle", "taskInference"],
             ["AE", "VAE"],
-            ALL_SCENARIOS):
+            ALL_SCENARIOS,
+            range(n_runs)):
         cfg = ExperimentConfiguration()
+        cfg.fixed_class_order = not shuffle_tasks
         cfg.name = get_experiment_name("EP", scenario, architecture, strategy)
 
         cfg = choose_scenario(cfg, scenario)
@@ -113,13 +117,13 @@ def equal_prune():
 
 
 @cli.command()
-def best_cases():
+def baselines():
     for strategy, architecture, scenario in itertools.product(
             ["cumulative", "finetuning", "taskOracle"],
             ["AE", "VAE"],
             ALL_SCENARIOS):
         cfg = ExperimentConfiguration()
-        cfg.name = get_experiment_name("EP", scenario, architecture, strategy)
+        cfg.name = get_experiment_name("N", scenario, architecture, strategy)
 
         # Select the dataset to use for the experiment
         cfg = choose_scenario(cfg, scenario)
@@ -131,19 +135,19 @@ def best_cases():
 @cli.command()
 def other_strategies():
 
-    for scenario, si_lambda in itertools.product(ALL_SCENARIOS, [1_000, 2_000, 4_000, 8_000, 16_000, 32_000, 64_000]):
-        cfg = ExperimentConfiguration()
-        cfg.name = get_experiment_name("OS", scenario, "SI", "AE")
-        cfg.use_packnet = False
-        cfg = choose_scenario(cfg, scenario)
-        cfg = choose_architecture(cfg, "AE")
+    # for scenario, si_lambda in itertools.product(ALL_SCENARIOS, [1_000, 2_000, 4_000, 8_000, 16_000, 32_000, 64_000]):
+    #     cfg = ExperimentConfiguration()
+    #     cfg.name = get_experiment_name("OS", scenario, "SI", "AE")
+    #     cfg.use_packnet = False
+    #     cfg = choose_scenario(cfg, scenario)
+    #     cfg = choose_architecture(cfg, "AE")
 
-        cfg.use_synaptic_intelligence = True
+    #     cfg.use_synaptic_intelligence = True
 
-        cfg.use_adam = False
-        cfg.learning_rate = 0.01
-        cfg.si_lambda = si_lambda
-        run(cfg)
+    #     cfg.use_adam = False
+    #     cfg.learning_rate = 0.01
+    #     cfg.si_lambda = si_lambda
+    #     run(cfg)
 
     for scenario, lwf_alpha in itertools.product(ALL_SCENARIOS, [0.5, 1, 2, 4, 8, 16, 32, 64, 128]):
         cfg = ExperimentConfiguration()

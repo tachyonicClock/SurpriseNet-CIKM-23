@@ -126,6 +126,7 @@ class ExperimentConfiguration():
 
         self.use_generative_replay_strategy = False
         self.use_adam = True
+        self.fixed_class_order = False
 
 
     def use_vanilla_cnn(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
@@ -159,7 +160,6 @@ class ExperimentConfiguration():
         """Configure the experiment for the Fashion-MNIST dataset"""
         self.dataset_name = "FMNIST"
         self.input_shape = (1, 32, 32)
-        self.fixed_class_order = True
         self.is_image_data = True
         self.n_experiences = 5
 
@@ -171,7 +171,6 @@ class ExperimentConfiguration():
         """Configure the experiment for the CIFAR10 dataset"""
         self.dataset_name = "CIFAR10"
         self.input_shape = (3, 32, 32)
-        self.fixed_class_order = True
         self.is_image_data = True
         self.n_experiences = 5
 
@@ -183,7 +182,6 @@ class ExperimentConfiguration():
         """Configure the experiment for the CIFAR100 dataset"""
         self.dataset_name = "CIFAR100"
         self.input_shape = (3, 32, 32)
-        self.fixed_class_order = True
         self.is_image_data = True
         self.n_experiences = 10
 
@@ -202,7 +200,6 @@ class ExperimentConfiguration():
         self.is_image_data = False
         self.recon_loss_type = "mse"
 
-        self.fixed_class_order = True
         self.n_experiences = 10
 
         self.total_task_epochs = 100
@@ -214,7 +211,6 @@ class ExperimentConfiguration():
         """Configure the experiment for the Core50 dataset"""
         self.dataset_name = "CORe50_NC"
         self.input_shape = (3, 128, 128)
-        self.fixed_class_order = True
         self.is_image_data = True
         self.n_experiences = 10
 
@@ -234,7 +230,6 @@ class ExperimentConfiguration():
         self.is_image_data = False
         self.recon_loss_type = "mse"
 
-        self.fixed_class_order = True
         self.n_experiences = 10
 
         self.total_task_epochs = 10
