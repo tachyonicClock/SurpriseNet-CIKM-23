@@ -126,7 +126,7 @@ class ExperimentConfiguration():
 
         self.use_generative_replay_strategy = False
         self.use_adam = True
-        self.fixed_class_order = False
+        self.fixed_class_order = True
 
 
     def use_vanilla_cnn(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':

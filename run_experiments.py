@@ -149,7 +149,7 @@ def other_strategies():
     #     cfg.si_lambda = si_lambda
     #     run(cfg)
 
-    for scenario, lwf_alpha in itertools.product(ALL_SCENARIOS, [0.5, 1, 2, 4, 8, 16, 32, 64, 128]):
+    for scenario, lwf_alpha in itertools.product(ALL_SCENARIOS, [64, 32, 16, 8, 4, 0.5]):
         cfg = ExperimentConfiguration()
         cfg.name = get_experiment_name("OS", scenario, "LwF", "AE")
         cfg.use_packnet = False
