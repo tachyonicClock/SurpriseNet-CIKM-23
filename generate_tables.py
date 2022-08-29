@@ -35,61 +35,6 @@ tags = {
     "final_accuracy": "Accuracy_On_Trained_Experiences/eval_phase/test_stream/Task000",
 }
 
-
-def final_metrics(ea: EventAccumulator) -> dict:
-    """
-    Returns the final metrics from the event file.
-    """
-    result = {}
-    for tag_name, tag in tags.items():
-        if tag in ea.Tags()['scalars']:
-            result[tag_name] = ea.Scalars(tag)[-1].value
-    return result
-
-
-def match_listdir(directory, pattern) -> t.List[str]:
-    return list([x for x in os.listdir(os.path.join(directory)) if re.match(pattern, x)])
-
-
-def load_events_to_df(pattern: str) -> pd.DataFrame:
-    experiment_logs = "experiment_logs"
-
-    records = []
-
-    # Loop over each directory in a directory
-    for experiment in tqdm(match_listdir(os.path.join(experiment_logs), pattern)):
-        experiment_code = experiment.split("_")
-        i, host, repo_hash, experiment_category, dataset, arch, strategy = experiment_code
-
-        record = {
-            "dataset": dataset,
-            "architecture": arch,
-            "strategy": strategy,
-            "experiment_category": experiment_category,
-            "id": i,
-            "repo_hash": repo_hash
-        }
-
-        try:
-            experiment_path = os.path.join(experiment_logs, experiment)
-            ea = EventAccumulator(experiment_path)
-            ea.Reload()
-            record.update(final_metrics(ea))
-        except KeyError as e:
-            print(f"Could not load required metric {e} in '{experiment}'")
-
-        try:
-            with open(os.path.join(experiment_logs, experiment, "config.json"), "r") as f:
-                config = json.load(f)
-                record.update(config)
-        except FileNotFoundError as e:
-            print(f"Could not load config file '{experiment}/config.json'")
-
-        records.append(record)
-
-    return pd.DataFrame.from_dict(records)
-
-
 class TableGenerator():
     def __init__(self, df: pd.DataFrame):
         self.df = df
@@ -109,16 +54,25 @@ class TableGenerator():
 
         return table
 
-    def _add_row(self, strategy: str, arch: str, hp: str, row_data: pd.DataFrame) -> t.List[str]:
+    def _add_row(self, strategy: str, arch: str, hp: str, row_data: t.Union[pd.DataFrame, pd.Series]):
+        if isinstance(row_data, pd.Series):
+            row_data = row_data.to_frame().T
         df = row_data
         row = [strategy, arch, hp]
         for dataset in ALL_DATASETS:
             try:
                 result = df[df["dataset"] == dataset]
-                accuracy = result.sort_values(by='id').iloc[-1]["final_accuracy"]
-                row.append(accuracy)
-            except:
-                row.append(None)
+                accuracy_mean = result["final_accuracy"].mean()
+                accuracy_std = result["final_accuracy"].std()
+                    # accuracy_std = 0.0
+
+                n = len(result)
+                row.append((accuracy_mean, accuracy_std, n))
+            except Exception as err:
+                print(f"Could not add {strategy} {arch} {hp} {dataset}")
+                print(f"{type(err)}:{err}")
+                exit(1)
+                return
         self.rows.append(row)
 
     def relevant_experiments(self, repo_hash, experiment_category) -> pd.DataFrame:
@@ -130,7 +84,7 @@ class TableGenerator():
     def _add_baselines(self):
 
         # Add Cumulative and finetuning baselines
-        df = self.relevant_experiments("dd88ddf", "N")
+        df = self.relevant_experiments("(54f30668|dd88ddf)", "N")
         for strategy in ["cumulative", "taskOracle", "finetuning"]:
             for arch in ["AE", "VAE"]:
                 row_df = df[(df["architecture"] == arch) & (df["strategy"] == strategy)]
@@ -139,12 +93,22 @@ class TableGenerator():
                 self._add_row(strategy, arch, hp, row_df)
 
         # Add other baselines
-        df = self.relevant_experiments("6d14d70a", "OS")
+        df = self.relevant_experiments("(6d14d70a|ad06b17a)", "OS")
 
-        row_data = df[(df["strategy"] == "SI")]
-        self._add_row("SI", "AE", f"$\\lambda$={row_data['si_lambda'].values[0]}", row_data)
-        row_data = df[(df["strategy"] == "LwF")]
-        self._add_row("LwF", "AE", f"$\\alpha$={row_data['lwf_alpha'].values[0]}", row_data)
+        strategy = df[(df["strategy"] == "SI")]
+        si_lambdas = strategy["si_lambda"].unique()
+        si_lambdas.sort()
+        for si_lambda in si_lambdas:
+            row = strategy[strategy["si_lambda"] == si_lambda]
+            self._add_row("SI", "AE", f"$\\lambda$={si_lambda}", row)
+
+        strategy = df[(df["strategy"] == "LwF")]
+        lwf_alphas = strategy["lwf_alpha"].unique()
+        lwf_alphas.sort()
+        for lwf_alpha in lwf_alphas:
+            row = strategy[strategy["lwf_alpha"] == lwf_alpha]
+            self._add_row("LwF", "AE", f"$\\alpha$={lwf_alpha}", row)
+
         row_data = df[(df["strategy"] == "replay")]
         self._add_row("Replay", "AE", f"mem={row_data['replay_buffer'].values[0]}", row_data)
         row_data = df[(df["strategy"] == "genReplay")]
@@ -168,8 +132,8 @@ class TableGenerator():
                 self._add_row("taskInference", arch, f"$\\lambda$={prune_level}", row_df)
 
     def _add_equal_prune(self):
-        df = self.relevant_experiments("(6d14d70a)", "EP")
-        for strategy in ["taskInference"]:
+        df = self.relevant_experiments("(6d14d70a|e2133f95)", "EP")
+        for strategy in ["taskInference", "taskOracle"]:
             for arch in ["AE", "VAE"]:
                 row_df = df[(df["architecture"] == arch) & (df["strategy"] == strategy)]
                 self._add_row(strategy, arch, "EP", row_df)
@@ -177,14 +141,15 @@ class TableGenerator():
 def bold_column(ignore_rows: t.List[int]):
     def _bold_column(col: pd.Series):
         col = col.copy()
-        col.values[ignore_rows] = col.min()
-        return [ "font-weight: bold;" if v == col.max() else "" for i, v in enumerate(col)]
+        accuracy = col.map(lambda x: x[0])
+        col.values[ignore_rows] = accuracy.min()
+        return [ "font-weight: bold;" if v == accuracy.max() else "" for i, v in enumerate(accuracy)]
     return _bold_column
 
 def create_styler(df: pd.DataFrame):
     styler = df.style
-    styler.apply(bold_column(list(range(0, 4))))
-    styler: Styler = styler.format({col: lambda x : f"{x*100:.2f}\%" for col in DATASET_NAME_MAP.values()})
+    # styler.apply(bold_column(list(range(0, 4))))
+    styler: Styler = styler.format({col: lambda x : f"{x[0]*100:.1f}$\\pm${x[1]*100:.0f}\% {{\\tiny ({x[2]})}}" for col in DATASET_NAME_MAP.values()})
     styler.caption = "Experimental Results"
     return styler
 
@@ -217,18 +182,3 @@ print(style.to_latex(
     multirow_align="t"
 
 ))
-
-
-# table = pd.DataFrame(tt._rows, columns=tt._header)
-
-
-# print(latextable.draw_latex(
-#         tt,
-#         caption="Experimental Results",
-#         label="tab:experiment_results",
-#         use_booktabs=True,
-#         caption_above=True
-# ))
-
-# df = load_events_to_df(".*")
-# df.to_csv("results/all_experiments.csv", index=False)

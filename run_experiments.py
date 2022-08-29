@@ -100,7 +100,7 @@ def prune_levels():
 @click.option("--n-runs", type=int, default=1)
 def equal_prune(shuffle_tasks: bool, n_runs: int):
     for strategy, architecture, scenario, _ in itertools.product(
-            ["taskOracle", "taskInference"],
+            ["taskInference"],
             ["AE", "VAE"],
             ALL_SCENARIOS,
             range(n_runs)):
@@ -149,9 +149,9 @@ def other_strategies():
     #     cfg.si_lambda = si_lambda
     #     run(cfg)
 
-    for scenario, lwf_alpha in itertools.product(ALL_SCENARIOS, [64, 32, 16, 8, 4, 0.5]):
+    for scenario, lwf_alpha in itertools.product(["splitCIFAR10"], [8, 4, 2, 1, 0.5]):
         cfg = ExperimentConfiguration()
-        cfg.name = get_experiment_name("OS", scenario, "LwF", "AE")
+        cfg.name = get_experiment_name("OS", scenario, architecture="AE", strategy="LwF")
         cfg.use_packnet = False
         cfg = choose_scenario(cfg, scenario)
         cfg = choose_architecture(cfg, "AE")
