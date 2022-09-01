@@ -116,7 +116,7 @@ class Experiment(BaseExperiment):
         if cfg.use_learning_without_forgetting:
             print("! Using Learning without Forgetting")
             self.plugins.append(
-                cl_plugins.LwFPlugin(cfg.lwf_alpha)
+                cl_plugins.LwFPlugin(cfg.lwf_alpha, temperature=1)
             )
         if cfg.use_experience_replay:
             print("! Using Experience Replay")
@@ -125,10 +125,12 @@ class Experiment(BaseExperiment):
                     cfg.replay_buffer, 
                     storage_policy=cl.training.storage_policy.ClassBalancedBuffer(cfg.replay_buffer))
             )
-        if cfg.use_generative_replay_strategy:
+        if cfg.use_generative_replay:
             print("! Using Deep Generative Replay")
             self.plugins.append(
-                cl_plugins.GenerativeReplayPlugin()
+                cl_plugins.GenerativeReplayPlugin(
+                    increasing_replay_size=True
+                )
             )
 
     def make_strategy(self) -> Strategy:

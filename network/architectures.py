@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import typing as t
-from network.mlp import MLPDecoder, MLPEncoder, UniformMLPDecoder, UniformMLPEncoder, MPLRectangularClassifierHead
+from network.mlp import MLPDecoder, MLPEncoder, MLPDecoder, MLPEncoder, MLPClassifierHead
 
 from network.resnet import ResNet18Dec, ResNet18Enc
 from .trait import AutoEncoder, VariationalAutoEncoder
@@ -85,14 +85,11 @@ def construct_rectangular_network(
 
     if "width" not in cfg:
         raise ValueError("width must be provided in config")
-    if "depth" not in cfg:
-        raise ValueError("depth must be provided in config")
     width = cfg["width"]
-    depth = cfg["depth"]
 
-    encoder = UniformMLPEncoder(input_shape, width, depth, encoder_output_dims)
-    decoder = UniformMLPDecoder(input_shape, width, depth, decoder_input_dims)
-    head = MPLRectangularClassifierHead(latent_dims, width, n_classes)
+    encoder = MLPEncoder(input_shape, width, encoder_output_dims)
+    decoder = MLPDecoder(input_shape, width, decoder_input_dims)
+    head = MLPClassifierHead(latent_dims, width, n_classes)
     if vae:
         bottleneck = VAEBottleneck(encoder_output_dims, latent_dims)
         return VariationalAutoEncoder(encoder, bottleneck, decoder, head)

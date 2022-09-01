@@ -4,188 +4,69 @@ from torch import nn
 
 from network.trait import Classifier, Decoder, Encoder
 
+def _mlp_layer(in_features: int, out_features: int, dropout: float):
+    return nn.Sequential(
+        nn.Linear(in_features, out_features),
+        nn.Dropout(dropout),
+        nn.ReLU()
+    )
 
 class MLPEncoder(Encoder):
     """
-    MLP encoder.
-    """
-
-    def __init__(self, in_dimension, latent_dims):
-        super().__init__()
-
-        self.net = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(in_dimension, in_dimension*4),
-            nn.ReLU(),
-            nn.Dropout(0.5),
-            nn.Linear(in_dimension*4, in_dimension*4),
-            nn.ReLU(),
-            nn.Dropout(0.5),
-            nn.Linear(in_dimension*4, in_dimension*4),
-            nn.ReLU(),
-            nn.Dropout(0.5),
-            nn.Linear(in_dimension*4, latent_dims),
-        )
-
-
-    def forward(self, x):
-        return self.net(x)
-
-    def encode(self, x):
-        return self(x)
-
-class MLPDecoder(Decoder):
-    """
-    MLP decoder.
-    """
-
-    def __init__(self, latent_dims, out_dimension):
-        super().__init__()
-
-        self.net = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(latent_dims, out_dimension*4),
-            nn.ReLU(),
-            nn.Dropout(0.5),
-            nn.Linear(out_dimension*4, out_dimension*4),
-            nn.ReLU(),
-            nn.Dropout(0.5),
-            nn.Linear(out_dimension*4, out_dimension*4),
-            nn.ReLU(),
-            nn.Dropout(0.5),
-            nn.Linear(out_dimension*4, out_dimension),
-            nn.Sigmoid(),
-        )
-
-
-    def forward(self, x):
-        return self.net(x)
-
-    def decode(self, x):
-        return self(x)
-
-
-class UniformMLPEncoder(Encoder):
-    """
-    MLP Encoder with roughly constant number of weights per layer
+    An MLP encoder with dropout and relu activation
     """
 
     def __init__(self,
         in_dimensions: int,
         width: int,
-        depth: int,
         latent_dims: int,
         dropout: float = 0.5
     ):
         super().__init__()
-        assert depth >= 4, "At least four layers are needed"
 
-        min_weight_count = width*width
-        # The number of features in the first layer is chosen such that the
-        # number of weights is not smaller than min_weight_count
-        outer_input = max(min_weight_count//in_dimensions, width)
-        outer_output = max(min_weight_count//latent_dims, width)
-
-        print(f"Encoder outer_input: {outer_input}")
-        print(f"Encoder outer_output: {outer_output}")
-        
-
-        self.outer_layers = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(in_dimensions, outer_input),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(outer_input, width),
-            nn.Dropout(dropout),
-            nn.ReLU() 
-        )
-
-        self.inner_layers = nn.Sequential(
-            *[nn.Sequential(
-                    nn.Linear(width, width),
-                    nn.Dropout(dropout),
-                    nn.ReLU()
-            ) for _ in range(depth-3)]
-        )
-
-        self.outer_layers_latent = nn.Sequential(
-            nn.Linear(width, outer_output),
-            nn.Dropout(dropout),
-            nn.ReLU(),
-            nn.Linear(outer_output, latent_dims),
+        self.layers = nn.Sequential(
+            _mlp_layer(in_dimensions, width*4, 0.0),
+            _mlp_layer(width*4, width*2, dropout),
+            _mlp_layer(width*2, width, dropout),
+            nn.Linear(width, latent_dims),
         )
 
     def forward(self, x):
-        x = self.outer_layers(x)
-        x = self.inner_layers(x)
-        x = self.outer_layers_latent(x)
-        return x
+        return self.layers(x)
 
     def encode(self, x):
         return self(x)
 
 
-class UniformMLPDecoder(Decoder):
+class MLPDecoder(Decoder):
     """
-    MLP Decoder with roughly constant number of weights per layer
+    An MLP decoder with dropout and relu activation
     """
 
     def __init__(self,
         out_dimensions: int,
         width: int,
-        depth: int,
         latent_dims: int,
         dropout: float = 0.5
     ):
         super().__init__()
-        assert depth >= 4, "At least four layers are needed"
-        # The number of features in the first layer and before the latent space
-        # is chosen such that the number of weights is not smaller 
-        # than min_weight_count
-        min_weight_count = width*width
-        outer_input = max(min_weight_count//out_dimensions, width)
-        outer_output = max(min_weight_count//latent_dims, width)
 
-
-        print(f"Decoder outer_input: {outer_input}")
-        print(f"Decoder outer_output: {outer_output}")
-
-        self.outer_layers_latent = nn.Sequential(
-            nn.Linear(latent_dims, outer_output),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(outer_output, width),
-            nn.Dropout(dropout),
-            nn.ReLU()
-        )
-
-        self.inner_layers = nn.Sequential(
-            *[nn.Sequential(
-                    nn.Linear(width, width),
-                    nn.Dropout(dropout),
-                    nn.ReLU()
-            ) for _ in range(depth-3)]
-        )
-
-        self.outer_layers = nn.Sequential(
-            nn.Linear(width, outer_input),
-            nn.Dropout(dropout),
-            nn.ReLU(),
-            nn.Linear(outer_input, out_dimensions),
+        self.layers = nn.Sequential(
+            _mlp_layer(latent_dims, width, 0.0),
+            _mlp_layer(width, width*2, dropout),
+            _mlp_layer(width*2, width*4, dropout),
+            nn.Linear(width*4, out_dimensions),
         )
 
     def forward(self, x):
-        x = self.outer_layers_latent(x)
-        x = self.inner_layers(x)
-        x = self.outer_layers(x)
-        return x
+        return self.layers(x)
 
     def decode(self, x):
         return self(x)
 
-class MPLRectangularClassifierHead(Classifier):
+class MLPClassifierHead(Classifier):
     """
-    MLP Classifier with roughly constant width/number of weights
+    A simple MLP for classification
     """
 
     def __init__(self,
@@ -194,16 +75,11 @@ class MPLRectangularClassifierHead(Classifier):
         num_classes: int
     ):
         super().__init__()
-        # The number of features in the first layer and before the latent space
-        # is chosen such that the number of weights is not smaller
-        # than min_weight_count
-        min_weight_count = width*width
-        classifier_features = max(min_weight_count//latent_dims, min_weight_count//num_classes)
 
         self.net = nn.Sequential(
-            nn.Linear(latent_dims, classifier_features),
+            nn.Linear(latent_dims, width*4),
             nn.ReLU(),
-            nn.Linear(classifier_features, num_classes),
+            nn.Linear(width*4, num_classes),
         )
 
     def forward(self, x):

@@ -52,7 +52,7 @@ class ExperimentConfiguration():
     """Type of network architecture to use"""
     embedding_module: t.Literal["None", "ResNet50"]
     """Optionally configure the experiment to embed the dataset"""
-    network_cfg = dict()
+    network_cfg: t.Dict[str, t.Any]
     """Other network configuration options"""
 
     #
@@ -98,11 +98,10 @@ class ExperimentConfiguration():
     lwf_alpha: float
 
     # generative replay
-    use_generative_replay_strategy: bool
+    use_generative_replay: bool
 
     def toJSON(self):
-        return json.dumps(self, default=lambda o: o.__dict__, 
-            sort_keys=True, indent=4)
+        return json.dumps(self.__dict__, sort_keys=True, indent=4)
 
     def __init__(self) -> None:
         # Default Values
@@ -124,9 +123,11 @@ class ExperimentConfiguration():
         self.use_learning_without_forgetting = False
         self.lwf_alpha = 32
 
-        self.use_generative_replay_strategy = False
+        self.use_generative_replay = False
         self.use_adam = True
         self.fixed_class_order = True
+
+        self.network_cfg = {}
 
 
     def use_vanilla_cnn(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
@@ -137,17 +138,10 @@ class ExperimentConfiguration():
         return self
 
     def use_mlp_network(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
-        """Configure the experiment to use an MLP network"""
-        self.network_architecture = "mlp"
-        self.latent_dims = 64
-        return self
-
-    def use_rectangular_network(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment to use a rectangular network"""
         self.network_architecture = "rectangular"
         self.latent_dims = 512
         self.network_cfg["width"] = 512
-        self.network_cfg["depth"] = 4
         return self
 
     def use_resnet_cnn(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
@@ -204,7 +198,7 @@ class ExperimentConfiguration():
 
         self.total_task_epochs = 100
         self.retrain_epochs = 30
-        return self.use_rectangular_network()
+        return self.use_mlp_network()
 
 
     def use_core50(self: "ExperimentConfiguration") -> 'ExperimentConfiguration':
@@ -215,7 +209,7 @@ class ExperimentConfiguration():
         self.n_experiences = 10
 
         self.total_task_epochs = 5
-        self.retrain_epochs = 1
+        self.retrain_epochs = 2
         self.use_resnet_cnn()
         return self
 
@@ -234,7 +228,7 @@ class ExperimentConfiguration():
 
         self.total_task_epochs = 10
         self.retrain_epochs = 3
-        return self.use_rectangular_network()
+        return self.use_mlp_network()
 
 
     def use_auto_encoder(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
