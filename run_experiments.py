@@ -95,6 +95,25 @@ def prune_levels():
         cfg.prune_proportion = prune_level
         run(cfg)
 
+
+@cli.command()
+def latent_sizes():
+    """
+    Try different latent dimension sizes while holding other variables
+    constant
+    """
+    for scenario, latent_size in itertools.product(
+            ALL_SCENARIOS,
+            [32, 64, 128, 256, 512]):
+        cfg = ExperimentConfiguration()
+        cfg.name = get_experiment_name("PL", scenario, "LS", "taskInference")
+        cfg = choose_scenario(cfg, scenario)
+        cfg = choose_architecture(cfg, "AE")
+        cfg = choose_strategy(cfg, "taskInference")
+        cfg.prune_proportion = 0.5
+        cfg.latent_dims = latent_size
+        run(cfg)
+
 @cli.command()
 @click.option("--shuffle-tasks", is_flag=True, default=False)
 @click.option("--n-runs", type=int, default=1)
