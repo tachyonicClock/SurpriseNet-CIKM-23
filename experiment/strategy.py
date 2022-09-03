@@ -67,8 +67,7 @@ class Strategy(SupervisedTemplate):
         with torch.no_grad():
             self.mbatch[0] = self.batch_transform(self.mb_x)
 
-        self.last_forward_output: ForwardOutput = \
-            avalanche_forward(self.model, self.mb_x, self.mb_task_id)
+        self.last_forward_output: ForwardOutput = self.model.multi_forward(self.mbatch[0])
         self.last_forward_output.x = self.mb_x
         return self.last_forward_output.y_hat
 

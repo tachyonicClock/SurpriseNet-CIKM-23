@@ -48,7 +48,7 @@ class ExperimentConfiguration():
     """Latent dimensions of the VAE/AE"""
     deep_generative_type: t.Literal["AE", "VAE"]
     """Type of deep generative model to use"""
-    network_architecture: t.Literal["vanilla_cnn", "residual", "mlp",  "rectangular"]
+    network_architecture: t.Literal["vanilla_cnn", "residual", "mlp"]
     """Type of network architecture to use"""
     embedding_module: t.Literal["None", "ResNet50"]
     """Optionally configure the experiment to embed the dataset"""
@@ -139,14 +139,14 @@ class ExperimentConfiguration():
 
     def use_mlp_network(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment to use a rectangular network"""
-        self.network_architecture = "rectangular"
+        self.network_architecture = "mlp"
         self.latent_dims = 512
         self.network_cfg["width"] = 512
         return self
 
     def use_resnet_cnn(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment to use a ResNet CNN"""
-        self.network_architecture = "residual"
+        self.network_architecture = "mlp"
         self.latent_dims = 64
         return self
 

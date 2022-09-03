@@ -142,7 +142,7 @@ class GenerateReconstruction(PluginMetric):
                 x: torch.Tensor = x.to(strategy.device)
 
                 # Pass data through auto-encoder
-                out: ForwardOutput = strategy.model.forward(x.unsqueeze(0))
+                out: ForwardOutput = strategy.model.multi_forward(x.unsqueeze(0))
 
                 class_prediction = "NA"
                 if out.y_hat != None:

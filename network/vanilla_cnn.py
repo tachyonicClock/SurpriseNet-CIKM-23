@@ -48,7 +48,7 @@ class VanillaCNNEncoder(Encoder):
         x = self.conv_04(x)
         x = x.flatten(start_dim=1)
         x = self.fc(x)
-        return x
+        return torch.tanh(x)
 
     def encode(self, observations: Tensor) -> Tensor:
         return self(observations)
@@ -117,7 +117,7 @@ class ClassifierHead(Classifier):
         self.net = nn.Sequential(
             nn.Linear(latent_dims, latent_dims*4),
             nn.ReLU(),
-            nn.Dropout(),
+            nn.Dropout(0.5),
             nn.Linear(latent_dims*4, class_number),
         )
 
@@ -125,6 +125,7 @@ class ClassifierHead(Classifier):
         return self(embedding)
 
     def forward(self, x: Tensor) -> Tensor:
+        x = x.detach()
         y_hat = self.net(x)
         return y_hat
 

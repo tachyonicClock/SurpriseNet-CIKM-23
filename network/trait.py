@@ -1,10 +1,20 @@
 from abc import ABC, abstractmethod
+from turtle import forward
 import typing as t
 from torch import Tensor, TensorType, nn
 import torch
 from avalanche.models.generator import Generator
 
 from experiment.strategy import ForwardOutput
+
+
+class MultiOutputNetwork(ABC):
+    """A network that can output multiple tensors"""
+
+    @abstractmethod
+    def multi_forward(self, x: Tensor) -> ForwardOutput:
+        """Forward pass returning multiple tensors"""
+
 
 class Classifier(ABC, nn.Module):
     """Something that can classify"""
@@ -92,7 +102,7 @@ class Sampler(Samplable, nn.Module):
         return NotImplemented
 
 
-class AutoEncoder(Encoder, Decoder, Classifier, nn.Module):
+class AutoEncoder(Encoder, Decoder, Classifier, MultiOutputNetwork, nn.Module):
 
     def __init__(self,
         encoder: Encoder,
@@ -114,12 +124,15 @@ class AutoEncoder(Encoder, Decoder, Classifier, nn.Module):
     def decode(self, embedding: Tensor) -> Tensor:
         return self.decoder.decode(embedding)
 
-    def forward(self, observations: Tensor) -> ForwardOutput:
+    def multi_forward(self, observations: Tensor) -> ForwardOutput:
         out = ForwardOutput()
         out.z_code = self.encode(observations)
         out.y_hat = self.classify(out.z_code)
         out.x_hat  = self.decode(out.z_code)
         return out
+
+    def forward(self, x: Tensor) -> Tensor:
+        return self.multi_forward(x).y_hat
 
 class VariationalAutoEncoder(AutoEncoder, Samplable):
 
@@ -143,9 +156,12 @@ class VariationalAutoEncoder(AutoEncoder, Samplable):
         return self.decoder.decode(z)
 
     def classify(self, x: Tensor) -> Tensor:
-        return self.forward(x).y_hat
+        return self.multi_forward(x).y_hat
 
-    def forward(self, x: Tensor) -> ForwardOutput:
+    def forward(self, x: Tensor) -> Tensor:
+        return self.classify(x)
+
+    def multi_forward(self, x: Tensor) -> ForwardOutput:
         out = ForwardOutput()
         z = self.encoder.encode(x)
         out.mu, out.log_var = self.bottleneck.forward(z)

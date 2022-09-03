@@ -125,13 +125,6 @@ class Experiment(BaseExperiment):
                     cfg.replay_buffer, 
                     storage_policy=cl.training.storage_policy.ClassBalancedBuffer(cfg.replay_buffer))
             )
-        if cfg.use_generative_replay:
-            print("! Using Deep Generative Replay")
-            self.plugins.append(
-                cl_plugins.GenerativeReplayPlugin(
-                    increasing_replay_size=True
-                )
-            )
 
     def make_strategy(self) -> Strategy:
         cfg = self.cfg
@@ -154,6 +147,20 @@ class Experiment(BaseExperiment):
             plugins=[self, *self.plugins],
             evaluator=self.evaluator
         )
+
+
+        if cfg.use_generative_replay:
+            # This is a little hacky because our VAE is connected to the
+            # classifier. `GenerativeReplayPlugin` needs a strategy but we
+            # dont have the strategy until after. Therefore we append the plugin
+            # after the strategy is created.
+            print("! Using Deep Generative Replay")
+            strategy.plugins.append(
+                cl_plugins.GenerativeReplayPlugin(
+                    generator_strategy=strategy,
+                    increasing_replay_size=True
+                )
+            )
 
         if cfg.embedding_module == "None":
             return strategy

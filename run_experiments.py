@@ -47,6 +47,9 @@ def choose_strategy(cfg: ExperimentConfiguration, strategy: str):
     elif strategy == "taskInference":
         cfg.enable_packnet()
         cfg.task_inference_strategy = "task_reconstruction_loss"
+    elif strategy == "genReplay":
+        cfg.use_generative_replay = True
+        cfg.use_packnet = False
     else:
         raise NotImplementedError(f"Unknown variant {strategy}")
     return cfg
@@ -104,9 +107,9 @@ def latent_sizes():
     """
     for scenario, latent_size in itertools.product(
             ALL_SCENARIOS,
-            [32, 64, 128, 256, 512]):
+            [32, 64, 128, 256, 512, 1024]):
         cfg = ExperimentConfiguration()
-        cfg.name = get_experiment_name("PL", scenario, "LS", "taskInference")
+        cfg.name = get_experiment_name("LS", scenario, "AE", "taskInference")
         cfg = choose_scenario(cfg, scenario)
         cfg = choose_architecture(cfg, "AE")
         cfg = choose_strategy(cfg, "taskInference")
@@ -150,6 +153,34 @@ def baselines():
         cfg = choose_strategy(cfg, strategy)
         run(cfg)
 
+@cli.command()
+def gen_replay():
+    for scenario in ["splitFMNIST"]:
+        cfg = ExperimentConfiguration()
+        cfg.name = get_experiment_name("OS", scenario, "VAE", "genReplay")
+        cfg = choose_scenario(cfg, scenario)
+        cfg = choose_architecture(cfg, "VAE")
+        cfg.use_generative_replay = True
+        cfg.use_packnet = False
+        # cfg.total_task_epochs = 5
+        cfg.use_classifier_loss = True
+        run(cfg)
+
+@cli.command()
+def test_all():
+    for scenario, arch, strategy in itertools.product(["splitFMNIST"], ["AE", "VAE"], ["taskInference", "taskOracle", "genReplay"]):
+        # Blacklist some combinations
+        if strategy == "genReplay" and arch == "AE":
+            continue
+
+        cfg = ExperimentConfiguration()
+        cfg.name = get_experiment_name("TEST", scenario, arch, strategy)
+        cfg = choose_scenario(cfg, scenario)
+        cfg = choose_architecture(cfg, arch)
+        cfg = choose_strategy(cfg, strategy)
+        cfg.total_task_epochs = 2
+        cfg.retrain_epochs = 1
+        run(cfg)
 
 @cli.command()
 def other_strategies():

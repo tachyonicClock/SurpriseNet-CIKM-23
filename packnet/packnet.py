@@ -1,4 +1,5 @@
 import math
+from turtle import forward
 import typing as t
 from enum import Enum
 
@@ -392,14 +393,17 @@ class PackNetAutoEncoder(InferTask, AutoEncoder, _PackNetParent):
         wrap(auto_encoder)
         self.task_inference_strategy = task_inference_strategy
 
-    def forward(self, x: Tensor) -> ForwardOutput:
+    def multi_forward(self, x: Tensor) -> ForwardOutput:
 
         if self.training:
-            return super().forward(x)
+            return super().multi_forward(x)
         else:
             """At eval time we need to try infer the task somehow?"""
             return self.task_inference_strategy \
-                       .forward_with_task_inference(super().forward, x)
+                       .forward_with_task_inference(super().multi_forward, x)
+
+    def forward(self, x: Tensor) -> Tensor:
+        return self.multi_forward(x).y_hat
 
 
 class PackNetVariationalAutoEncoder(InferTask, VariationalAutoEncoder, _PackNetParent, ConditionedSample):
@@ -415,14 +419,17 @@ class PackNetVariationalAutoEncoder(InferTask, VariationalAutoEncoder, _PackNetP
         wrap(auto_encoder)
         self.task_inference_strategy = task_inference_strategy
 
-    def forward(self, x: Tensor) -> ForwardOutput:
+    def multi_forward(self, x: Tensor) -> ForwardOutput:
 
         if self.training:
-            return super().forward(x)
+            return super().multi_forward(x)
         else:
             """At eval time we need to try infer the task somehow?"""
             return self.task_inference_strategy \
-                       .forward_with_task_inference(super().forward, x)
+                       .forward_with_task_inference(super().multi_forward, x)
+
+    def forward(self, x: Tensor) -> Tensor:
+        return self.multi_forward(x).y_hat
 
     def conditioned_sample(self, n: int = 1, given_task: int = 0) -> Tensor:
         self.use_task_subset(given_task)
