@@ -89,5 +89,5 @@ def load_events_to_df(pattern: str) -> pd.DataFrame:
     return pd.DataFrame.from_dict(records)
 
 
-df = load_events_to_df(".*ml-14_39425fcbD_EP_splitEmbeddedCIFAR100.*")
-df.to_csv("results/mlp_search.csv", index=False)
+df = load_events_to_df(".*")
+df.to_csv("results/all_experiments.csv", index=False)

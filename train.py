@@ -23,7 +23,6 @@ NETWORKS = {
     'vanilla_cnn': construct_vanilla_cnn,
     'mlp': construct_mlp_network,
     'residual': construct_resnet18_cnn,
-    'rectangular': construct_rectangular_network,
 }
 
 

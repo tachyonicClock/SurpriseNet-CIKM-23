@@ -139,13 +139,17 @@ def equal_prune(shuffle_tasks: bool, n_runs: int):
 
 
 @cli.command()
-def baselines():
-    for strategy, architecture, scenario in itertools.product(
-            ["cumulative", "finetuning", "taskOracle"],
+@click.option("--shuffle-tasks", is_flag=True, default=False)
+@click.option("--n-runs", type=int, default=1)
+def baselines(shuffle_tasks, n_runs):
+    for strategy, architecture, scenario, _ in itertools.product(
+            ["cumulative", "finetuning"],
             ["AE", "VAE"],
-            ALL_SCENARIOS):
+            ALL_SCENARIOS,
+            range(n_runs)):
         cfg = ExperimentConfiguration()
-        cfg.name = get_experiment_name("N", scenario, architecture, strategy)
+        cfg.fixed_class_order = not shuffle_tasks
+        cfg.name = get_experiment_name("BL", scenario, architecture, strategy)
 
         # Select the dataset to use for the experiment
         cfg = choose_scenario(cfg, scenario)
@@ -185,7 +189,7 @@ def test_all():
 @cli.command()
 def other_strategies():
 
-    # for scenario, si_lambda in itertools.product(ALL_SCENARIOS, [1_000, 2_000, 4_000, 8_000, 16_000, 32_000, 64_000]):
+    # for scenario, si_lambda in itertools.product(ALL_SCENARIOS, [10, 1_000, 2_000, 4_000, 8_000, 16_000, 32_000, 64_000]):
     #     cfg = ExperimentConfiguration()
     #     cfg.name = get_experiment_name("OS", scenario, "SI", "AE")
     #     cfg.use_packnet = False
