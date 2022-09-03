@@ -94,7 +94,7 @@ class TableGenerator():
                 self._add_row(strategy, arch, hp, row_df)
 
         # Add other baselines
-        df = self.relevant_experiments("(6d14d70a|ad06b17a)", "OS")
+        df = self.relevant_experiments("(6d14d70a|ad06b17a|39425fcb)", "OS")
 
         strategy = df[(df["strategy"] == "SI")]
         si_lambdas = strategy["si_lambda"].unique()
@@ -159,7 +159,7 @@ def bold_column(ignore_rows: t.List[int]):
 
 def create_styler(df: pd.DataFrame):
     styler = df.style
-    # styler.apply(bold_column(list(range(0, 4))))
+    styler.apply(bold_column(list(range(0, 4))))
     styler: Styler = styler.format({col: lambda x : f"{x[0]*100:.1f}$\\pm${x[1]*100:.0f}\% {{\\tiny ({x[2]})}}" for col in DATASET_NAME_MAP.values()})
     styler.caption = "Experimental Results"
     return styler
