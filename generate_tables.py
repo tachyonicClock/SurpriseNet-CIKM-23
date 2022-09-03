@@ -49,6 +49,7 @@ class TableGenerator():
         self._add_baselines()
         self._add_50_prune()
         self._add_prune_levels()
+        self._add_latent_dims()
         self._add_equal_prune()
         table = pd.DataFrame(self.rows, columns=self.columns)
 
@@ -130,6 +131,16 @@ class TableGenerator():
                     (df["strategy"] == "taskInference") & 
                     (df["prune_proportion"] == prune_level)]
                 self._add_row("taskInference", arch, f"$\\lambda$={prune_level}", row_df)
+
+    def _add_latent_dims(self):
+        df = self.relevant_experiments("(6ea3629e)", "LS")
+        for latent_dims in [32, 64, 128, 256, 512]:
+            row_df = df[
+                (df["architecture"] == "AE") &
+                (df["strategy"] == "taskInference") & 
+                (df["latent_dims"] == latent_dims)]
+            prune_proportion = row_df["prune_proportion"].values[0]
+            self._add_row("taskInference", "AE", f"$\\lambda$={prune_proportion} $n$={latent_dims}", row_df)
 
     def _add_equal_prune(self):
         df = self.relevant_experiments("(6d14d70a|e2133f95)", "EP")

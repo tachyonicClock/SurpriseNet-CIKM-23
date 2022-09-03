@@ -129,10 +129,12 @@ class ExperimentConfiguration():
 
         self.network_cfg = {}
 
+    # 
+    # Networks
+    # 
 
     def use_vanilla_cnn(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment to use a vanilla CNN"""
-        self.latent_dims = 64
         self.network_architecture = "vanilla_cnn"
         self.network_cfg["base_channels"] = 128
         return self
@@ -140,15 +142,18 @@ class ExperimentConfiguration():
     def use_mlp_network(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment to use a rectangular network"""
         self.network_architecture = "mlp"
-        self.latent_dims = 512
         self.network_cfg["width"] = 512
         return self
 
     def use_resnet_cnn(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment to use a ResNet CNN"""
-        self.network_architecture = "mlp"
+        self.network_architecture = "residual"
         self.latent_dims = 64
         return self
+
+    # 
+    # Scenarios
+    # 
 
     def use_fmnist(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment for the Fashion-MNIST dataset"""
@@ -159,7 +164,10 @@ class ExperimentConfiguration():
 
         self.total_task_epochs = 20
         self.retrain_epochs = 5
-        return self.use_vanilla_cnn()
+
+        self.use_vanilla_cnn()
+        self.latent_dims = 64
+        return self
 
     def use_cifar10(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment for the CIFAR10 dataset"""
@@ -170,7 +178,10 @@ class ExperimentConfiguration():
 
         self.total_task_epochs = 50
         self.retrain_epochs = 10
-        return self.use_resnet_cnn()
+
+        self.use_resnet_cnn()
+        self.latent_dims = 128
+        return self
 
     def use_cifar100(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment for the CIFAR100 dataset"""
@@ -180,8 +191,26 @@ class ExperimentConfiguration():
         self.n_experiences = 10
 
         self.total_task_epochs = 100
-        self.retrain_epochs = 20
-        return self.use_resnet_cnn()
+        self.retrain_epochs = 30
+
+        self.use_resnet_cnn()
+        self.latent_dims = 256
+        return self
+
+    def use_core50(self: "ExperimentConfiguration") -> 'ExperimentConfiguration':
+        """Configure the experiment for the Core50 dataset"""
+        self.dataset_name = "CORe50_NC"
+        self.input_shape = (3, 128, 128)
+        self.is_image_data = True
+        self.n_experiences = 10
+
+        self.total_task_epochs = 5
+        self.retrain_epochs = 2
+        
+        self.use_resnet_cnn()
+        self.latent_dims = 512
+
+        return self
 
     def use_embedded_cifar100(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
         """Configure the experiment to use the embedded CIFAR100 dataset"""
@@ -198,19 +227,10 @@ class ExperimentConfiguration():
 
         self.total_task_epochs = 100
         self.retrain_epochs = 30
-        return self.use_mlp_network()
 
+        self.use_mlp_network()
+        self.latent_dims = 256
 
-    def use_core50(self: "ExperimentConfiguration") -> 'ExperimentConfiguration':
-        """Configure the experiment for the Core50 dataset"""
-        self.dataset_name = "CORe50_NC"
-        self.input_shape = (3, 128, 128)
-        self.is_image_data = True
-        self.n_experiences = 10
-
-        self.total_task_epochs = 5
-        self.retrain_epochs = 2
-        self.use_resnet_cnn()
         return self
 
     def use_embedded_core50(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
@@ -220,7 +240,7 @@ class ExperimentConfiguration():
         self.prune_proportion = 0.5
 
         self.embedding_module = "ResNet50"
-        self.input_shape = 2048
+        self.input_shape = 512
         self.is_image_data = False
         self.recon_loss_type = "mse"
 
@@ -228,7 +248,10 @@ class ExperimentConfiguration():
 
         self.total_task_epochs = 10
         self.retrain_epochs = 3
-        return self.use_mlp_network()
+        self.use_mlp_network()
+        self.latent_dims = 512
+
+        return self
 
 
     def use_auto_encoder(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':

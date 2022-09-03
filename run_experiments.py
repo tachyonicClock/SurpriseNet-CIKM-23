@@ -63,6 +63,13 @@ def choose_architecture(cfg: ExperimentConfiguration, architecture: str):
         raise NotImplementedError(f"Unknown architecture {architecture}")
     return cfg
 
+def setup_experiment(cfg, experiment_name,  scenario, architecture, strategy):
+    cfg.name = get_experiment_name(experiment_name, scenario, architecture, strategy)
+    cfg = choose_scenario(cfg, scenario)
+    cfg = choose_strategy(cfg, strategy)
+    cfg = choose_architecture(cfg, architecture)
+    return cfg
+
 def run(cfg: ExperimentConfiguration):
     print("--------------------------------------------------------------")
     print(f"Running Experiment '{cfg.name}'")
@@ -91,10 +98,7 @@ def prune_levels():
             ALL_SCENARIOS,
             PRUNE_LEVELS):
         cfg = ExperimentConfiguration()
-        cfg.name = get_experiment_name("PL", scenario, architecture, strategy)
-        cfg = choose_scenario(cfg, scenario)
-        cfg = choose_architecture(cfg, architecture)
-        cfg = choose_strategy(cfg, strategy)
+        cfg = setup_experiment(cfg, "PL", scenario, architecture, strategy)
         cfg.prune_proportion = prune_level
         run(cfg)
 
@@ -109,10 +113,7 @@ def latent_sizes():
             ALL_SCENARIOS,
             [32, 64, 128, 256, 512, 1024]):
         cfg = ExperimentConfiguration()
-        cfg.name = get_experiment_name("LS", scenario, "AE", "taskInference")
-        cfg = choose_scenario(cfg, scenario)
-        cfg = choose_architecture(cfg, "AE")
-        cfg = choose_strategy(cfg, "taskInference")
+        cfg = setup_experiment(cfg, "LS", scenario, "AE", "taskInference")
         cfg.prune_proportion = 0.5
         cfg.latent_dims = latent_size
         run(cfg)
@@ -128,13 +129,8 @@ def equal_prune(shuffle_tasks: bool, n_runs: int):
             range(n_runs)):
         cfg = ExperimentConfiguration()
         cfg.fixed_class_order = not shuffle_tasks
-        cfg.name = get_experiment_name("EP", scenario, architecture, strategy)
-
-        cfg = choose_scenario(cfg, scenario)
-        cfg = choose_architecture(cfg, architecture)
-        cfg = choose_strategy(cfg, strategy)
+        cfg = setup_experiment(cfg, "EP", scenario, architecture, strategy)
         cfg.prune_proportion = equal_capacity_prune_schedule(cfg.n_experiences)
-
         run(cfg)
 
 
@@ -149,13 +145,9 @@ def baselines(shuffle_tasks, n_runs):
             range(n_runs)):
         cfg = ExperimentConfiguration()
         cfg.fixed_class_order = not shuffle_tasks
-        cfg.name = get_experiment_name("BL", scenario, architecture, strategy)
-
-        # Select the dataset to use for the experiment
-        cfg = choose_scenario(cfg, scenario)
-        cfg = choose_architecture(cfg, architecture)
-        cfg = choose_strategy(cfg, strategy)
+        cfg = setup_experiment(cfg, "BL", scenario, architecture, strategy)
         run(cfg)
+
 
 @cli.command()
 def gen_replay():
