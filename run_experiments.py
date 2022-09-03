@@ -137,16 +137,13 @@ def baselines(shuffle_tasks, n_runs):
 
 
 @cli.command()
-def gen_replay():
-    for scenario in ["splitFMNIST"]:
+@click.option("--shuffle-tasks", is_flag=True, default=False)
+@click.option("--n-runs", type=int, default=1)
+def gen_replay(shuffle_tasks, n_runs):
+    for scenario, _ in itertools.product(ALL_SCENARIOS, range(n_runs)):
         cfg = ExperimentConfiguration()
-        cfg.name = get_experiment_name("OS", scenario, "VAE", "genReplay")
-        cfg = choose_scenario(cfg, scenario)
-        cfg = choose_architecture(cfg, "VAE")
-        cfg.use_generative_replay = True
-        cfg.use_packnet = False
-        # cfg.total_task_epochs = 5
-        cfg.use_classifier_loss = True
+        cfg.fixed_class_order = not shuffle_tasks
+        cfg = setup_experiment(cfg, "OS", scenario, "VAE", "genReplay")
         run(cfg)
 
 @cli.command()
