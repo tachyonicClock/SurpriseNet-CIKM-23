@@ -50,6 +50,9 @@ def choose_strategy(cfg: ExperimentConfiguration, strategy: str):
     elif strategy == "genReplay":
         cfg.use_generative_replay = True
         cfg.use_packnet = False
+    elif strategy == "LwF":
+        cfg.use_learning_without_forgetting = True
+        cfg.use_packnet = False
     elif strategy == "replay":
         cfg.use_experience_replay = True
         cfg.use_packnet = False
@@ -161,6 +164,14 @@ def replay(shuffle_tasks, n_runs):
         run(cfg)
 
 @cli.command()
+def lwf():
+    for scenario, lwf_alpha in itertools.product(ALL_SCENARIOS, [32, 8, 2, 1, 0.5]):
+        cfg = ExperimentConfiguration()
+        cfg = setup_experiment(cfg, "OS", scenario, "AE", "LwF")
+        cfg.lwf_alpha = lwf_alpha
+        run(cfg)
+
+@cli.command()
 def test_all():
     for scenario, arch, strategy in itertools.product(["splitFMNIST"], ["AE", "VAE"], ["taskInference", "taskOracle", "genReplay"]):
         # Blacklist some combinations
@@ -176,8 +187,8 @@ def test_all():
         cfg.retrain_epochs = 1
         run(cfg)
 
-@cli.command()
-def other_strategies():
+# @cli.command()
+# def other_strategies():
 
     # for scenario, si_lambda in itertools.product(ALL_SCENARIOS, [10, 1_000, 2_000, 4_000, 8_000, 16_000, 32_000, 64_000]):
     #     cfg = ExperimentConfiguration()
@@ -193,19 +204,6 @@ def other_strategies():
     #     cfg.si_lambda = si_lambda
     #     run(cfg)
 
-    for scenario, lwf_alpha in itertools.product(ALL_SCENARIOS, [8, 4, 2, 1, 0.5]):
-        cfg = ExperimentConfiguration()
-        cfg.name = get_experiment_name("OS", scenario, architecture="AE", strategy="LwF")
-        cfg.use_packnet = False
-        cfg = choose_scenario(cfg, scenario)
-        cfg = choose_architecture(cfg, "AE")
-
-        cfg.use_learning_without_forgetting = True
-
-        cfg.use_adam = False
-        cfg.learning_rate = 0.01
-        cfg.lwf_alpha = lwf_alpha
-        run(cfg)
 
     # for scenario, strategy in itertools.product(
     #     ["splitFMNIST"],
