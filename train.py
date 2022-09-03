@@ -118,7 +118,7 @@ class Experiment(BaseExperiment):
                 cl_plugins.LwFPlugin(cfg.lwf_alpha, temperature=1)
             )
         if cfg.use_experience_replay:
-            print("! Using Experience Replay")
+            print(f"! Using Experience Replay. Buffer size={cfg.replay_buffer}")
             self.plugins.append(
                 cl_plugins.ReplayPlugin(
                     cfg.replay_buffer, 

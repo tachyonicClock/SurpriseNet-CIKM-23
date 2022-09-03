@@ -50,6 +50,9 @@ def choose_strategy(cfg: ExperimentConfiguration, strategy: str):
     elif strategy == "genReplay":
         cfg.use_generative_replay = True
         cfg.use_packnet = False
+    elif strategy == "replay":
+        cfg.use_experience_replay = True
+        cfg.use_packnet = False
     else:
         raise NotImplementedError(f"Unknown variant {strategy}")
     return cfg
@@ -102,22 +105,6 @@ def prune_levels():
         cfg.prune_proportion = prune_level
         run(cfg)
 
-
-@cli.command()
-def latent_sizes():
-    """
-    Try different latent dimension sizes while holding other variables
-    constant
-    """
-    for scenario, latent_size in itertools.product(
-            ALL_SCENARIOS,
-            [32, 64, 128, 256, 512, 1024]):
-        cfg = ExperimentConfiguration()
-        cfg = setup_experiment(cfg, "LS", scenario, "AE", "taskInference")
-        cfg.prune_proportion = 0.5
-        cfg.latent_dims = latent_size
-        run(cfg)
-
 @cli.command()
 @click.option("--shuffle-tasks", is_flag=True, default=False)
 @click.option("--n-runs", type=int, default=1)
@@ -160,6 +147,20 @@ def gen_replay():
         cfg.use_packnet = False
         # cfg.total_task_epochs = 5
         cfg.use_classifier_loss = True
+        run(cfg)
+
+@cli.command()
+@click.option("--shuffle-tasks", is_flag=True, default=False)
+@click.option("--n-runs", type=int, default=1)
+def replay(shuffle_tasks, n_runs):
+    for scenario, buffer_sizes, _ in itertools.product(
+            ALL_SCENARIOS, 
+            [100, 1000, 10000],
+            range(n_runs)):
+        cfg = ExperimentConfiguration()
+        cfg.fixed_class_order = not shuffle_tasks
+        cfg = setup_experiment(cfg, "OS", scenario, "AE", "replay")
+        cfg.replay_buffer = buffer_sizes
         run(cfg)
 
 @cli.command()
