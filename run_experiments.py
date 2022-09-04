@@ -138,6 +138,19 @@ def baselines(shuffle_tasks, n_runs):
         cfg = setup_experiment(cfg, "BL", scenario, architecture, strategy)
         run(cfg)
 
+@cli.command()
+@click.option("--shuffle-tasks", is_flag=True, default=False)
+@click.option("--n-runs", type=int, default=1)
+@click.argument("experiment_name")
+@click.argument("strategy", type=click.Choice(["cumulative", "finetuning", "taskOracle", "taskInference", "genReplay", "LwF", "replay"]))
+@click.argument("architecture", type=click.Choice(["AE", "VAE"]))
+@click.argument("scenario", type=click.Choice(ALL_SCENARIOS))
+def custom(experiment_name, strategy, architecture, scenario, shuffle_tasks, n_runs):
+    for _ in range(n_runs):
+        cfg = ExperimentConfiguration()
+        cfg.fixed_class_order = not shuffle_tasks
+        cfg = setup_experiment(cfg, experiment_name, scenario, architecture, strategy)
+        run(cfg)
 
 @cli.command()
 @click.option("--shuffle-tasks", is_flag=True, default=False)

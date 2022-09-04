@@ -240,7 +240,7 @@ class ExperimentConfiguration():
         self.prune_proportion = 0.5
 
         self.embedding_module = "ResNet50"
-        self.input_shape = 512
+        self.input_shape = 2048
         self.is_image_data = False
         self.recon_loss_type = "mse"
 
