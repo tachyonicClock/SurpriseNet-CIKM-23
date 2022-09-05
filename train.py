@@ -142,7 +142,7 @@ class Experiment(BaseExperiment):
             strategy.plugins.append(
                 cl_plugins.GenerativeReplayPlugin(
                     generator_strategy=strategy,
-                    increasing_replay_size=True
+                    increasing_replay_size=False
                 )
             )
 
