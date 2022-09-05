@@ -172,6 +172,15 @@ def gen_replay(cfg: ExpConfig, scenario: str):
     cfg = setup_experiment(cfg, "OS", scenario, "VAE", "genReplay")
     run(cfg)
 
+@cli.command()
+@GenericFunctionality()
+def replay(base_cfg: ExpConfig, scenario: str):
+    for buffer_sizes in [100, 1000, 10000]:
+        cfg = base_cfg.copy()
+        cfg = setup_experiment(cfg, "OS", scenario, "AE", "replay")
+        cfg.replay_buffer = buffer_sizes
+        run(cfg)
+
 
 @cli.command()
 @click.option("--shuffle-tasks", is_flag=True, default=False)
@@ -189,19 +198,7 @@ def custom(experiment_name, strategy, architecture, scenario, shuffle_tasks, n_r
 
 
 
-@cli.command()
-@click.option("--shuffle-tasks", is_flag=True, default=False)
-@click.option("--n-runs", type=int, default=1)
-def replay(shuffle_tasks, n_runs):
-    for scenario, buffer_sizes, _ in product(
-            ALL_SCENARIOS, 
-            [100, 1000, 10000],
-            range(n_runs)):
-        cfg = ExpConfig()
-        cfg.fixed_class_order = not shuffle_tasks
-        cfg = setup_experiment(cfg, "OS", scenario, "AE", "replay")
-        cfg.replay_buffer = buffer_sizes
-        run(cfg)
+
 
 @cli.command()
 def lwf():
