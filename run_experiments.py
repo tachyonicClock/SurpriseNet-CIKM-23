@@ -94,10 +94,10 @@ class GenericFunctionality():
         @functools.wraps(f)
         def decorator(*args, **kwargs):
             n_runs = kwargs["n_runs"]
-            shuffle_tasks = kwargs["shuffle_tasks"]
+            fixed_class_order = kwargs["fixed_class_order"]
             scenario = kwargs["scenario"]
             del kwargs["n_runs"]
-            del kwargs["shuffle_tasks"]
+            del kwargs["fixed_class_order"]
             del kwargs["scenario"]
 
             if scenario == "all":
@@ -107,11 +107,11 @@ class GenericFunctionality():
 
             for _, scenario in product(range(n_runs), scenarios):
                 cfg = ExpConfig()
-                cfg.fixed_class_order = not shuffle_tasks
+                cfg.fixed_class_order = fixed_class_order
                 f(cfg, scenario, *args, **kwargs)
 
         decorator = click.option("--n-runs", default=1, type=int)(decorator)
-        decorator = click.option("--shuffle-tasks", is_flag=True, default=False)(decorator)
+        decorator = click.option("--fixed-class-order", is_flag=True, default=False)(decorator)
         decorator = click.option(
             "--scenario", 
             type=click.Choice(["all", *ALL_SCENARIOS]),
@@ -166,6 +166,11 @@ def equal_prune(base_cfg: ExpConfig, scenario: str):
         cfg.prune_proportion = equal_capacity_prune_schedule(cfg.n_experiences)
         run(cfg)
 
+@cli.command()
+@GenericFunctionality()
+def gen_replay(cfg: ExpConfig, scenario: str):
+    cfg = setup_experiment(cfg, "OS", scenario, "VAE", "genReplay")
+    run(cfg)
 
 
 @cli.command()
@@ -182,15 +187,7 @@ def custom(experiment_name, strategy, architecture, scenario, shuffle_tasks, n_r
         cfg = setup_experiment(cfg, experiment_name, scenario, architecture, strategy)
         run(cfg)
 
-@cli.command()
-@click.option("--shuffle-tasks", is_flag=True, default=False)
-@click.option("--n-runs", type=int, default=1)
-def gen_replay(shuffle_tasks, n_runs):
-    for _, scenario in product(range(n_runs), ALL_SCENARIOS):
-        cfg = ExpConfig()
-        cfg.fixed_class_order = not shuffle_tasks
-        cfg = setup_experiment(cfg, "OS", scenario, "VAE", "genReplay")
-        run(cfg)
+
 
 @cli.command()
 @click.option("--shuffle-tasks", is_flag=True, default=False)
