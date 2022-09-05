@@ -129,7 +129,7 @@ def equal_prune(shuffle_tasks: bool, n_runs: int):
 @click.option("--n-runs", type=int, default=1)
 def baselines(shuffle_tasks, n_runs):
     for strategy, architecture, scenario, _ in itertools.product(
-            ["cumulative", "finetuning"],
+            ["finetuning"],
             ["AE", "VAE"],
             ALL_SCENARIOS,
             range(n_runs)):
