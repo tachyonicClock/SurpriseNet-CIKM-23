@@ -1,7 +1,8 @@
+import copy
 import json
 import typing as t
 
-class ExperimentConfiguration():
+class ExpConfig():
     name: str
     """Name of the experiment"""
     tensorboard_dir: str = "experiment_logs"
@@ -22,6 +23,7 @@ class ExperimentConfiguration():
     """The dimensions of the image data"""
     is_image_data: bool
     """Whether the dataset is image data"""
+    n_classes: int
 
     #
     # Loss
@@ -133,19 +135,19 @@ class ExperimentConfiguration():
     # Networks
     # 
 
-    def use_vanilla_cnn(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
+    def use_vanilla_cnn(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to use a vanilla CNN"""
         self.network_architecture = "vanilla_cnn"
         self.network_cfg["base_channels"] = 128
         return self
 
-    def use_mlp_network(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
+    def use_mlp_network(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to use a rectangular network"""
         self.network_architecture = "mlp"
         self.network_cfg["width"] = 512
         return self
 
-    def use_resnet_cnn(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
+    def use_resnet_cnn(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to use a ResNet CNN"""
         self.network_architecture = "residual"
         self.latent_dims = 64
@@ -155,12 +157,13 @@ class ExperimentConfiguration():
     # Scenarios
     # 
 
-    def use_fmnist(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
+    def use_fmnist(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment for the Fashion-MNIST dataset"""
         self.dataset_name = "FMNIST"
         self.input_shape = (1, 32, 32)
         self.is_image_data = True
         self.n_experiences = 5
+        self.n_classes = 10
 
         self.total_task_epochs = 20
         self.retrain_epochs = 5
@@ -169,12 +172,13 @@ class ExperimentConfiguration():
         self.latent_dims = 64
         return self
 
-    def use_cifar10(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
+    def use_cifar10(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment for the CIFAR10 dataset"""
         self.dataset_name = "CIFAR10"
         self.input_shape = (3, 32, 32)
         self.is_image_data = True
         self.n_experiences = 5
+        self.n_classes = 10
 
         self.total_task_epochs = 50
         self.retrain_epochs = 10
@@ -183,12 +187,13 @@ class ExperimentConfiguration():
         self.latent_dims = 128
         return self
 
-    def use_cifar100(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
+    def use_cifar100(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment for the CIFAR100 dataset"""
         self.dataset_name = "CIFAR100"
         self.input_shape = (3, 32, 32)
         self.is_image_data = True
         self.n_experiences = 10
+        self.n_classes = 100
 
         self.total_task_epochs = 100
         self.retrain_epochs = 30
@@ -197,12 +202,13 @@ class ExperimentConfiguration():
         self.latent_dims = 256
         return self
 
-    def use_core50(self: "ExperimentConfiguration") -> 'ExperimentConfiguration':
+    def use_core50(self: "ExpConfig") -> 'ExpConfig':
         """Configure the experiment for the Core50 dataset"""
         self.dataset_name = "CORe50_NC"
         self.input_shape = (3, 128, 128)
         self.is_image_data = True
         self.n_experiences = 10
+        self.n_classes = 50
 
         self.total_task_epochs = 5
         self.retrain_epochs = 2
@@ -212,7 +218,7 @@ class ExperimentConfiguration():
 
         return self
 
-    def use_embedded_cifar100(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
+    def use_embedded_cifar100(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to use the embedded CIFAR100 dataset"""
         self.dataset_name = "CIFAR100"
 
@@ -224,6 +230,7 @@ class ExperimentConfiguration():
         self.recon_loss_type = "mse"
 
         self.n_experiences = 10
+        self.n_classes = 100
 
         self.total_task_epochs = 100
         self.retrain_epochs = 30
@@ -233,7 +240,7 @@ class ExperimentConfiguration():
 
         return self
 
-    def use_embedded_core50(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
+    def use_embedded_core50(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to use the embedded CIFAR100 dataset"""
         self.dataset_name = "CORe50_NC"
 
@@ -245,6 +252,7 @@ class ExperimentConfiguration():
         self.recon_loss_type = "mse"
 
         self.n_experiences = 10
+        self.n_classes = 50
 
         self.total_task_epochs = 10
         self.retrain_epochs = 3
@@ -254,7 +262,7 @@ class ExperimentConfiguration():
         return self
 
 
-    def use_auto_encoder(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
+    def use_auto_encoder(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to use an AutoEncoder"""
         self.deep_generative_type = "AE"
         self.use_classifier_loss = True
@@ -262,7 +270,7 @@ class ExperimentConfiguration():
         self.use_vae_loss = False
         return self
 
-    def use_variational_auto_encoder(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
+    def use_variational_auto_encoder(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to use a variational AutoEncoder"""
         self.deep_generative_type = "VAE"
         self.use_classifier_loss = True
@@ -271,14 +279,18 @@ class ExperimentConfiguration():
         self.vae_loss_weight = 0.001
         return self
 
-    def enable_packnet(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
+    def enable_packnet(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to use PackNet"""
         self.use_packnet = True
         self.task_inference_strategy = "task_oracle"
         return self
 
-    def use_cumulative_learning(self: 'ExperimentConfiguration') -> 'ExperimentConfiguration':
+    def use_cumulative_learning(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to not do any continual learning"""
         self.use_packnet = False
         self.n_experiences = 1
         return self
+
+    def copy(self: 'ExpConfig') -> 'ExpConfig':
+        """Create a copy of the experiment configuration"""
+        return copy.deepcopy(self)

@@ -9,7 +9,7 @@ from avalanche.evaluation.metrics import (accuracy_metrics,
                                           confusion_matrix_metrics,
                                           forgetting_metrics, loss_metrics)
 from avalanche.training.plugins import EvaluationPlugin
-from config.config import ExperimentConfiguration
+from config.config import ExpConfig
 from metrics.metrics import (ConditionalMetrics, EpochClock,
                              EvalLossObjectiveMetric,
                              ExperienceIdentificationCM, LossObjectiveMetric)
@@ -36,9 +36,9 @@ class BaseExperiment(SupervisedPlugin):
     evaluator: EvaluationPlugin
     objective: MultipleObjectiveLoss
     plugins: t.List[BasePlugin]
-    cfg: ExperimentConfiguration
+    cfg: ExpConfig
 
-    def __init__(self, cfg: ExperimentConfiguration) -> None:
+    def __init__(self, cfg: ExpConfig) -> None:
         super().__init__()
 
         self.cfg = cfg
@@ -119,7 +119,7 @@ class BaseExperiment(SupervisedPlugin):
 
 
         return EvaluationPlugin(
-            loss_metrics(epoch=True, epoch_running=True, experience=True, stream=True, minibatch=False),
+            loss_metrics(epoch=True, experience=True, stream=True, minibatch=False),
             EpochClock(),
             *plugins,
             loggers=loggers

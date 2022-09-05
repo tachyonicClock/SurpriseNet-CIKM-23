@@ -1,10 +1,12 @@
-import itertools
-from config.config import ExperimentConfiguration
+import functools
+from itertools import product
+from config.config import ExpConfig
 from packnet.plugin import equal_capacity_prune_schedule
 from train import Experiment
 import git
 import os
 import click
+import typing as t
 
 REPOSITORY = git.Repo('')
 REPO_HASH = REPOSITORY.head.commit.hexsha[:8]
@@ -20,7 +22,7 @@ def get_experiment_name(experiment, scenario, architecture, strategy):
     hostname = os.uname()[1]
     return f"{hostname}_{REPO_HASH}_{experiment}_{scenario}_{architecture}_{strategy}"
 
-def choose_scenario(cfg: ExperimentConfiguration, scenario: str):
+def choose_scenario(cfg: ExpConfig, scenario: str):
     if scenario == "splitFMNIST":
         cfg = cfg.use_fmnist()
     elif scenario == "splitCIFAR10":
@@ -37,7 +39,7 @@ def choose_scenario(cfg: ExperimentConfiguration, scenario: str):
         raise NotImplementedError(f"Unknown scenario {scenario}")
     return cfg
 
-def choose_strategy(cfg: ExperimentConfiguration, strategy: str):
+def choose_strategy(cfg: ExpConfig, strategy: str):
     if strategy == "cumulative":
         cfg = cfg.use_cumulative_learning()
     elif strategy == "finetuning":
@@ -60,7 +62,7 @@ def choose_strategy(cfg: ExperimentConfiguration, strategy: str):
         raise NotImplementedError(f"Unknown variant {strategy}")
     return cfg
 
-def choose_architecture(cfg: ExperimentConfiguration, architecture: str):
+def choose_architecture(cfg: ExpConfig, architecture: str):
     if architecture == "AE":
         cfg = cfg.use_auto_encoder()
     elif architecture == "VAE":
@@ -76,12 +78,47 @@ def setup_experiment(cfg, experiment_name,  scenario, architecture, strategy):
     cfg = choose_architecture(cfg, architecture)
     return cfg
 
-def run(cfg: ExperimentConfiguration):
+def run(cfg: ExpConfig):
     print("--------------------------------------------------------------")
     print(f"Running Experiment '{cfg.name}'")
     print("--------------------------------------------------------------")
     experiment = Experiment(cfg)
     experiment.train()
+
+class GenericFunctionality():
+    def __init__(self):
+        pass
+    
+
+    def __call__(self, f):
+        @functools.wraps(f)
+        def decorator(*args, **kwargs):
+            n_runs = kwargs["n_runs"]
+            shuffle_tasks = kwargs["shuffle_tasks"]
+            scenario = kwargs["scenario"]
+            del kwargs["n_runs"]
+            del kwargs["shuffle_tasks"]
+            del kwargs["scenario"]
+
+            if scenario == "all":
+                scenarios = ALL_SCENARIOS
+            else:
+                scenarios = [scenario]
+
+            for _, scenario in product(range(n_runs), scenarios):
+                cfg = ExpConfig()
+                cfg.fixed_class_order = not shuffle_tasks
+                f(cfg, scenario, *args, **kwargs)
+
+        decorator = click.option("--n-runs", default=1, type=int)(decorator)
+        decorator = click.option("--shuffle-tasks", is_flag=True, default=False)(decorator)
+        decorator = click.option(
+            "--scenario", 
+            type=click.Choice(["all", *ALL_SCENARIOS]),
+            default="all"
+        )(decorator)
+
+        return decorator
 
 
 # 
@@ -97,46 +134,39 @@ def cli(ignore_dirty):
         exit(1)
 
 @cli.command()
-def prune_levels():
-    for strategy, architecture, scenario, prune_level in itertools.product(
+@GenericFunctionality()
+def prune_levels(base_cfg: ExpConfig, scenario: str):
+    for strategy, architecture, prune_level in product(
             ["taskInference"],
             ["AE", "VAE"],
-            ALL_SCENARIOS,
             PRUNE_LEVELS):
-        cfg = ExperimentConfiguration()
+        cfg = base_cfg.copy()
         cfg = setup_experiment(cfg, "PL", scenario, architecture, strategy)
         cfg.prune_proportion = prune_level
         run(cfg)
 
 @cli.command()
-@click.option("--shuffle-tasks", is_flag=True, default=False)
-@click.option("--n-runs", type=int, default=1)
-def equal_prune(shuffle_tasks: bool, n_runs: int):
-    for strategy, architecture, scenario, _ in itertools.product(
+@GenericFunctionality()
+def baselines(base_cfg: ExpConfig, scenario: str):
+    for strategy, architecture in product(
+            ["cumulative", "finetuning"],
+            ["AE", "VAE"]):
+        cfg = base_cfg.copy()
+        cfg = setup_experiment(cfg, "BL", scenario, architecture, strategy)
+        run(cfg)
+
+@cli.command()
+@GenericFunctionality()
+def equal_prune(base_cfg: ExpConfig, scenario: str):
+    for strategy, architecture in product(
             ["taskInference"],
-            ["AE", "VAE"],
-            ALL_SCENARIOS,
-            range(n_runs)):
-        cfg = ExperimentConfiguration()
-        cfg.fixed_class_order = not shuffle_tasks
+            ["AE", "VAE"]):
+        cfg = base_cfg.copy()
         cfg = setup_experiment(cfg, "EP", scenario, architecture, strategy)
         cfg.prune_proportion = equal_capacity_prune_schedule(cfg.n_experiences)
         run(cfg)
 
 
-@cli.command()
-@click.option("--shuffle-tasks", is_flag=True, default=False)
-@click.option("--n-runs", type=int, default=1)
-def baselines(shuffle_tasks, n_runs):
-    for strategy, architecture, scenario, _ in itertools.product(
-            ["finetuning"],
-            ["AE", "VAE"],
-            ALL_SCENARIOS,
-            range(n_runs)):
-        cfg = ExperimentConfiguration()
-        cfg.fixed_class_order = not shuffle_tasks
-        cfg = setup_experiment(cfg, "BL", scenario, architecture, strategy)
-        run(cfg)
 
 @cli.command()
 @click.option("--shuffle-tasks", is_flag=True, default=False)
@@ -147,7 +177,7 @@ def baselines(shuffle_tasks, n_runs):
 @click.argument("scenario", type=click.Choice(ALL_SCENARIOS))
 def custom(experiment_name, strategy, architecture, scenario, shuffle_tasks, n_runs):
     for _ in range(n_runs):
-        cfg = ExperimentConfiguration()
+        cfg = ExpConfig()
         cfg.fixed_class_order = not shuffle_tasks
         cfg = setup_experiment(cfg, experiment_name, scenario, architecture, strategy)
         run(cfg)
@@ -156,8 +186,8 @@ def custom(experiment_name, strategy, architecture, scenario, shuffle_tasks, n_r
 @click.option("--shuffle-tasks", is_flag=True, default=False)
 @click.option("--n-runs", type=int, default=1)
 def gen_replay(shuffle_tasks, n_runs):
-    for scenario, _ in itertools.product(ALL_SCENARIOS, range(n_runs)):
-        cfg = ExperimentConfiguration()
+    for _, scenario in product(range(n_runs), ALL_SCENARIOS):
+        cfg = ExpConfig()
         cfg.fixed_class_order = not shuffle_tasks
         cfg = setup_experiment(cfg, "OS", scenario, "VAE", "genReplay")
         run(cfg)
@@ -166,11 +196,11 @@ def gen_replay(shuffle_tasks, n_runs):
 @click.option("--shuffle-tasks", is_flag=True, default=False)
 @click.option("--n-runs", type=int, default=1)
 def replay(shuffle_tasks, n_runs):
-    for scenario, buffer_sizes, _ in itertools.product(
+    for scenario, buffer_sizes, _ in product(
             ALL_SCENARIOS, 
             [100, 1000, 10000],
             range(n_runs)):
-        cfg = ExperimentConfiguration()
+        cfg = ExpConfig()
         cfg.fixed_class_order = not shuffle_tasks
         cfg = setup_experiment(cfg, "OS", scenario, "AE", "replay")
         cfg.replay_buffer = buffer_sizes
@@ -178,32 +208,38 @@ def replay(shuffle_tasks, n_runs):
 
 @cli.command()
 def lwf():
-    for scenario, lwf_alpha in itertools.product(ALL_SCENARIOS, [32, 8, 2, 1, 0.5]):
-        cfg = ExperimentConfiguration()
+    for scenario, lwf_alpha in product(ALL_SCENARIOS, [32, 8, 2, 1, 0.5]):
+        cfg = ExpConfig()
         cfg = setup_experiment(cfg, "OS", scenario, "AE", "LwF")
         cfg.lwf_alpha = lwf_alpha
         run(cfg)
 
 @cli.command()
 def test_all():
-    for scenario, arch, strategy in itertools.product(["splitFMNIST"], ["AE", "VAE"], ["taskInference", "taskOracle", "genReplay"]):
+    for scenario, arch, strategy in product(
+        ALL_SCENARIOS, 
+        ["AE", "VAE"], 
+        ["cumulative", "finetuning", "taskInference", "taskOracle", "genReplay", "replay"]):
         # Blacklist some combinations
         if strategy == "genReplay" and arch == "AE":
             continue
-
-        cfg = ExperimentConfiguration()
-        cfg.name = get_experiment_name("TEST", scenario, arch, strategy)
-        cfg = choose_scenario(cfg, scenario)
-        cfg = choose_architecture(cfg, arch)
-        cfg = choose_strategy(cfg, strategy)
+        cfg = ExpConfig()
+        cfg = setup_experiment(cfg, "TEST", scenario, arch, strategy)
+        cfg.replay_buffer = 100
         cfg.total_task_epochs = 2
         cfg.retrain_epochs = 1
         run(cfg)
 
+@cli.command()
+@GenericFunctionality()
+def test_command(cfg, scenario):
+    print(scenario)
+
+
 # @cli.command()
 # def other_strategies():
 
-    # for scenario, si_lambda in itertools.product(ALL_SCENARIOS, [10, 1_000, 2_000, 4_000, 8_000, 16_000, 32_000, 64_000]):
+    # for scenario, si_lambda in product(ALL_SCENARIOS, [10, 1_000, 2_000, 4_000, 8_000, 16_000, 32_000, 64_000]):
     #     cfg = ExperimentConfiguration()
     #     cfg.name = get_experiment_name("OS", scenario, "SI", "AE")
     #     cfg.use_packnet = False
@@ -218,7 +254,7 @@ def test_all():
     #     run(cfg)
 
 
-    # for scenario, strategy in itertools.product(
+    # for scenario, strategy in product(
     #     ["splitFMNIST"],
     #     ["SI", "LwF"]):
     #     architecture = "AE" if strategy != "genReplay" else "VAE"

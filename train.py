@@ -1,30 +1,23 @@
 import torch
-from network.embedding_network import ResNet50FeatureExtractor
+from network.feature_extractor import ResNet50FeatureExtractor
 from experiment.experiment import BaseExperiment
 import avalanche as cl
 import avalanche.training.plugins as cl_plugins
 
 from experiment.loss import BCEReconstructionLoss, MSEReconstructionLoss, MultipleObjectiveLoss, ClassifierLoss, VAELoss
+from network.networks import construct_network
 from packnet.plugin import PackNetPlugin
 from packnet.task_inference import TaskInferenceStrategy, TaskReconstruction, UseTaskOracle
 from experiment.scenario import scenario
 from experiment.strategy import Strategy
-from network.trait import AutoEncoder, VariationalAutoEncoder
 from torch import nn
-from network.architectures import *
+
 import packnet.packnet as pn
 
 TASK_INFERENCE_STRATEGIES = {
     "task_reconstruction_loss": TaskReconstruction,
     "task_oracle": UseTaskOracle
 }
-
-NETWORKS = {
-    'vanilla_cnn': construct_vanilla_cnn,
-    'mlp': construct_mlp_network,
-    'residual': construct_resnet18_cnn,
-}
-
 
 class Experiment(BaseExperiment):
 
@@ -46,12 +39,12 @@ class Experiment(BaseExperiment):
             return network
 
         # Wrap network in packnet
-        if isinstance(network, VariationalAutoEncoder):
+        if self.cfg.deep_generative_type == "VAE":
             network = pn.PackNetVariationalAutoEncoder(
                 network,
                 self.make_task_inference_strategy()
             )
-        elif isinstance(network, AutoEncoder):
+        elif self.cfg.deep_generative_type == "AE":
             network = pn.PackNetAutoEncoder(
                 network,
                 self.make_task_inference_strategy()
@@ -64,15 +57,7 @@ class Experiment(BaseExperiment):
         return network
 
     def make_network(self) -> nn.Module:
-        architecture = self.cfg.network_architecture
-        vae = self.cfg.deep_generative_type == "VAE"
-
-        network = NETWORKS[architecture](
-            self.n_classes,
-            self.cfg.latent_dims,
-            self.cfg.input_shape,
-            vae,
-            self.cfg.network_cfg)
+        network = construct_network(self.cfg)
         return self.setup_packnet(network)
 
     def make_objective(self) -> MultipleObjectiveLoss:
