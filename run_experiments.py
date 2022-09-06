@@ -150,6 +150,13 @@ def prune_levels(base_cfg: ExpConfig, scenario: str):
 
 @cli.command()
 @GenericFunctionality()
+def task_oracle(cfg: ExpConfig, scenario: str):
+    cfg = setup_experiment(cfg, "TO", scenario, "AE", "taskOracle")
+    cfg.prune_proportion = 0.5
+    run(cfg)
+
+@cli.command()
+@GenericFunctionality()
 def baselines(base_cfg: ExpConfig, scenario: str):
     for strategy, architecture in product(
             ["cumulative", "finetuning"],
