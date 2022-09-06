@@ -25,6 +25,9 @@ def get_experiment_name(experiment, scenario, architecture, strategy):
 def choose_scenario(cfg: ExpConfig, scenario: str):
     if scenario == "splitFMNIST":
         cfg = cfg.use_fmnist()
+    elif scenario == "splitMNIST":
+        cfg = cfg.use_fmnist()
+        cfg.dataset_name = "MNIST"
     elif scenario == "splitCIFAR10":
         cfg = cfg.use_cifar10()
     elif scenario == "splitCIFAR100":
@@ -188,7 +191,7 @@ def replay(base_cfg: ExpConfig, scenario: str):
 @click.argument("experiment_name")
 @click.argument("strategy", type=click.Choice(["cumulative", "finetuning", "taskOracle", "taskInference", "genReplay", "LwF", "replay"]))
 @click.argument("architecture", type=click.Choice(["AE", "VAE"]))
-@click.argument("scenario", type=click.Choice(ALL_SCENARIOS))
+@click.argument("scenario", type=click.Choice(["splitMNIST", *ALL_SCENARIOS]))
 def custom(experiment_name, strategy, architecture, scenario, shuffle_tasks, n_runs):
     for _ in range(n_runs):
         cfg = ExpConfig()

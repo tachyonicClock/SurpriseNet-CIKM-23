@@ -5,13 +5,13 @@ import torch
 import torchvision.transforms as T
 from avalanche.benchmarks import NCScenario, nc_benchmark
 from avalanche.benchmarks.classic import (SplitCIFAR10, SplitCIFAR100,
-                                          SplitFMNIST)
+                                          SplitFMNIST, SplitMNIST)
 from avalanche.benchmarks.datasets import CORe50Dataset
 from torch import Tensor
 from torch.utils.data import Dataset
 
 def scenario(
-    dataset: t.Literal["FMNIST", "CIFAR10", "CIFAR100", "CORe50_NC"], 
+    dataset: t.Literal["FMNIST", "CIFAR10", "CIFAR100", "CORe50_NC", "MNIST"], 
     dataset_root: str,
     n_experiences: int = 5, 
     fixed_class_order: bool = True) -> NCScenario:
@@ -57,8 +57,16 @@ def scenario(
             T.ToTensor()
         ]
     )
-
-    if dataset == "FMNIST":
+    if dataset == "MNIST":
+        return SplitMNIST(
+            n_experiences=n_experiences,
+            fixed_class_order=list(range(10)) if fixed_class_order else None,
+            return_task_id=False,
+            train_transform=fmnist_transform,
+            eval_transform=fmnist_transform,
+            dataset_root=dataset_root
+        )
+    elif dataset == "FMNIST":
         return SplitFMNIST(
             n_experiences=n_experiences,
             fixed_class_order=list(range(10)) if fixed_class_order else None,
