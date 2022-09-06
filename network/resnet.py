@@ -165,7 +165,7 @@ class ResNet18Decoder(Decoder):
     def forward(self, x: Tensor) -> Tensor:
         x = self.fc(x)
         x = x.view(x.size(0), 512, 1, 1)
-        x = F.interpolate(x, scale_factor=4)
+        x = F.interpolate(x, scale_factor=self.data_shape[1] // 8)
         x = self.block_01(x)
         x = self.block_02(x)
         x = self.block_03(x)
