@@ -195,15 +195,18 @@ def replay(base_cfg: ExpConfig, scenario: str):
 @cli.command()
 @click.option("--shuffle-tasks", is_flag=True, default=False)
 @click.option("--n-runs", type=int, default=1)
+@click.option("--total-epochs", type=int, default=None)
 @click.argument("experiment_name")
 @click.argument("strategy", type=click.Choice(["cumulative", "finetuning", "taskOracle", "taskInference", "genReplay", "LwF", "replay"]))
 @click.argument("architecture", type=click.Choice(["AE", "VAE"]))
 @click.argument("scenario", type=click.Choice(["splitMNIST", *ALL_SCENARIOS]))
-def custom(experiment_name, strategy, architecture, scenario, shuffle_tasks, n_runs):
+def custom(experiment_name, strategy, architecture, scenario, shuffle_tasks, n_runs, total_epochs):
     for _ in range(n_runs):
         cfg = ExpConfig()
         cfg.fixed_class_order = not shuffle_tasks
         cfg = setup_experiment(cfg, experiment_name, scenario, architecture, strategy)
+        if total_epochs is not None:
+            cfg.total_task_epochs = total_epochs
         run(cfg)
 
 

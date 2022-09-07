@@ -104,11 +104,12 @@ class Experiment(BaseExperiment):
             )
         if cfg.use_experience_replay:
             print(f"! Using Experience Replay. Buffer size={cfg.replay_buffer}")
-            self.plugins.append(
-                cl_plugins.ReplayPlugin(
-                    cfg.replay_buffer, 
-                    storage_policy=cl.training.storage_policy.ClassBalancedBuffer(cfg.replay_buffer))
-            )
+            self.plugins.append(cl_plugins.ReplayPlugin(cfg.replay_buffer))
+            # The replay buffer provides double the batch size. This
+            # is because it provides a combined batch of old experiences and a 
+            # new experiences. To ensure that it fits on the GPU, we need to
+            # halve the batch size.
+            cfg.batch_size = cfg.batch_size//2
 
     def make_strategy(self) -> Strategy:
         cfg = self.cfg

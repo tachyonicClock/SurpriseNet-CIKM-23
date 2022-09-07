@@ -56,6 +56,13 @@ case $1 in
             fi
         done
         ;;
+    "status")
+        for remote in $remotes; do
+            echo "--------------------------------------------------------------------------------"
+            echo "Status of $remote"
+            ssh $remote -- "nvidia-smi"
+        done
+        ;;
     *)
         # Print usage
         echo "Usage: sync_remote.bash [pull|push]"

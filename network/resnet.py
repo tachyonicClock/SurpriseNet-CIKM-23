@@ -107,7 +107,6 @@ class ResNet18Encoder(Encoder):
         self.bn_00 = nn.BatchNorm2d(64)
         self.block_01 = BlockA(64, 64)
         self.block_02 = BlockA(64, 64)
-
         self.block_03 = BlockB(64, 128)
         self.block_04 = BlockA(128, 128)
         self.block_05 = BlockB(128, 256)

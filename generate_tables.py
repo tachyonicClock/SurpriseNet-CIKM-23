@@ -46,11 +46,24 @@ class TableGenerator():
         self.columns = list(["CL Strategy", "AE/VAE", "HP", *dataset_headers])
         self.rows = []
 
-        self._add_baselines()
-        self._add_50_prune()
-        self._add_prune_levels()
-        self._add_latent_dims()
-        self._add_equal_prune()
+        # Cumulative
+        self.add_rows("fce838ce", "BL", ["AE", "VAE"], ["cumulative"])
+        # Task Oracle
+        self.add_rows("20bcad46", "TO", ["AE"], ["taskOracle"])
+        # Replay
+        self.add_rows("aada5544", "OS", ["AE"], ["replay"], ("replay_buffer", [100, 1000, 10000]))
+        # Naive Strategy
+        self.add_rows("fce838ce", "BL", ["AE"], ["finetuning"])
+
+        # TODO Add comparable strategies
+
+        self.add_rows("fce838ce", "PL", ["AE", "VAE"], ["taskInference"], ("prune_proportion", ["0.2", "0.4", "0.5", "0.6", "0.8"]))
+
+
+        
+
+
+
         table = pd.DataFrame(self.rows, columns=self.columns)
 
         return table
@@ -76,78 +89,27 @@ class TableGenerator():
                 return
         self.rows.append(row)
 
+
     def relevant_experiments(self, repo_hash, experiment_category) -> pd.DataFrame:
         return self.df[
             (self.df["repo_hash"].str.match(repo_hash)) & 
             (self.df["experiment_category"] == experiment_category)]
     
-
-    def _add_baselines(self):
-
-        # Add Cumulative and finetuning baselines
-        df = self.relevant_experiments("(54f30668|dd88ddf)", "N")
-        for strategy in ["cumulative", "taskOracle", "finetuning"]:
-            for arch in ["AE", "VAE"]:
+    def add_rows(self, pattern: str, experiment_code: str, archs: t.List[str], strategies: t.List[str], hp: t.Tuple[str, t.List[any]] = None):
+        df = self.relevant_experiments(pattern, experiment_code)
+        for arch in archs:
+            for strategy in strategies:
                 row_df = df[(df["architecture"] == arch) & (df["strategy"] == strategy)]
-                hp = "$\lambda=0.5$" if strategy == "taskOracle" else ""
 
-                self._add_row(strategy, arch, hp, row_df)
+                if hp is None:
+                    self._add_row(strategy, arch, "", row_df)
+                else:
+                    hp_name, hp_values = hp
+                    for hp_value in hp_values:
+                        hp_df = row_df[row_df[hp_name] == hp_value]
+                        self._add_row(strategy, arch, f"{hp_name}={hp_value}", hp_df)
 
-        # Add other baselines
-        df = self.relevant_experiments("(6d14d70a|ad06b17a|39425fcb)", "OS")
 
-        strategy = df[(df["strategy"] == "SI")]
-        si_lambdas = strategy["si_lambda"].unique()
-        si_lambdas.sort()
-        for si_lambda in si_lambdas:
-            row = strategy[strategy["si_lambda"] == si_lambda]
-            self._add_row("SI", "AE", f"$\\lambda$={si_lambda}", row)
-
-        strategy = df[(df["strategy"] == "LwF")]
-        lwf_alphas = strategy["lwf_alpha"].unique()
-        lwf_alphas.sort()
-        for lwf_alpha in lwf_alphas:
-            row = strategy[strategy["lwf_alpha"] == lwf_alpha]
-            self._add_row("LwF", "AE", f"$\\alpha$={lwf_alpha}", row)
-
-        row_data = df[(df["strategy"] == "replay")]
-        self._add_row("Replay", "AE", f"mem={row_data['replay_buffer'].values[0]}", row_data)
-        row_data = df[(df["strategy"] == "genReplay")]
-        self._add_row("genReplay", "VAE", f"", row_data)
-
-    def _add_50_prune(self):
-        df = self.relevant_experiments("dd88ddf", "N")
-        # for strategy in ["taskInference"]:
-        #     for arch in ["AE", "VAE"]:
-        #         row_df = df[(df["architecture"] == arch) & (df["strategy"] == strategy)]
-        #         self._add_row(strategy, arch, "$\\lambda$=0.5", row_df)
-
-    def _add_prune_levels(self):
-        df = self.relevant_experiments("(44424907)", "PL")
-        for prune_level in ["0.2", "0.4", "0.5", "0.6", "0.8"]:
-            for arch in ["AE", "VAE"]:
-                row_df = df[
-                    (df["architecture"] == arch) &
-                    (df["strategy"] == "taskInference") & 
-                    (df["prune_proportion"] == prune_level)]
-                self._add_row("taskInference", arch, f"$\\lambda$={prune_level}", row_df)
-
-    def _add_latent_dims(self):
-        df = self.relevant_experiments("(6ea3629e)", "LS")
-        for latent_dims in [32, 64, 128, 256, 512]:
-            row_df = df[
-                (df["architecture"] == "AE") &
-                (df["strategy"] == "taskInference") & 
-                (df["latent_dims"] == latent_dims)]
-            prune_proportion = row_df["prune_proportion"].values[0]
-            self._add_row("taskInference", "AE", f"$\\lambda$={prune_proportion} $n$={latent_dims}", row_df)
-
-    def _add_equal_prune(self):
-        df = self.relevant_experiments("(6d14d70a|e2133f95)", "EP")
-        for strategy in ["taskInference", "taskOracle"]:
-            for arch in ["AE", "VAE"]:
-                row_df = df[(df["architecture"] == arch) & (df["strategy"] == strategy)]
-                self._add_row(strategy, arch, "EP", row_df)
 
 def bold_column(ignore_rows: t.List[int]):
     def _bold_column(col: pd.Series):
@@ -186,10 +148,10 @@ table = table.set_index(["CL Strategy", "AE/VAE", "HP"])
 
 style = create_styler(table)
 print(table)
-print(style.to_latex(
-    hrules=True, 
-    convert_css=True, 
-    position_float="centering",
-    multirow_align="t"
+# print(style.to_latex(
+#     hrules=True, 
+#     convert_css=True, 
+#     position_float="centering",
+#     multirow_align="t"
 
-))
+# ))
