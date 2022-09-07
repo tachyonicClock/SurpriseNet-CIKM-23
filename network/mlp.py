@@ -1,3 +1,4 @@
+import math
 import typing as t
 from torch import nn, Tensor, Size
 from network.trait import Classifier, Decoder, Encoder, Sampler
@@ -18,7 +19,7 @@ class MLPEncoder(Encoder):
 
     def __init__(self, z_dim: int, data_shape: tuple, width: int = 512, dropout: float = 0.5):
         super().__init__()
-        total_features = sum(data_shape)
+        total_features = math.prod(data_shape)
 
         self.layers = nn.Sequential(
             nn.Flatten(),
@@ -42,7 +43,7 @@ class MLPDecoder(Decoder):
 
     def __init__(self, z_dim: int, data_shape: tuple, width: int = 512, dropout: float = 0.5):
         super().__init__()
-        total_features = sum(data_shape)
+        total_features = math.prod(data_shape)
 
         self.layers = nn.Sequential(
             _mlp_layer(z_dim, width, 0.0),
