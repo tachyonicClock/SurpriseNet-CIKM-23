@@ -23,20 +23,20 @@ def get_experiment_name(experiment, scenario, architecture, strategy):
     return f"{hostname}_{REPO_HASH}_{experiment}_{scenario}_{architecture}_{strategy}"
 
 def choose_scenario(cfg: ExpConfig, scenario: str):
-    if scenario == "splitFMNIST":
+    if scenario == "S-FMNIST":
         cfg = cfg.use_fmnist()
-    elif scenario == "splitMNIST":
+    elif scenario == "S-MNIST":
         cfg = cfg.use_fmnist()
         cfg.dataset_name = "MNIST"
-    elif scenario == "splitCIFAR10":
+    elif scenario == "S-CIFAR10":
         cfg = cfg.use_cifar10()
-    elif scenario == "splitCIFAR100":
+    elif scenario == "SE-CIFAR100":
         cfg = cfg.use_cifar100()
-    elif scenario == "splitCORe50":
+    elif scenario == "S-CORe50":
         cfg = cfg.use_core50()
-    elif scenario == "splitEmbeddedCIFAR100":
+    elif scenario == "SE-CIFAR100":
         cfg = cfg.use_embedded_cifar100()
-    elif scenario == "splitEmbeddedCORe50":
+    elif scenario == "SE-CORe50":
         cfg = cfg.use_embedded_core50()
     else:
         raise NotImplementedError(f"Unknown scenario {scenario}")
@@ -106,7 +106,9 @@ class GenericFunctionality():
             if scenario == "all":
                 scenarios = ALL_SCENARIOS
             else:
-                scenarios = [scenario]
+                # Split string on , if , is present
+                scenarios = scenario.split(",")
+                print(f"Running experiments for scenarios {scenarios}")
 
             for _, scenario in product(range(n_runs), scenarios):
                 cfg = ExpConfig()
@@ -117,7 +119,6 @@ class GenericFunctionality():
         decorator = click.option("--fixed-class-order", is_flag=True, default=False)(decorator)
         decorator = click.option(
             "--scenario", 
-            type=click.Choice(["all", *ALL_SCENARIOS]),
             default="all"
         )(decorator)
 

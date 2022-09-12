@@ -51,7 +51,7 @@ class TableGenerator():
         # Task Oracle
         self.add_rows("20bcad46", "TO", ["AE"], ["taskOracle"])
         # Replay
-        self.add_rows("aada5544", "OS", ["AE"], ["replay"], ("replay_buffer", [100, 1000, 10000]))
+        self.add_rows("(d11b4e3f)", "OS", ["AE"], ["replay"], ("replay_buffer", [100, 1000, 10000]))
         # Naive Strategy
         self.add_rows("fce838ce", "BL", ["AE"], ["finetuning"])
 
@@ -147,7 +147,8 @@ table = table.set_index(["CL Strategy", "AE/VAE", "HP"])
 # plt.savefig("experiment_results.pdf")
 
 style = create_styler(table)
-print(table)
+pd.set_option('display.precision', 3)
+print(table.to_string())
 # print(style.to_latex(
 #     hrules=True, 
 #     convert_css=True, 
