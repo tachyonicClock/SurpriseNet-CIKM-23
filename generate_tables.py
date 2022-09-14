@@ -19,15 +19,15 @@ CITE_KEYS = {
 }
 
 ALL_DATASETS = ["splitFMNIST", "splitCIFAR10", "splitCIFAR100",
-                "splitCORe50", "splitEmbeddedCIFAR100", "splitEmbeddedCORe50"]
+                "splitCORe50", "SE-CIFAR100", "SE-CORe50"]
 
 DATASET_NAME_MAP = {
     "splitFMNIST": "S-FMNIST",
     "splitCIFAR10": "S-CIFAR10",
     "splitCIFAR100": "S-CIFAR100",
     "splitCORe50": "S-CORe50",
-    "splitEmbeddedCIFAR100": "SE-CIFAR100",
-    "splitEmbeddedCORe50": "SE-CORe50",
+    "SE-CIFAR100": "SE-CIFAR100",
+    "SE-CORe50": "SE-CORe50",
 }
 
 tags = {
@@ -47,17 +47,19 @@ class TableGenerator():
         self.rows = []
 
         # Cumulative
-        self.add_rows("fce838ce", "BL", ["AE", "VAE"], ["cumulative"])
+        self.add_rows("(fce838ce|75988428)", "BL", ["AE", "VAE"], ["cumulative"])
         # Task Oracle
-        self.add_rows("20bcad46", "TO", ["AE"], ["taskOracle"])
+        self.add_rows("(20bcad46|75988428)", "TO", ["AE"], ["taskOracle"])
         # Replay
         self.add_rows("(d11b4e3f)", "OS", ["AE"], ["replay"], ("replay_buffer", [100, 1000, 10000]))
         # Naive Strategy
-        self.add_rows("fce838ce", "BL", ["AE"], ["finetuning"])
+        self.add_rows("(fce838ce|75988428)", "BL", ["AE"], ["finetuning"])
 
         # TODO Add comparable strategies
 
-        self.add_rows("fce838ce", "PL", ["AE", "VAE"], ["taskInference"], ("prune_proportion", ["0.2", "0.4", "0.5", "0.6", "0.8"]))
+        self.add_rows("(fce838ce|75988428)", "PL", ["AE", "VAE"], ["taskInference"], ("prune_proportion", ["0.2", "0.4", "0.5", "0.6", "0.8"]))
+
+        self.add_rows("(fce838ce|75988428)", "EP", ["VAE", "AE"], ["taskInference"], hp_label="equal prune")
 
 
         
@@ -95,19 +97,19 @@ class TableGenerator():
             (self.df["repo_hash"].str.match(repo_hash)) & 
             (self.df["experiment_category"] == experiment_category)]
     
-    def add_rows(self, pattern: str, experiment_code: str, archs: t.List[str], strategies: t.List[str], hp: t.Tuple[str, t.List[any]] = None):
+    def add_rows(self, pattern: str, experiment_code: str, archs: t.List[str], strategies: t.List[str], hp: t.Tuple[str, t.List[any]] = None, hp_label = ""):
         df = self.relevant_experiments(pattern, experiment_code)
         for arch in archs:
             for strategy in strategies:
                 row_df = df[(df["architecture"] == arch) & (df["strategy"] == strategy)]
 
                 if hp is None:
-                    self._add_row(strategy, arch, "", row_df)
+                    self._add_row(strategy, arch, f"{hp_label}", row_df)
                 else:
                     hp_name, hp_values = hp
                     for hp_value in hp_values:
                         hp_df = row_df[row_df[hp_name] == hp_value]
-                        self._add_row(strategy, arch, f"{hp_name}={hp_value}", hp_df)
+                        self._add_row(strategy, arch, f"{hp_label}{hp_name}={hp_value}", hp_df)
 
 
 

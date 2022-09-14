@@ -16,7 +16,7 @@ if REPOSITORY.is_dirty():
 PRUNE_LEVELS = [0.2, 0.4, 0.5, 0.6, 0.8]
 LATENT_DIMS = [32, 64, 128, 256, 512]
 
-ALL_SCENARIOS = ["splitFMNIST", "splitCIFAR10", "splitCIFAR100", "splitCORe50", "splitEmbeddedCIFAR100", "splitEmbeddedCORe50"]
+ALL_SCENARIOS = ["S-FMNIST", "S-CIFAR10", "S-CIFAR100", "S-CORe50", "SE-CIFAR100", "SE-CORe50"]
 
 def get_experiment_name(experiment, scenario, architecture, strategy):
     hostname = os.uname()[1]
@@ -25,12 +25,9 @@ def get_experiment_name(experiment, scenario, architecture, strategy):
 def choose_scenario(cfg: ExpConfig, scenario: str):
     if scenario == "S-FMNIST":
         cfg = cfg.use_fmnist()
-    elif scenario == "S-MNIST":
-        cfg = cfg.use_fmnist()
-        cfg.dataset_name = "MNIST"
     elif scenario == "S-CIFAR10":
         cfg = cfg.use_cifar10()
-    elif scenario == "SE-CIFAR100":
+    elif scenario == "S-CIFAR100":
         cfg = cfg.use_cifar100()
     elif scenario == "S-CORe50":
         cfg = cfg.use_core50()
