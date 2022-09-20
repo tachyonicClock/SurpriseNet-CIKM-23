@@ -53,7 +53,6 @@ def scenario(
     )
     core50_eval_transform = T.Compose(
         [
-            T.transforms.Resize((128, 128)),
             T.ToTensor()
         ]
     )

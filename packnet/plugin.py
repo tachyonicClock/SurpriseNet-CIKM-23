@@ -8,8 +8,18 @@ from experiment.experiment import BaseExperiment
 
 
 def equal_capacity_prune_schedule(n_experiences: int) -> t.List[float]:
-    target_proportion = 1.0 / (n_experiences+1)
-    return list(np.arange(1.0-target_proportion, 0.0, -target_proportion))
+    """Returns a pruning schedule that results in equal capacity for each experience.
+    For example if there are 4 experiences, the schedule will be [3/4, 2/3, 1/2].
+    Note that only the remaining capacity is pruned, so each task will have the same
+    capacity as the first task.
+
+    :param n_experiences: The number of tasks to generate a schedule for
+    :return: A list of pruning proportions
+    """
+    schedule = []
+    for i in range(n_experiences):
+        schedule.append((n_experiences-1-i)/(n_experiences-i))
+    return schedule
 
 class PackNetPlugin(SupervisedPlugin):
     """Plugin that implements the steps to implement PackNet"""

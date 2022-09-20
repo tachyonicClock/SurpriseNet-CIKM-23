@@ -10,6 +10,7 @@ from avalanche.evaluation.metrics import (accuracy_metrics,
                                           forgetting_metrics, loss_metrics)
 from avalanche.training.plugins import EvaluationPlugin
 from config.config import ExpConfig
+from experiment.util import count_parameters
 from metrics.metrics import (ConditionalMetrics, EpochClock,
                              EvalLossObjectiveMetric,
                              ExperienceIdentificationCM, LossObjectiveMetric)
@@ -138,6 +139,10 @@ class BaseExperiment(SupervisedPlugin):
         for name, _ in self.objective:
             print(f" > Has the `{name}` objective")
 
+        print("-"*80)
+        count_parameters(self.network)
+        print("-"*80)
+        print()
         self.dump_config()
 
     def make_network(self) -> nn.Module:

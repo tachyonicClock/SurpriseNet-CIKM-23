@@ -4,11 +4,12 @@ import torch
 import torch.nn as nn
 from torch import Tensor, rand
 from torch.nn import functional as F
+from plugin import equal_capacity_prune_schedule
 
 import pytest
 
-from packnet.packnet import *
-from packnet.packnet import _PnLinear, _PackNetParent
+from packnet import *
+from packnet import _PnLinear, _PackNetParent
 
 
 TORCH_SEED = torch.seed()
@@ -120,6 +121,27 @@ def test_prune(proportion, packnet_linear: _PnLinear, device):
 
 
     assert smallest < new_smallest, "Prune should remove the smallest absolute value"
+
+@pytest.mark.parametrize('tasks', [3, 4, 5, 2])
+def test_equal_prune(packnet_linear: _PnLinear, tasks, device):
+
+    if packnet_linear.weight_count < 100:
+        return
+
+    prune_proportions = equal_capacity_prune_schedule(tasks)
+    print(prune_proportions)
+    for proportion in prune_proportions:
+        packnet_linear.prune(proportion)
+        packnet_linear.push_pruned()
+
+    target_proportion = 1/tasks
+    for i in range(tasks):
+        weights_in_group = packnet_linear.z_mask.eq(i).count_nonzero()
+        group_proportion = weights_in_group/packnet_linear.weight_count
+        print(f"Group {i} has {group_proportion*100:0.2f}% of the weights")
+
+        assert group_proportion == pytest.approx(target_proportion, 0.1), \
+            f"Group {i} should have {target_proportion*100:0.2f}% of the weights"
 
 
 
