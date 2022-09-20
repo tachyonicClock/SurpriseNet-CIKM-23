@@ -4,12 +4,12 @@ import torch
 import torch.nn as nn
 from torch import Tensor, rand
 from torch.nn import functional as F
-from plugin import equal_capacity_prune_schedule
+from packnet.plugin import equal_capacity_prune_schedule
 
 import pytest
 
-from packnet import *
-from packnet import _PnLinear, _PackNetParent
+from packnet.packnet import *
+from packnet.packnet import _PnLinear, _PackNetParent
 
 
 TORCH_SEED = torch.seed()
@@ -140,7 +140,7 @@ def test_equal_prune(packnet_linear: _PnLinear, tasks, device):
         group_proportion = weights_in_group/packnet_linear.weight_count
         print(f"Group {i} has {group_proportion*100:0.2f}% of the weights")
 
-        assert group_proportion == pytest.approx(target_proportion, 0.1), \
+        assert group_proportion == pytest.approx(target_proportion, 0.01), \
             f"Group {i} should have {target_proportion*100:0.2f}% of the weights"
 
 

@@ -11,7 +11,7 @@ from network.trait import (AutoEncoder, ConditionedSample, InferTask, PackNet,
 from torch import Tensor
 from torch.nn import functional as F
 
-from task_inference import TaskInferenceStrategy
+from packnet.task_inference import TaskInferenceStrategy
 
 
 class ModuleDecorator(nn.Module):
