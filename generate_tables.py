@@ -11,6 +11,7 @@ from matplotlib import pyplot as plt
 import seaborn as sns
 
 
+
 CITE_KEYS = {
     "si": "Zenke_Poole_Ganguli_2017",
     "lwf": "Li_Hoiem_2017",
@@ -18,16 +19,25 @@ CITE_KEYS = {
     "replay": "",
 }
 
-ALL_DATASETS = ["splitFMNIST", "splitCIFAR10", "splitCIFAR100",
-                "splitCORe50", "SE-CIFAR100", "SE-CORe50"]
+ALL_DATASETS = ["S-FMNIST", "S-CIFAR10", "S-CIFAR100",
+                "S-CORe50", "SE-CIFAR100", "SE-CORe50"]
 
 DATASET_NAME_MAP = {
-    "splitFMNIST": "S-FMNIST",
-    "splitCIFAR10": "S-CIFAR10",
-    "splitCIFAR100": "S-CIFAR100",
-    "splitCORe50": "S-CORe50",
+    "S-FMNIST": "S-FMNIST",
+    "S-CIFAR10": "S-CIFAR10",
+    "S-CIFAR100": "S-CIFAR100",
+    "S-CORe50": "S-CORe50",
     "SE-CIFAR100": "SE-CIFAR100",
     "SE-CORe50": "SE-CORe50",
+}
+
+DATASET_TASKS ={
+    "S-FMNIST": 5,
+    "S-CIFAR10": 5,
+    "S-CIFAR100": 10,
+    "S-CORe50": 10,
+    "SE-CIFAR100": 10,
+    "SE-CORe50": 10,
 }
 
 tags = {
@@ -47,37 +57,59 @@ class TableGenerator():
         self.rows = []
 
         # Cumulative
-        self.add_rows("(fce838ce|75988428)", "BL", ["AE", "VAE"], ["cumulative"])
+        self.add_rows("(fce838ce|75988428|692a9d04)", "BL", ["AE", "VAE"], ["cumulative"], check_task_count=False)
         # Task Oracle
-        self.add_rows("(20bcad46|75988428)", "TO", ["AE"], ["taskOracle"])
-        # Replay
-        self.add_rows("(d11b4e3f)", "OS", ["AE"], ["replay"], ("replay_buffer", [100, 1000, 10000]))
-        # Naive Strategy
-        self.add_rows("(fce838ce|75988428)", "BL", ["AE"], ["finetuning"])
+        self.add_rows("(20bcad46|75988428|692a9d04)", "TO", ["AE"], ["taskOracle"], hp_label="$\\lambda$=0.5")
+        # # Replay
+        self.add_rows("(d11b4e3f|692a9d04)", "OS", ["AE"], ["replay"], ("replay_buffer", [100, 1000, 10000]))
+        self._add_csv_row("results/SnB.csv", "S\\&B", "FF", "mem=1000")
+        # # Naive Strategy
+        self.add_rows("(fce838ce|75988428|692a9d04)", "BL", ["AE"], ["finetuning"])
 
-        # TODO Add comparable strategies
-
-        self.add_rows("(fce838ce|75988428)", "PL", ["AE", "VAE"], ["taskInference"], ("prune_proportion", ["0.2", "0.4", "0.5", "0.6", "0.8"]))
-
-        self.add_rows("(fce838ce|75988428)", "EP", ["VAE", "AE"], ["taskInference"], hp_label="equal prune")
+        self._add_csv_row("results/GR.csv", "GR", "VAE", "")
 
 
-        
+        # # TODO Add comparable strategies
 
+        self.add_rows("(fce838ce|75988428|692a9d04)", "PL", ["AE", "VAE"], ["taskInference"], ("prune_proportion", ["0.2", "0.4", "0.5", "0.6", "0.8"]))
+
+        self.add_rows("(fce838ce|75988428|692a9d04)", "EP", ["VAE", "AE"], ["taskInference"], hp_label="EP")
 
 
         table = pd.DataFrame(self.rows, columns=self.columns)
 
         return table
 
-    def _add_row(self, strategy: str, arch: str, hp: str, row_data: t.Union[pd.DataFrame, pd.Series]):
+    def _add_csv_row(self, csv: str, strategy, arch, hp):
+        df = pd.read_csv(csv)
+        row = [strategy, arch, hp]
+
+        for dataset in ALL_DATASETS:
+            # get column as list
+            if dataset in df.columns:
+                result = df[dataset]
+                accuracy_mean = result.mean()
+                accuracy_std = result.std()
+                n = len(result)
+                row.append((accuracy_mean, accuracy_std, n))
+            else:
+                row.append(None)
+
+        self.rows.append(row)
+
+    def _add_row(self, strategy: str, arch: str, hp: str, row_data: t.Union[pd.DataFrame, pd.Series], check_task_count=True):
         if isinstance(row_data, pd.Series):
             row_data = row_data.to_frame().T
         df = row_data
         row = [strategy, arch, hp]
+
         for dataset in ALL_DATASETS:
             try:
                 result = df[df["dataset"] == dataset]
+                if check_task_count:
+                    result = result[result["completed_tasks"] == DATASET_TASKS[dataset]]
+                
+                # result = DATASET_TASKS
                 accuracy_mean = result["final_accuracy"].mean()
                 accuracy_std = result["final_accuracy"].std()
                     # accuracy_std = 0.0
@@ -97,34 +129,57 @@ class TableGenerator():
             (self.df["repo_hash"].str.match(repo_hash)) & 
             (self.df["experiment_category"] == experiment_category)]
     
-    def add_rows(self, pattern: str, experiment_code: str, archs: t.List[str], strategies: t.List[str], hp: t.Tuple[str, t.List[any]] = None, hp_label = ""):
+    def add_rows(self, pattern: str, experiment_code: str, archs: t.List[str], strategies: t.List[str], hp: t.Tuple[str, t.List[any]] = None, hp_label = "", check_task_count=True):
         df = self.relevant_experiments(pattern, experiment_code)
-        for arch in archs:
-            for strategy in strategies:
-                row_df = df[(df["architecture"] == arch) & (df["strategy"] == strategy)]
+        
+        if hp is None:
+            hp_values = [None]
+        else:
+            hp_name, hp_values = hp
 
-                if hp is None:
-                    self._add_row(strategy, arch, f"{hp_label}", row_df)
-                else:
-                    hp_name, hp_values = hp
-                    for hp_value in hp_values:
+        for hp_value in hp_values:
+            for arch in archs:
+                for strategy in strategies:
+                    row_df = df[(df["architecture"] == arch) & (df["strategy"] == strategy)]
+
+                    if hp is None:
+                        self._add_row(strategy, arch, f"{hp_label}", row_df, check_task_count=check_task_count)
+                    else:
                         hp_df = row_df[row_df[hp_name] == hp_value]
-                        self._add_row(strategy, arch, f"{hp_label}{hp_name}={hp_value}", hp_df)
+                        self._add_row(strategy, arch, f"{hp_label}{hp_name}={hp_value}", hp_df, check_task_count=check_task_count)
 
+def replace_hp(table: pd.DataFrame):
+    table = table.copy()
+    table["HP"] = table["HP"].str.replace("prune_proportion", "$\\\lambda$")
+    table["HP"] = table["HP"].str.replace("replay_buffer", "mem")
+    
+    return table
 
 
 def bold_column(ignore_rows: t.List[int]):
+    def _get_accuracy(x):
+        if x:
+            return x[0]
+        else:
+            return 0.0 
     def _bold_column(col: pd.Series):
         col = col.copy()
-        accuracy = col.map(lambda x: x[0])
-        col.values[ignore_rows] = accuracy.min()
+        accuracy = col.map(_get_accuracy)
+        accuracy[ignore_rows] = 0.0
         return [ "font-weight: bold;" if v == accuracy.max() else "" for i, v in enumerate(accuracy)]
     return _bold_column
 
 def create_styler(df: pd.DataFrame):
+    
+    def _format(x):
+        if x:
+            return f"{x[0]*100:.1f}$\\pm${x[1]*100:.0f}\% {{\\tiny ({x[2]})}}"
+        else:
+            return "N/A"
+
     styler = df.style
-    styler.apply(bold_column(list(range(0, 4))))
-    styler: Styler = styler.format({col: lambda x : f"{x[0]*100:.1f}$\\pm${x[1]*100:.0f}\% {{\\tiny ({x[2]})}}" for col in DATASET_NAME_MAP.values()})
+    styler.apply(bold_column(list(range(0, 3))))
+    styler: Styler = styler.format({col: _format  for col in DATASET_NAME_MAP.values()})
     styler.caption = "Experimental Results"
     return styler
 
@@ -132,6 +187,7 @@ def create_styler(df: pd.DataFrame):
 df = pd.read_csv("results/all_experiments.csv")
 table = TableGenerator(df).generate_table()
 
+table = replace_hp(table)
 table = table.set_index(["CL Strategy", "AE/VAE", "HP"])
 
 # cols = sns.color_palette("cubehelix", 7)
@@ -148,13 +204,26 @@ table = table.set_index(["CL Strategy", "AE/VAE", "HP"])
 # plt.savefig("tmp.png")
 # plt.savefig("experiment_results.pdf")
 
-style = create_styler(table)
-pd.set_option('display.precision', 3)
-print(table.to_string())
-# print(style.to_latex(
-#     hrules=True, 
-#     convert_css=True, 
-#     position_float="centering",
-#     multirow_align="t"
+def style_console_table(table: pd.DataFrame):
+    table = table.copy()
 
-# ))
+    def _format_cell(x):
+        if x:
+            return  f"{x[0]*100:.1f}±{x[1]*100:.0f}% ({x[2]})"
+        else:
+            return "N/A"
+
+    for col in table.columns:
+        table[col] = table[col].map(_format_cell)
+    return table
+
+print(style_console_table(table))
+
+style = create_styler(table)
+print(style.to_latex(
+    hrules=True, 
+    convert_css=True, 
+    position_float="centering",
+    multirow_align="t"
+
+))

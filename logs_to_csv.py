@@ -13,6 +13,7 @@ VALUE_TAGS = {
 }
 
 SERIES_TAGS = {
+    "accuracy": "Accuracy_On_Trained_Experiences/eval_phase/test_stream/Task000",
     "Task Identification Accuracy": "Conditional/P(correct_task_id)",
     "Accuracy given Bad Task Identification": "Conditional/P(correct|!correct_task_id)",
     "Accuracy given Good Task Identification": "Conditional/P(correct|correct_task_id)",
@@ -74,6 +75,7 @@ def load_events_to_df(pattern: str) -> pd.DataFrame:
         try:
             record.update(extract_values(ea))
             record.update(extract_series(ea))
+            record["completed_tasks"] = len(record["accuracy"])
         except KeyError as e:
             print(f"Could not load required metric {e} in '{experiment}'")
 
@@ -83,6 +85,7 @@ def load_events_to_df(pattern: str) -> pd.DataFrame:
                 record.update(config)
         except FileNotFoundError as e:
             print(f"Could not load config file '{experiment}/config.json'")
+
 
         records.append(record)
 
