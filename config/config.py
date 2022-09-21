@@ -15,7 +15,7 @@ class ExpConfig():
     """Name of the dataset"""
     dataset_root: str = "/Scratch/al183/datasets"
     """Root of the dataset"""
-    fixed_class_order: bool
+    fixed_class_order: t.Optional[t.List[int]]
     """Whether to use the same class order for all runs"""
     n_experiences: int
     """Number of experiences in the scenario"""
@@ -127,8 +127,7 @@ class ExpConfig():
 
         self.use_generative_replay = False
         self.use_adam = True
-        self.fixed_class_order = True
-
+        self.fixed_class_order = None
         self.network_cfg = {}
 
     # 
@@ -205,7 +204,7 @@ class ExpConfig():
     def use_core50(self: "ExpConfig") -> 'ExpConfig':
         """Configure the experiment for the Core50 dataset"""
         self.dataset_name = "CORe50_NC"
-        self.input_shape = (3, 128, 128)
+        self.input_shape = (3, 32, 32)
         self.is_image_data = True
         self.n_experiences = 10
         self.n_classes = 50

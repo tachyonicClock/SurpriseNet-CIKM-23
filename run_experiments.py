@@ -109,11 +109,12 @@ class GenericFunctionality():
 
             for _, scenario in product(range(n_runs), scenarios):
                 cfg = ExpConfig()
-                cfg.fixed_class_order = fixed_class_order
+                if fixed_class_order != None:
+                    cfg.fixed_class_order = list(map(lambda x: int(x), fixed_class_order.split(",")))
                 f(cfg, scenario, *args, **kwargs)
 
         decorator = click.option("--n-runs", default=1, type=int)(decorator)
-        decorator = click.option("--fixed-class-order", is_flag=True, default=False)(decorator)
+        decorator = click.option("--fixed-class-order", help="Order of classes e.g 1,2,3,4,5", type=str, default=None)(decorator)
         decorator = click.option(
             "--scenario", 
             default="all"
@@ -191,21 +192,25 @@ def replay(base_cfg: ExpConfig, scenario: str):
 
 
 @cli.command()
-@click.option("--shuffle-tasks", is_flag=True, default=False)
-@click.option("--n-runs", type=int, default=1)
+@GenericFunctionality()
 @click.option("--total-epochs", type=int, default=None)
-@click.argument("experiment_name")
+@click.argument("experiment-name")
 @click.argument("strategy", type=click.Choice(["cumulative", "finetuning", "taskOracle", "taskInference", "genReplay", "LwF", "replay"]))
 @click.argument("architecture", type=click.Choice(["AE", "VAE"]))
-@click.argument("scenario", type=click.Choice(["splitMNIST", *ALL_SCENARIOS]))
-def custom(experiment_name, strategy, architecture, scenario, shuffle_tasks, n_runs, total_epochs):
-    for _ in range(n_runs):
-        cfg = ExpConfig()
-        cfg.fixed_class_order = not shuffle_tasks
-        cfg = setup_experiment(cfg, experiment_name, scenario, architecture, strategy)
-        if total_epochs is not None:
-            cfg.total_task_epochs = total_epochs
-        run(cfg)
+@click.argument("variables", type=str, default="")
+def custom(cfg: ExpConfig, scenario, experiment_name, strategy, architecture, variables, total_epochs):
+
+    for entry in variables.split(" "):
+        if not entry:
+            continue
+        key, value = entry.split("=")
+        print(f"Setting {key} to {value}")
+        cfg.__dict__[key] = float(value)
+
+    cfg = setup_experiment(cfg, experiment_name, scenario, architecture, strategy)
+    if total_epochs is not None:
+        cfg.total_task_epochs = total_epochs
+    run(cfg)
 
 
 

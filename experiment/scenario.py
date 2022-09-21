@@ -13,8 +13,8 @@ from torch.utils.data import Dataset
 def scenario(
     dataset: t.Literal["FMNIST", "CIFAR10", "CIFAR100", "CORe50_NC", "MNIST"], 
     dataset_root: str,
-    n_experiences: int = 5, 
-    fixed_class_order: bool = True) -> NCScenario:
+    n_experiences: int,
+    supplied_class_order: t.List[int]) -> NCScenario:
     """Generate a new scenario.
 
     Note:
@@ -46,7 +46,6 @@ def scenario(
 
     core50_train_transform = T.Compose(
         [
-            T.RandomCrop(128, padding=4),
             T.RandomHorizontalFlip(),
             T.ToTensor()
         ]
@@ -59,7 +58,7 @@ def scenario(
     if dataset == "MNIST":
         return SplitMNIST(
             n_experiences=n_experiences,
-            fixed_class_order=list(range(10)) if fixed_class_order else None,
+            fixed_class_order=supplied_class_order,
             return_task_id=False,
             train_transform=fmnist_transform,
             eval_transform=fmnist_transform,
@@ -68,7 +67,7 @@ def scenario(
     elif dataset == "FMNIST":
         return SplitFMNIST(
             n_experiences=n_experiences,
-            fixed_class_order=list(range(10)) if fixed_class_order else None,
+            fixed_class_order=supplied_class_order,
             return_task_id=False,
             train_transform=fmnist_transform,
             eval_transform=fmnist_transform,
@@ -77,7 +76,7 @@ def scenario(
     elif dataset == "CIFAR100":
         return SplitCIFAR100(
             n_experiences=n_experiences,
-            fixed_class_order = list(range(100)) if fixed_class_order else None,
+            fixed_class_order = supplied_class_order,
             return_task_id=False,
             train_transform=cifar_train_transform,
             eval_transform=cifar_eval_transform,
@@ -86,24 +85,22 @@ def scenario(
     elif dataset == "CIFAR10":
         return SplitCIFAR10(
             n_experiences=n_experiences,
-            fixed_class_order = list(range(10)) if fixed_class_order else None,
+            fixed_class_order = supplied_class_order,
             return_task_id=False,
             train_transform=cifar_train_transform,
             eval_transform=cifar_eval_transform,
             dataset_root=dataset_root
         )
     elif dataset == "CORe50_NC":
-        train_set = CORe50Dataset(root=dataset_root, train=True, transform=core50_train_transform)
-        test_set  = CORe50Dataset(root=dataset_root, train=False, transform=core50_eval_transform)
-
-        default_core50 = [19, 30, 34, 22, 36, 23, 16, 15, 14, 49, 11, 3, 33, 28, 7, 35, 27, 18, 45, 8, 32, 9, 42, 48, 20, 17, 12, 10, 2, 21, 25, 43, 6, 1, 24, 38, 26, 44, 13, 41, 31, 40, 47, 0, 4, 37, 5, 29, 39, 46]
+        train_set = CORe50Dataset(root=dataset_root, train=True, transform=core50_train_transform, mini=True)
+        test_set  = CORe50Dataset(root=dataset_root, train=False, transform=core50_eval_transform, mini=True)
 
         return NCScenario(train_set, test_set,
             task_labels=False,
             n_experiences=n_experiences,
             # CORE50 orders classes in a meaningful way, so we need to use a fixed random
             # order to be representative
-            fixed_class_order=default_core50 if fixed_class_order else None
+            fixed_class_order=supplied_class_order
         )
     else:
         raise NotImplementedError("Dataset not implemented")
