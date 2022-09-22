@@ -209,8 +209,8 @@ class ExpConfig():
         self.n_experiences = 10
         self.n_classes = 50
 
-        self.total_task_epochs = 5
-        self.retrain_epochs = 2
+        self.total_task_epochs = 10
+        self.retrain_epochs = 3
         
         self.use_resnet_cnn()
         self.latent_dims = 512
