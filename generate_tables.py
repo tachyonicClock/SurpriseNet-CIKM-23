@@ -57,23 +57,23 @@ class TableGenerator():
         self.rows = []
 
         # Cumulative
-        self.add_rows("(fce838ce|75988428|692a9d04)", "BL", ["AE", "VAE"], ["cumulative"], check_task_count=False)
-        # Task Oracle
-        self.add_rows("(20bcad46|75988428|692a9d04)", "TO", ["AE"], ["taskOracle"], hp_label="$\\lambda$=0.5")
-        # # Replay
-        self.add_rows("(d11b4e3f|692a9d04)", "OS", ["AE"], ["replay"], ("replay_buffer", [100, 1000, 10000]))
-        self._add_csv_row("results/SnB.csv", "S\\&B", "FF", "mem=1000")
-        # # Naive Strategy
-        self.add_rows("(fce838ce|75988428|692a9d04)", "BL", ["AE"], ["finetuning"])
+        # self.add_rows("(fce838ce|75988428|692a9d04)", "BL", ["AE", "VAE"], ["cumulative"], check_task_count=False)
+        # # Task Oracle
+        # self.add_rows("(20bcad46|75988428|692a9d04)", "TO", ["AE"], ["taskOracle"], hp_label="$\\lambda$=0.5")
+        # # # Replay
+        # self.add_rows("(d11b4e3f|692a9d04)", "OS", ["AE"], ["replay"], ("replay_buffer", [100, 1000, 10000]))
+        # self._add_csv_row("results/SnB.csv", "S\\&B", "FF", "mem=1000")
+        # # # Naive Strategy
+        # self.add_rows("(fce838ce|75988428|692a9d04)", "BL", ["AE"], ["finetuning"])
 
-        self._add_csv_row("results/GR.csv", "GR", "VAE", "")
+        # self._add_csv_row("results/GR.csv", "GR", "VAE", "")
 
 
         # # TODO Add comparable strategies
 
-        self.add_rows("(fce838ce|75988428|692a9d04)", "PL", ["AE", "VAE"], ["taskInference"], ("prune_proportion", ["0.2", "0.4", "0.5", "0.6", "0.8"]))
+        self.add_rows("(54dcf601)", "PL", ["AE", "VAE"], ["taskInference"], ("prune_proportion", [0.2, 0.4, 0.5, 0.6, 0.8]))
 
-        self.add_rows("(fce838ce|75988428|692a9d04)", "EP", ["VAE", "AE"], ["taskInference"], hp_label="EP")
+        # self.add_rows("(fce838ce|75988428|692a9d04)", "EP", ["VAE", "AE"], ["taskInference"], hp_label="EP")
 
 
         table = pd.DataFrame(self.rows, columns=self.columns)
@@ -132,6 +132,7 @@ class TableGenerator():
     def add_rows(self, pattern: str, experiment_code: str, archs: t.List[str], strategies: t.List[str], hp: t.Tuple[str, t.List[any]] = None, hp_label = "", check_task_count=True):
         df = self.relevant_experiments(pattern, experiment_code)
         
+
         if hp is None:
             hp_values = [None]
         else:
@@ -142,11 +143,15 @@ class TableGenerator():
                 for strategy in strategies:
                     row_df = df[(df["architecture"] == arch) & (df["strategy"] == strategy)]
 
+
+
                     if hp is None:
                         self._add_row(strategy, arch, f"{hp_label}", row_df, check_task_count=check_task_count)
                     else:
                         hp_df = row_df[row_df[hp_name] == hp_value]
-                        self._add_row(strategy, arch, f"{hp_label}{hp_name}={hp_value}", hp_df, check_task_count=check_task_count)
+                        # print(row_df[hp_name] == float(hp_value))
+
+                        self._add_row(strategy, arch, f"{hp_label}{hp_name}={hp_value}", hp_df, check_task_count=True)
 
 def replace_hp(table: pd.DataFrame):
     table = table.copy()
@@ -209,7 +214,7 @@ def style_console_table(table: pd.DataFrame):
 
     def _format_cell(x):
         if x:
-            return  f"{x[0]*100:.1f}±{x[1]*100:.0f}% ({x[2]})"
+            return  f"{x[0]*100:.1f}±{x[1]*100:.2f}% ({x[2]})"
         else:
             return "N/A"
 
