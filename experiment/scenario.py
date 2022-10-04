@@ -1,5 +1,6 @@
 import os
 import typing as t
+from sympy import false
 
 import torch
 import torchvision.transforms as T
@@ -11,7 +12,7 @@ from torch import Tensor
 from torch.utils.data import Dataset
 
 def scenario(
-    dataset: t.Literal["FMNIST", "CIFAR10", "CIFAR100", "CORe50_NC", "MNIST"], 
+    dataset: t.Literal["FMNIST", "CIFAR10", "CIFAR100", "M_CORe50_NC", "MNIST", "CORe50_NC"], 
     dataset_root: str,
     n_experiences: int,
     supplied_class_order: t.List[int]) -> NCScenario:
@@ -91,9 +92,10 @@ def scenario(
             eval_transform=cifar_eval_transform,
             dataset_root=dataset_root
         )
-    elif dataset == "CORe50_NC":
-        train_set = CORe50Dataset(root=dataset_root, train=True, transform=core50_train_transform, mini=True)
-        test_set  = CORe50Dataset(root=dataset_root, train=False, transform=core50_eval_transform, mini=True)
+    elif dataset == "M_CORe50_NC" or dataset == "CORe50_NC":
+        mini = dataset == "M_CORe50_NC"
+        train_set = CORe50Dataset(root=dataset_root, train=True, transform=core50_train_transform, mini=mini)
+        test_set  = CORe50Dataset(root=dataset_root, train=False, transform=core50_eval_transform, mini=mini)
 
         return NCScenario(train_set, test_set,
             task_labels=False,

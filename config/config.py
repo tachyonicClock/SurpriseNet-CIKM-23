@@ -204,7 +204,7 @@ class ExpConfig():
     def use_core50(self: "ExpConfig") -> 'ExpConfig':
         """Configure the experiment for the Core50 dataset"""
         self.dataset_name = "CORe50_NC"
-        self.input_shape = (3, 32, 32)
+        self.input_shape = (3, 128, 128)
         self.is_image_data = True
         self.n_experiences = 10
         self.n_classes = 50
