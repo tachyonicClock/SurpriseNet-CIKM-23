@@ -1,3 +1,4 @@
+from typing import List
 from avalanche.benchmarks import NCScenario, nc_benchmark
 from torch import nn, Tensor
 import torch
@@ -9,14 +10,11 @@ from torchvision import transforms as T
 class ResNet50FeatureExtractor(nn.Module):
     """A feature extractor using ResNet"""
 
-    def __init__(self):
+    def __init__(self, mean: List[float], std: List[float]):
         super().__init__()
         self.model = models.resnet50(pretrained=True)
         self.eval()
-        self.normalize = T.Normalize(
-        mean=[0.485, 0.456, 0.406],
-        std=[0.229, 0.224, 0.225],
-    )
+        self.normalize = T.Normalize(mean, std)
 
     def device(self):
         return next(self.parameters()).device

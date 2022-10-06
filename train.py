@@ -150,7 +150,9 @@ class Experiment(BaseExperiment):
         if cfg.embedding_module == "None":
             return strategy
         elif cfg.embedding_module == "ResNet50":
-            strategy.batch_transform = ResNet50FeatureExtractor().to(cfg.device)
+            mean = cfg.normalization_mean
+            std = cfg.normalization_std
+            strategy.batch_transform = ResNet50FeatureExtractor(mean, std).to(cfg.device)
             return strategy
         else:
             raise NotImplementedError("Unknown embedding module")

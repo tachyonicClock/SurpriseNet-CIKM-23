@@ -57,6 +57,11 @@ class ExpConfig():
     network_cfg: t.Dict[str, t.Any]
     """Other network configuration options"""
 
+    normalization_mean: None
+    """Mean of the dataset used for the feature extractor"""
+    normalization_std: None
+    """Standard deviation of the dataset used for the feature extractor"""
+
     #
     # Training
     #
@@ -209,8 +214,8 @@ class ExpConfig():
         self.n_experiences = 10
         self.n_classes = 50
 
-        self.total_task_epochs = 10
-        self.retrain_epochs = 3
+        self.total_task_epochs = 2
+        self.retrain_epochs = 1
         
         self.use_resnet_cnn()
         self.latent_dims = 512
@@ -237,6 +242,9 @@ class ExpConfig():
         self.use_mlp_network()
         self.latent_dims = 256
 
+        self.normalization_mean = [0.5071, 0.4867, 0.4408]
+        self.normalization_std  = [0.2675, 0.2565, 0.2761]
+
         return self
 
     def use_embedded_core50(self: 'ExpConfig') -> 'ExpConfig':
@@ -253,10 +261,13 @@ class ExpConfig():
         self.n_experiences = 10
         self.n_classes = 50
 
-        self.total_task_epochs = 10
-        self.retrain_epochs = 3
+        self.total_task_epochs = 2
+        self.retrain_epochs = 1
         self.use_mlp_network()
         self.latent_dims = 512
+
+        self.normalization_mean = [0.6001, 0.5721, 0.5416]
+        self.normalization_std  = [0.1965, 0.2066, 0.2183] 
 
         return self
 
