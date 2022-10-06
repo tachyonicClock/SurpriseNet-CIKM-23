@@ -64,8 +64,41 @@ case $1 in
     "status")
         for remote in $remotes; do
             echo "--------------------------------------------------------------------------------"
-            echo "Status of $remote"
-            timeout 5 ssh $remote -- "ps -ux" | grep ml || echo "Failed to connect to $remote"
+            printf "Status of $remote"
+
+            # If can connect
+            if ssh $remote "exit" &> /dev/null ; then
+                printf " [OK]\n"
+            else
+                printf " [FAIL]\n"
+                continue
+            fi
+
+            compute_apps=$(timeout 5 ssh $remote -- "nvidia-smi --query-compute-apps=pid --format=csv | tail -n +2")
+            utilization=$(timeout 5 ssh $remote -- "nvidia-smi --query-gpu=utilization.gpu,utilization.memory --format=csv | tail -n +2")
+
+            util_gpu=$(echo $utilization | cut -d',' -f1 | xargs)
+            util_mem=$(echo $utilization | cut -d',' -f2 | xargs)
+            echo "GPU: $util_gpu"
+            echo "MEM: $util_mem"
+            echo
+
+            # echo $compute_apps | 
+            # Loop over lines
+            while IFS= read -r line; do
+                if [ -z "$line" ]; then
+                    continue
+                fi
+
+                # Get PID
+                pid=$(echo -n $line | cut -d',' -f1)
+                # Get command
+                # Needs /dev/null otherwise stdin will override the while loop
+                # Bash is dumb!
+                cmd=$(ssh $remote -- "ps -p $pid -o command | tail +2" < /dev/null) 
+                printf "(%s) %s\n"  "$pid" "$cmd"
+            done <<< $compute_apps
+
         done
         ;;
     *)

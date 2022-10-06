@@ -10,6 +10,7 @@ import typing as t
 from matplotlib import pyplot as plt
 import seaborn as sns
 
+FOOTNOTE = True
 
 
 CITE_KEYS = {
@@ -40,6 +41,18 @@ DATASET_TASKS ={
     "SE-CORe50": 10,
 }
 
+STRATEGY_NAMES = {
+    "cumulative": "Non-Continual",
+    "taskOracle": "Task Oracle PackNet",
+    "replay": "Replay",
+    "finetuning": "Finetuning",
+    "S\&B": "Split and Bridge",
+    "GR": "Generative Replay",
+    "BIR": "Brain Inspired Replay",
+    "taskInference": "TA-PackNet (ours)"
+
+}
+
 tags = {
     "loss": "Loss_MB/train_phase/train_stream/Task000",
     "final_accuracy": "Accuracy_On_Trained_Experiences/eval_phase/test_stream/Task000",
@@ -57,37 +70,40 @@ class TableGenerator():
         self.rows = []
 
         # Cumulative
-        # self.add_rows("(fce838ce|75988428|692a9d04)", "BL", ["AE", "VAE"], ["cumulative"], check_task_count=False)
+        self.add_rows("(0a229afa)", "BL", ["AE", "VAE"], ["cumulative"], check_task_count=False)
         # # Task Oracle
-        # self.add_rows("(20bcad46|75988428|692a9d04)", "TO", ["AE"], ["taskOracle"], hp_label="$\\lambda$=0.5")
-        # # # Replay
-        # self.add_rows("(d11b4e3f|692a9d04)", "OS", ["AE"], ["replay"], ("replay_buffer", [100, 1000, 10000]))
-        # self._add_csv_row("results/SnB.csv", "S\\&B", "FF", "mem=1000")
+        self.add_rows("(0a229afa)", "TO", ["AE"], ["taskOracle"], hp_label="$\\lambda$=0.5")
         # # # Naive Strategy
-        # self.add_rows("(fce838ce|75988428|692a9d04)", "BL", ["AE"], ["finetuning"])
+        self.add_rows("(0a229afa)", "BL", ["AE"], ["finetuning"])
+        # # # Replay
+        self.add_rows("(0a229afa)", "OS", ["AE"], ["replay"], ("replay_buffer", [100, 1000, 10000]))
+        self._add_csv_row("results/SnB.csv", "S\\&B", "FF", "mem=1000", multiplier=0.01)
 
-        # self._add_csv_row("results/GR.csv", "GR", "VAE", "")
+        self._add_csv_row("results/GR.csv", "GR", "VAE", "")
+        self._add_csv_row("results/BIR.csv", "BIR", "VAE", "")
+
 
 
         # # TODO Add comparable strategies
 
-        self.add_rows("(54dcf601)", "PL", ["AE", "VAE"], ["taskInference"], ("prune_proportion", [0.2, 0.4, 0.5, 0.6, 0.8]))
+        self.add_rows("(54dcf601|0a229afa)", "PL", ["AE", "VAE"], ["taskInference"], ("prune_proportion", [0.2, 0.4, 0.5, 0.6, 0.8]))
 
-        # self.add_rows("(fce838ce|75988428|692a9d04)", "EP", ["VAE", "AE"], ["taskInference"], hp_label="EP")
+        self.add_rows("(0a229afa)", "EP", ["VAE", "AE"], ["taskInference"], hp_label="EP")
 
 
         table = pd.DataFrame(self.rows, columns=self.columns)
 
         return table
 
-    def _add_csv_row(self, csv: str, strategy, arch, hp):
+    def _add_csv_row(self, csv: str, strategy, arch, hp, multiplier=1.0):
         df = pd.read_csv(csv)
-        row = [strategy, arch, hp]
+        row = [STRATEGY_NAMES[strategy], arch, hp]
 
         for dataset in ALL_DATASETS:
             # get column as list
             if dataset in df.columns:
-                result = df[dataset]
+                result = df[dataset] * multiplier
+                result.dropna(inplace=True)
                 accuracy_mean = result.mean()
                 accuracy_std = result.std()
                 n = len(result)
@@ -101,14 +117,14 @@ class TableGenerator():
         if isinstance(row_data, pd.Series):
             row_data = row_data.to_frame().T
         df = row_data
-        row = [strategy, arch, hp]
+        row = [STRATEGY_NAMES[strategy], arch, hp]
 
         for dataset in ALL_DATASETS:
             try:
                 result = df[df["dataset"] == dataset]
                 if check_task_count:
                     result = result[result["completed_tasks"] == DATASET_TASKS[dataset]]
-                
+                result = result.sample(min(10, len(result)), replace=False)
                 # result = DATASET_TASKS
                 accuracy_mean = result["final_accuracy"].mean()
                 accuracy_std = result["final_accuracy"].std()
@@ -131,7 +147,6 @@ class TableGenerator():
     
     def add_rows(self, pattern: str, experiment_code: str, archs: t.List[str], strategies: t.List[str], hp: t.Tuple[str, t.List[any]] = None, hp_label = "", check_task_count=True):
         df = self.relevant_experiments(pattern, experiment_code)
-        
 
         if hp is None:
             hp_values = [None]
@@ -144,11 +159,10 @@ class TableGenerator():
                     row_df = df[(df["architecture"] == arch) & (df["strategy"] == strategy)]
 
 
-
                     if hp is None:
                         self._add_row(strategy, arch, f"{hp_label}", row_df, check_task_count=check_task_count)
                     else:
-                        hp_df = row_df[row_df[hp_name] == hp_value]
+                        hp_df = row_df[row_df[hp_name].astype(float) == hp_value]
                         # print(row_df[hp_name] == float(hp_value))
 
                         self._add_row(strategy, arch, f"{hp_label}{hp_name}={hp_value}", hp_df, check_task_count=True)
@@ -180,7 +194,7 @@ def create_styler(df: pd.DataFrame):
         if x:
             return f"{x[0]*100:.1f}$\\pm${x[1]*100:.0f}\% {{\\tiny ({x[2]})}}"
         else:
-            return "N/A"
+            return ""
 
     styler = df.style
     styler.apply(bold_column(list(range(0, 3))))
