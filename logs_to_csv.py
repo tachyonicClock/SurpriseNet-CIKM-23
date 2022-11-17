@@ -6,6 +6,9 @@ import typing as t
 from tqdm import tqdm
 import json
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
+from multiprocessing import Pool
+from itertools import repeat
+
 
 VALUE_TAGS = {
     "loss": "Loss_MB/train_phase/train_stream/Task000",
@@ -37,7 +40,8 @@ def extract_series(ea: EventAccumulator) -> dict:
             series = list(map(lambda x: x.value, series))
             result[tag_name] = series
         except KeyError as e:
-            print(f"Failed to extract {e}")
+            pass
+            # print(f"Failed to extract {e}")
 
     return result
 
@@ -46,6 +50,41 @@ def match_listdir(directory, pattern) -> t.List[str]:
     return list([x for x in os.listdir(os.path.join(directory)) if re.match(pattern, x)])
 
 
+def process_experiment(args) -> dict:
+    experiment, log_dir = args
+    experiment_code = experiment.split("_")
+    i, host, repo_hash, experiment_category, dataset, arch, strategy = experiment_code
+
+    record = {
+        "experiment_code": experiment,
+        "dataset": dataset,
+        "architecture": arch,
+        "strategy": strategy,
+        "experiment_category": experiment_category,
+        "id": i,
+        "repo_hash": repo_hash
+    }
+
+    experiment_path = os.path.join(log_dir, experiment)
+    ea = EventAccumulator(experiment_path)
+    ea.Reload()
+
+    try:
+        record.update(extract_values(ea))
+        record.update(extract_series(ea))
+        record["completed_tasks"] = len(record["accuracy"])
+    except KeyError as e:
+        print(f"Could not load required metric {e} in '{experiment}'")
+
+    try:
+        with open(os.path.join(log_dir, experiment, "config.json"), "r") as f:
+            config = json.load(f)
+            record.update(config)
+    except FileNotFoundError as e:
+        print(f"Could not load config file '{experiment}/config.json'")
+    
+    return record
+
 
 def load_events_to_df(pattern: str) -> pd.DataFrame:
     experiment_logs = "experiment_logs"
@@ -53,44 +92,14 @@ def load_events_to_df(pattern: str) -> pd.DataFrame:
     records = []
 
     # Loop over each directory in a directory
-    pbar = tqdm(match_listdir(os.path.join(experiment_logs), pattern))
-    for experiment in pbar:
-        experiment_code = experiment.split("_")
-        i, host, repo_hash, experiment_category, dataset, arch, strategy = experiment_code
+    experiments = match_listdir(os.path.join(experiment_logs), pattern)
 
-        record = {
-            "experiment_code": experiment_code,
-            "dataset": dataset,
-            "architecture": arch,
-            "strategy": strategy,
-            "experiment_category": experiment_category,
-            "id": i,
-            "repo_hash": repo_hash
-        }
-
-        experiment_path = os.path.join(experiment_logs, experiment)
-        ea = EventAccumulator(experiment_path)
-        ea.Reload()
-
-        try:
-            record.update(extract_values(ea))
-            record.update(extract_series(ea))
-            record["completed_tasks"] = len(record["accuracy"])
-        except KeyError as e:
-            print(f"Could not load required metric {e} in '{experiment}'")
-
-        try:
-            with open(os.path.join(experiment_logs, experiment, "config.json"), "r") as f:
-                config = json.load(f)
-                record.update(config)
-        except FileNotFoundError as e:
-            print(f"Could not load config file '{experiment}/config.json'")
-
-
-        records.append(record)
+    with Pool(8) as p:
+        for record in tqdm(p.imap_unordered(process_experiment, zip(experiments, repeat(experiment_logs))), total=len(experiments)):
+            records.append(record)
 
     return pd.DataFrame.from_dict(records)
 
 
 df = load_events_to_df(".*")
-df.to_csv("results/all_experiments.csv", index=False)
+df.to_csv("results/all_experiments.csv")
