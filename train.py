@@ -19,6 +19,7 @@ TASK_INFERENCE_STRATEGIES = {
     "task_oracle": UseTaskOracle
 }
 
+
 class Experiment(BaseExperiment):
 
     def make_scenario(self) -> cl.benchmarks.NCScenario:
@@ -39,12 +40,12 @@ class Experiment(BaseExperiment):
             return network
 
         # Wrap network in packnet
-        if self.cfg.deep_generative_type == "VAE":
+        if self.cfg.architecture == "VAE":
             network = pn.PackNetVariationalAutoEncoder(
                 network,
                 self.make_task_inference_strategy()
             )
-        elif self.cfg.deep_generative_type == "AE":
+        elif self.cfg.architecture == "AE":
             network = pn.PackNetAutoEncoder(
                 network,
                 self.make_task_inference_strategy()
@@ -103,10 +104,11 @@ class Experiment(BaseExperiment):
                 cl_plugins.LwFPlugin(cfg.lwf_alpha, temperature=1)
             )
         if cfg.use_experience_replay:
-            print(f"! Using Experience Replay. Buffer size={cfg.replay_buffer}")
+            print(
+                f"! Using Experience Replay. Buffer size={cfg.replay_buffer}")
             self.plugins.append(cl_plugins.ReplayPlugin(cfg.replay_buffer))
             # The replay buffer provides double the batch size. This
-            # is because it provides a combined batch of old experiences and a 
+            # is because it provides a combined batch of old experiences and a
             # new experiences. To ensure that it fits on the GPU, we need to
             # halve the batch size.
             cfg.batch_size = cfg.batch_size//2
@@ -133,7 +135,6 @@ class Experiment(BaseExperiment):
             evaluator=self.evaluator
         )
 
-
         if cfg.use_generative_replay:
             # This is a little hacky because our VAE is connected to the
             # classifier. `GenerativeReplayPlugin` needs a strategy but we
@@ -152,7 +153,8 @@ class Experiment(BaseExperiment):
         elif cfg.embedding_module == "ResNet50":
             mean = cfg.normalization_mean
             std = cfg.normalization_std
-            strategy.batch_transform = ResNet50FeatureExtractor(mean, std).to(cfg.device)
+            strategy.batch_transform = ResNet50FeatureExtractor(
+                mean, std).to(cfg.device)
             return strategy
         else:
             raise NotImplementedError("Unknown embedding module")

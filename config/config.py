@@ -3,16 +3,25 @@ import json
 import typing as t
 
 class ExpConfig():
+    label: str
+    """Label given by the user"""
     name: str
     """Name of the experiment"""
     tensorboard_dir: str = "experiment_logs"
     """Directory to store tensorboard logs"""
 
+    # 
+    # Meta
+    # 
+    repo_hash: t.Optional[str] = None
+    
     #
     # Dataset
     #
     dataset_name: str 
-    """Name of the dataset"""
+    """Name of the dataset e.g CIFAR10"""
+    scenario_name: str
+    """Name of the scenario e.g S-FMNIST"""
     dataset_root: str = "/Scratch/al183/datasets"
     """Root of the dataset"""
     fixed_class_order: t.Optional[t.List[int]]
@@ -48,10 +57,10 @@ class ExpConfig():
     #
     latent_dims: int
     """Latent dimensions of the VAE/AE"""
-    deep_generative_type: t.Literal["AE", "VAE"]
-    """Type of deep generative model to use"""
-    network_architecture: t.Literal["vanilla_cnn", "residual", "mlp"]
-    """Type of network architecture to use"""
+    architecture: t.Literal["AE", "VAE"]
+    """Type of autoencoder to use"""
+    network_style: t.Literal["vanilla_cnn", "residual", "mlp"]
+    """Type of network to be used"""
     embedding_module: t.Literal["None", "ResNet50"]
     """Optionally configure the experiment to embed the dataset"""
     network_cfg: t.Dict[str, t.Any]
@@ -121,39 +130,36 @@ class ExpConfig():
         self.embedding_module = "None"
         self.prune_proportion = 0.5
 
+        self.use_packnet = False
         self.use_experience_replay = False
-        self.replay_buffer = 1_000
-
         self.use_synaptic_intelligence = False
-        self.si_lambda = 1_000
-
         self.use_learning_without_forgetting = False
-        self.lwf_alpha = 32
-
         self.use_generative_replay = False
+
         self.use_adam = True
         self.fixed_class_order = None
         self.network_cfg = {}
+        self.repo_hash = None
 
     # 
     # Networks
     # 
 
-    def use_vanilla_cnn(self: 'ExpConfig') -> 'ExpConfig':
+    def _network_cnn(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to use a vanilla CNN"""
-        self.network_architecture = "vanilla_cnn"
+        self.network_style = "vanilla_cnn"
         self.network_cfg["base_channels"] = 128
         return self
 
-    def use_mlp_network(self: 'ExpConfig') -> 'ExpConfig':
+    def _network_mlp(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to use a rectangular network"""
-        self.network_architecture = "mlp"
+        self.network_style = "mlp"
         self.network_cfg["width"] = 512
         return self
 
-    def use_resnet_cnn(self: 'ExpConfig') -> 'ExpConfig':
+    def _network_resnet(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to use a ResNet CNN"""
-        self.network_architecture = "residual"
+        self.network_style = "residual"
         self.latent_dims = 64
         return self
 
@@ -161,144 +167,132 @@ class ExpConfig():
     # Scenarios
     # 
 
-    def use_fmnist(self: 'ExpConfig') -> 'ExpConfig':
+    def scenario_fmnist(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment for the Fashion-MNIST dataset"""
         self.dataset_name = "FMNIST"
         self.input_shape = (1, 32, 32)
         self.is_image_data = True
-        self.n_experiences = 5
-        self.n_classes = 10
-
-        self.total_task_epochs = 20
-        self.retrain_epochs = 5
-
-        self.use_vanilla_cnn()
         self.latent_dims = 64
+        self.n_classes = 10
+        self.n_experiences = 5
+        self.retrain_epochs = 5
+        self.total_task_epochs = 20
+        self._network_cnn()
         return self
 
-    def use_cifar10(self: 'ExpConfig') -> 'ExpConfig':
+    def scenario_cifar10(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment for the CIFAR10 dataset"""
         self.dataset_name = "CIFAR10"
         self.input_shape = (3, 32, 32)
         self.is_image_data = True
-        self.n_experiences = 5
-        self.n_classes = 10
-
-        self.total_task_epochs = 50
-        self.retrain_epochs = 10
-
-        self.use_resnet_cnn()
         self.latent_dims = 128
+        self.n_classes = 10
+        self.n_experiences = 5
+        self.retrain_epochs = 10
+        self.total_task_epochs = 50
+        self._network_resnet()
         return self
 
-    def use_cifar100(self: 'ExpConfig') -> 'ExpConfig':
+    def scenario_cifar100(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment for the CIFAR100 dataset"""
         self.dataset_name = "CIFAR100"
         self.input_shape = (3, 32, 32)
         self.is_image_data = True
-        self.n_experiences = 10
-        self.n_classes = 100
-
-        self.total_task_epochs = 100
-        self.retrain_epochs = 30
-
-        self.use_resnet_cnn()
         self.latent_dims = 256
+        self.n_classes = 100
+        self.n_experiences = 10
+        self.retrain_epochs = 30
+        self.total_task_epochs = 100
+        self._network_resnet()
         return self
 
-    def use_core50(self: "ExpConfig") -> 'ExpConfig':
+    def scenario_core50(self: "ExpConfig") -> 'ExpConfig':
         """Configure the experiment for the Core50 dataset"""
         self.dataset_name = "CORe50_NC"
         self.input_shape = (3, 128, 128)
         self.is_image_data = True
-        self.n_experiences = 10
-        self.n_classes = 50
-
-        self.total_task_epochs = 2
-        self.retrain_epochs = 1
-        
-        self.use_resnet_cnn()
         self.latent_dims = 512
-
+        self.n_classes = 50
+        self.n_experiences = 10
+        self.retrain_epochs = 1
+        self.total_task_epochs = 2
+        self._network_resnet()
         return self
 
-    def use_embedded_cifar100(self: 'ExpConfig') -> 'ExpConfig':
+    def scenario_embedded_cifar100(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to use the embedded CIFAR100 dataset"""
         self.dataset_name = "CIFAR100"
-
-        self.prune_proportion = 0.5
-
         self.embedding_module = "ResNet50"
         self.input_shape = (2048,)
         self.is_image_data = False
-        self.recon_loss_type = "mse"
-
-        self.n_experiences = 10
-        self.n_classes = 100
-
-        self.total_task_epochs = 100
-        self.retrain_epochs = 30
-
-        self.use_mlp_network()
         self.latent_dims = 256
-
+        self.n_classes = 100
+        self.n_experiences = 10
         self.normalization_mean = [0.5071, 0.4867, 0.4408]
         self.normalization_std  = [0.2675, 0.2565, 0.2761]
-
+        self.prune_proportion = 0.5
+        self.recon_loss_type = "mse"
+        self.retrain_epochs = 30
+        self.total_task_epochs = 100
+        self._network_mlp()
         return self
 
-    def use_embedded_core50(self: 'ExpConfig') -> 'ExpConfig':
+    def scenario_embedded_core50(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to use the embedded CIFAR100 dataset"""
         self.dataset_name = "CORe50_NC"
-
-        self.prune_proportion = 0.5
-
         self.embedding_module = "ResNet50"
         self.input_shape = (2048,)
         self.is_image_data = False
-        self.recon_loss_type = "mse"
-
-        self.n_experiences = 10
-        self.n_classes = 50
-
-        self.total_task_epochs = 2
-        self.retrain_epochs = 1
-        self.use_mlp_network()
         self.latent_dims = 512
-
+        self.n_classes = 50
+        self.n_experiences = 10
         self.normalization_mean = [0.6001, 0.5721, 0.5416]
         self.normalization_std  = [0.1965, 0.2066, 0.2183] 
-
+        self.prune_proportion = 0.5
+        self.recon_loss_type = "mse"
+        self.retrain_epochs = 1
+        self.total_task_epochs = 2
+        self._network_mlp()
         return self
 
 
-    def use_auto_encoder(self: 'ExpConfig') -> 'ExpConfig':
+    def arch_autoencoder(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to use an AutoEncoder"""
-        self.deep_generative_type = "AE"
+        self.architecture = "AE"
         self.use_classifier_loss = True
         self.use_reconstruction_loss = True
         self.use_vae_loss = False
         return self
 
-    def use_variational_auto_encoder(self: 'ExpConfig') -> 'ExpConfig':
+    def arch_variational_auto_encoder(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to use a variational AutoEncoder"""
-        self.deep_generative_type = "VAE"
+        self.architecture = "VAE"
         self.use_classifier_loss = True
         self.use_reconstruction_loss = True
         self.use_vae_loss = True
         self.vae_loss_weight = 0.001
         return self
 
-    def enable_packnet(self: 'ExpConfig') -> 'ExpConfig':
+    def strategy_packnet(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to use PackNet"""
         self.use_packnet = True
         self.task_inference_strategy = "task_oracle"
         return self
+    
+    def strategy_ci_packnet(self: 'ExpConfig') -> 'ExpConfig':
+        """Configure the experiment to use CI-PackNet"""
+        self.use_packnet = True
+        self.task_inference_strategy = "task_reconstruction_loss"
+        return self
 
-    def use_cumulative_learning(self: 'ExpConfig') -> 'ExpConfig':
+    def strategy_not_cl(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to not do any continual learning"""
-        self.use_packnet = False
         self.n_experiences = 1
+        return self
+    
+    def strategy_replay(self: 'ExpConfig') -> 'ExpConfig':
+        """Configure the experiment to use replay"""
+        self.use_experience_replay = True
         return self
 
     def copy(self: 'ExpConfig') -> 'ExpConfig':

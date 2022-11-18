@@ -2,7 +2,7 @@ import os
 import typing as t
 
 import avalanche as av
-import setproctitle
+from setproctitle import setproctitle
 import torch
 from avalanche.core import BasePlugin, SupervisedPlugin
 from avalanche.evaluation.metrics import (accuracy_metrics,
@@ -26,7 +26,7 @@ from experiment.strategy import ForwardOutput, Strategy
 
 class BaseExperiment(SupervisedPlugin):
     """
-    Py-lightning style container for continual learning
+    Py-lightning inspired for continual learning with avalanche
     """
 
     strategy: Strategy
@@ -45,8 +45,7 @@ class BaseExperiment(SupervisedPlugin):
         self.cfg = cfg
         self.label = f"{max(self._get_log_numbers())+1:04d}_{self.cfg.name}"
         self.plugins = []
-
-        setproctitle.setproctitle(self.label)
+        setproctitle(self.label)
 
         # Create a new logger with sequential names
         self.logdir = self.cfg.tensorboard_dir+"/"+self.label
@@ -102,32 +101,34 @@ class BaseExperiment(SupervisedPlugin):
         if isinstance(self.network, AutoEncoder) and is_images:
             plugins.append(GenerateReconstruction(self.scenario, 2, 1))
         if isinstance(self.network, Samplable) and is_images:
-            plugins.append(GenerateSamples(5, 4, rows_are_experiences=isinstance(self.network, ConditionedSample)))
+            plugins.append(GenerateSamples(
+                5, 4, rows_are_experiences=isinstance(self.network, ConditionedSample)))
 
         if isinstance(self.network, InferTask):
             plugins.append(ConditionalMetrics())
             plugins.append(ExperienceIdentificationCM(self.n_experiences))
 
         if isinstance(self.network, Classifier):
-            plugins.append(accuracy_metrics(epoch=True, stream=True, experience=True, trained_experience=True))
-            plugins.append(confusion_matrix_metrics(num_classes=num_classes, stream=True))
+            plugins.append(accuracy_metrics(epoch=True, stream=True,
+                           experience=True, trained_experience=True))
+            plugins.append(confusion_matrix_metrics(
+                num_classes=num_classes, stream=True))
             plugins.append(forgetting_metrics(experience=True, stream=True))
-        
 
         for name, objective in self.objective:
             plugins.append(LossObjectiveMetric(name, objective))
             plugins.append(EvalLossObjectiveMetric(name, objective))
 
-
         return EvaluationPlugin(
-            loss_metrics(epoch=True, experience=True, stream=True, minibatch=False),
+            loss_metrics(epoch=True, experience=True,
+                         stream=True, minibatch=False),
             EpochClock(),
             *plugins,
             loggers=loggers
         )
 
     def dump_config(self):
-        print("NOT DUMPING CONFIG ANYWHERE!!")
+        raise NotImplemented
 
     def preflight(self):
         print(f"Network: {type(self.network)}")
@@ -163,7 +164,6 @@ class BaseExperiment(SupervisedPlugin):
         self.logger.writer.file_writer.add_summary(ssi)
         self.logger.writer.file_writer.add_summary(sei)
 
-
     def make_optimizer(self, parameters) -> torch.optim.Optimizer:
         raise NotImplemented
 
@@ -175,7 +175,6 @@ class BaseExperiment(SupervisedPlugin):
             name,
             value,
             step if step else self.strategy.clock.total_iterations)
-
 
     @property
     def lr(self) -> float:

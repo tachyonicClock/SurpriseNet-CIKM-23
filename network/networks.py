@@ -16,15 +16,15 @@ def construct_network(cfg: ExpConfig):
     """
     Construct an auto encoder based on the configuration
     """
-    encoder_constructor = _NETWORK_ARCHITECTURES[cfg.network_architecture][0]
-    decoder_constructor = _NETWORK_ARCHITECTURES[cfg.network_architecture][1]
+    encoder_constructor = _NETWORK_ARCHITECTURES[cfg.network_style][0]
+    decoder_constructor = _NETWORK_ARCHITECTURES[cfg.network_style][1]
 
-    if cfg.deep_generative_type == "AE":
+    if cfg.architecture == "AE":
         encoder: Encoder = encoder_constructor(cfg.latent_dims, cfg.input_shape, **cfg.network_cfg)
         decoder: Decoder = decoder_constructor(cfg.latent_dims, cfg.input_shape, **cfg.network_cfg)
         classifier = ClassifierHead(cfg.latent_dims, cfg.n_classes)
         return AutoEncoder(encoder, decoder, classifier)
-    elif cfg.deep_generative_type == "VAE":
+    elif cfg.architecture == "VAE":
         encoder: Encoder = encoder_constructor(cfg.latent_dims*2, cfg.input_shape, **cfg.network_cfg)
         decoder: Decoder = decoder_constructor(cfg.latent_dims, cfg.input_shape, **cfg.network_cfg)
         classifier = ClassifierHead(cfg.latent_dims, cfg.n_classes)
