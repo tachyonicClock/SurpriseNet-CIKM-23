@@ -38,11 +38,14 @@ def run(cfg: ExpConfig):
 @click.group()
 @click.option("--ignore-dirty", is_flag=True, default=False,
               help="Do NOT abort when uncommitted changes exist")
+@click.option("--epochs", type=int, default=None, 
+    help="Number of epochs to train each task on. Default varies based on the" +
+    " given scenario.")
 @click.argument("label", type=str)
 @click.argument("scenario", type=click.Choice(SCENARIOS.keys()), required=True)
 @click.argument("architecture", type=click.Choice(ARCHITECTURES.keys()), required=True)
 @click.pass_context
-def cli(ctx, ignore_dirty: bool, label: str, scenario: str, architecture: str):
+def cli(ctx, ignore_dirty: bool, epochs: int, label: str, scenario: str, architecture: str):
     # Start building an experiment configuation
     cfg = ExpConfig()
 
@@ -61,6 +64,7 @@ def cli(ctx, ignore_dirty: bool, label: str, scenario: str, architecture: str):
 
     cfg = SCENARIOS[scenario](cfg)
     cfg.scenario_name = scenario
+    cfg.total_task_epochs = epochs
     cfg = ARCHITECTURES[architecture](cfg)
     cfg.label = label
     ctx.obj = cfg
