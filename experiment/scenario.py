@@ -11,11 +11,59 @@ from avalanche.benchmarks.datasets import CORe50Dataset
 from torch import Tensor
 from torch.utils.data import Dataset
 
+MEAN_AND_STD = {
+    "FMNIST": ((0.2861), (0.3530)),
+    "CIFAR10": ((0.4915, 0.4822, 0.4466), (0.2470, 0.2435, 0.2616)),
+    "CIFAR100": ((0.5070, 0.4865, 0.4408), (0.2673, 0.2564, 0.2761)),
+    "CORE50": ((0.6001, 0.5721, 0.5417), (0.1965, 0.2066, 0.2183))
+}
+
+EVAL_TRANSFORM = {
+    "FMNIST": T.Compose([
+        T.Resize((32, 32)),
+        T.ToTensor(),
+    ]),
+    "CIFAR10": T.Compose([
+        T.ToTensor(),
+    ]),
+    "CIFAR100": T.Compose([
+        T.ToTensor(),
+    ]),
+    "CORE50": T.Compose([
+        T.ToTensor(),
+    ])
+}
+
+TRAIN_TRANSFORMS = {
+    "FMNIST": T.Compose([
+        T.Resize((32, 32)),
+        T.ToTensor(),
+    ]),
+    "CIFAR10": T.Compose([
+        T.RandomCrop(32, padding=4),
+        T.RandomHorizontalFlip(),
+        T.ToTensor(),
+    ]),
+    "CIFAR100": T.Compose([
+        T.RandomCrop(32, padding=4),
+        T.RandomHorizontalFlip(),
+        T.ToTensor(),
+    ]),
+    "CORE50": T.Compose([
+        T.RandomCrop(128, padding=16),
+        T.RandomHorizontalFlip(),
+        T.ToTensor(),
+    ])
+}
+
+
 def scenario(
     dataset: t.Literal["FMNIST", "CIFAR10", "CIFAR100", "M_CORe50_NC", "MNIST", "CORe50_NC"], 
     dataset_root: str,
     n_experiences: int,
-    supplied_class_order: t.List[int]) -> NCScenario:
+    supplied_class_order: t.List[int],
+    normalize = False,
+    ) -> NCScenario:
     """Generate a new scenario.
 
     Note:
@@ -25,44 +73,24 @@ def scenario(
     :param dataset_root: Path to download data to
     :param n_experiences: Split the classes into n experiences, defaults to 5
     :param fixed_class_order: Should the order of classes be fixed (sequential) or random, defaults to True
+    :param normalize: Should the data be normalized, defaults to False
     :return: A new scenario
     """
 
-    cifar_train_transform = T.Compose(
-        [
-            T.RandomCrop(32, padding=4),
-            T.RandomHorizontalFlip(),
-            T.ToTensor()
-        ]
-    )
-    cifar_eval_transform = T.Compose(
-        [
-            T.ToTensor()
-        ]
-    )
-    fmnist_transform = T.transforms.Compose([
-        T.transforms.Resize((32, 32)),
-        T.transforms.ToTensor(), 
-    ])
+    eval_transform = EVAL_TRANSFORM[dataset]
+    train_transform = TRAIN_TRANSFORMS[dataset]
 
-    core50_train_transform = T.Compose(
-        [
-            T.RandomHorizontalFlip(),
-            T.ToTensor()
-        ]
-    )
-    core50_eval_transform = T.Compose(
-        [
-            T.ToTensor()
-        ]
-    )
+    if normalize:
+        eval_transform.transforms.append(T.Normalize(*MEAN_AND_STD[dataset]))
+        train_transform.transforms.append(T.Normalize(*MEAN_AND_STD[dataset]))
+
     if dataset == "MNIST":
         return SplitMNIST(
             n_experiences=n_experiences,
             fixed_class_order=supplied_class_order,
             return_task_id=False,
-            train_transform=fmnist_transform,
-            eval_transform=fmnist_transform,
+            train_transform=eval_transform,
+            eval_transform=train_transform,
             dataset_root=dataset_root
         )
     elif dataset == "FMNIST":
@@ -70,8 +98,8 @@ def scenario(
             n_experiences=n_experiences,
             fixed_class_order=supplied_class_order,
             return_task_id=False,
-            train_transform=fmnist_transform,
-            eval_transform=fmnist_transform,
+            train_transform=train_transform,
+            eval_transform=eval_transform,
             dataset_root=dataset_root
         )
     elif dataset == "CIFAR100":
@@ -79,8 +107,8 @@ def scenario(
             n_experiences=n_experiences,
             fixed_class_order = supplied_class_order,
             return_task_id=False,
-            train_transform=cifar_train_transform,
-            eval_transform=cifar_eval_transform,
+            train_transform=train_transform,
+            eval_transform=eval_transform,
             dataset_root=dataset_root
         )
     elif dataset == "CIFAR10":
@@ -88,14 +116,14 @@ def scenario(
             n_experiences=n_experiences,
             fixed_class_order = supplied_class_order,
             return_task_id=False,
-            train_transform=cifar_train_transform,
-            eval_transform=cifar_eval_transform,
+            train_transform=train_transform,
+            eval_transform=eval_transform,
             dataset_root=dataset_root
         )
     elif dataset == "M_CORe50_NC" or dataset == "CORe50_NC":
         mini = dataset == "M_CORe50_NC"
-        train_set = CORe50Dataset(root=dataset_root, train=True, transform=core50_train_transform, mini=mini)
-        test_set  = CORe50Dataset(root=dataset_root, train=False, transform=core50_eval_transform, mini=mini)
+        train_set = CORe50Dataset(root=dataset_root, train=True, transform=train_transform, mini=mini)
+        test_set  = CORe50Dataset(root=dataset_root, train=False, transform=eval_transform, mini=mini)
 
         return NCScenario(train_set, test_set,
             task_labels=False,

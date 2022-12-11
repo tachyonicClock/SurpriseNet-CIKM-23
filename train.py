@@ -1,5 +1,5 @@
 import torch
-from network.feature_extractor import ResNet50FeatureExtractor
+from network.feature_extractor import small_r18_extractor
 from experiment.experiment import BaseExperiment
 import avalanche as cl
 import avalanche.training.plugins as cl_plugins
@@ -28,7 +28,8 @@ class Experiment(BaseExperiment):
             self.cfg.dataset_name,
             self.cfg.dataset_root,
             self.cfg.n_experiences,
-            self.cfg.fixed_class_order)
+            self.cfg.fixed_class_order,
+            self.cfg.normalize)
 
     def make_task_inference_strategy(self) -> TaskInferenceStrategy:
         return TASK_INFERENCE_STRATEGIES[self.cfg.task_inference_strategy](self)
@@ -65,45 +66,42 @@ class Experiment(BaseExperiment):
         """Create a loss objective from the config"""
         loss = MultipleObjectiveLoss()
         # Add cross entropy loss
-        if self.cfg.use_classifier_loss:
+        if self.cfg.classifier_loss_weight:
             loss.add(ClassifierLoss(self.cfg.classifier_loss_weight))
+        
         # Add reconstruction loss
-        if self.cfg.use_reconstruction_loss:
-
+        if self.cfg.reconstruction_loss_weight:
             # Pick a type of reconstruction loss
-            if self.cfg.recon_loss_type == "mse":
+            if self.cfg.reconstruction_loss_type == "mse":
                 loss.add(MSEReconstructionLoss(
                     self.cfg.reconstruction_loss_weight))
-            elif self.cfg.recon_loss_type == "bce":
+            elif self.cfg.reconstruction_loss_type == "bce":
                 loss.add(BCEReconstructionLoss(
                     self.cfg.reconstruction_loss_weight))
             else:
                 raise NotImplementedError("Unknown reconstruction loss type")
+
         # Add VAE loss
-        if self.cfg.use_vae_loss:
+        if self.cfg.vae_loss_weight:
             loss.add(VAELoss(self.cfg.vae_loss_weight))
         return loss
 
     def make_optimizer(self, parameters) -> torch.optim.Optimizer:
-        if self.cfg.use_adam:
-            optimizer = torch.optim.Adam(parameters, self.cfg.learning_rate)
-        else:
-            optimizer = torch.optim.SGD(parameters, self.cfg.learning_rate)
-        return optimizer
+        return torch.optim.Adam(parameters, self.cfg.learning_rate)
 
     def add_strategy_plugins(self):
         cfg = self.cfg
-        if cfg.use_synaptic_intelligence:
+        if cfg.si_lambda:
             print("! Using Synaptic Intelligence")
             self.plugins.append(
                 cl_plugins.SynapticIntelligencePlugin(cfg.si_lambda)
             )
-        if cfg.use_learning_without_forgetting:
+        if cfg.lwf_alpha:
             print("! Using Learning without Forgetting")
             self.plugins.append(
-                cl_plugins.LwFPlugin(cfg.lwf_alpha, temperature=1)
+                cl_plugins.LwFPlugin(cfg.lwf_alpha, temperature=2)
             )
-        if cfg.use_experience_replay:
+        if cfg.replay_buffer:
             print(
                 f"! Using Experience Replay. Buffer size={cfg.replay_buffer}")
             self.plugins.append(cl_plugins.ReplayPlugin(cfg.replay_buffer))
@@ -135,29 +133,16 @@ class Experiment(BaseExperiment):
             evaluator=self.evaluator
         )
 
-        if cfg.use_generative_replay:
-            # This is a little hacky because our VAE is connected to the
-            # classifier. `GenerativeReplayPlugin` needs a strategy but we
-            # dont have the strategy until after. Therefore we append the plugin
-            # after the strategy is created.
-            print("! Using Deep Generative Replay")
-            strategy.plugins.append(
-                cl_plugins.GenerativeReplayPlugin(
-                    generator_strategy=strategy,
-                    increasing_replay_size=False
-                )
-            )
-
         if cfg.embedding_module == "None":
-            return strategy
-        elif cfg.embedding_module == "ResNet50":
-            mean = cfg.normalization_mean
-            std = cfg.normalization_std
-            strategy.batch_transform = ResNet50FeatureExtractor(
-                mean, std).to(cfg.device)
-            return strategy
+            pass
+        elif cfg.embedding_module == "SmallResNet18":
+            strategy.batch_transform = small_r18_extractor(
+                f"{cfg.pretrained_root}/64x64ResNet18TinyImageNet.pkl"
+            ).to(cfg.device)
         else:
             raise NotImplementedError("Unknown embedding module")
+
+        return strategy
 
     def dump_config(self):
         with open(f"{self.logdir}/config.json", "w") as f:

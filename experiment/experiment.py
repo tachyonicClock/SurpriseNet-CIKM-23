@@ -128,7 +128,7 @@ class BaseExperiment(SupervisedPlugin):
         )
 
     def dump_config(self):
-        raise NotImplemented
+        pass
 
     def preflight(self):
         print(f"Network: {type(self.network)}")

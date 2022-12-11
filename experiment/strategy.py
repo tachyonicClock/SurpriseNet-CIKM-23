@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from avalanche.models import avalanche_forward
-from avalanche.training.templates.supervised import SupervisedTemplate
+from avalanche.training.templates import SupervisedTemplate
 from torch import Tensor, nn
 import torch
 

@@ -5,16 +5,18 @@ import torch
 from torchvision import models
 from torch.utils.data import Dataset
 from torchvision import transforms as T
-
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torchvision.models as models
 
 class ResNet50FeatureExtractor(nn.Module):
     """A feature extractor using ResNet"""
 
-    def __init__(self, mean: List[float], std: List[float]):
+    def __init__(self):
         super().__init__()
         self.model = models.resnet50(pretrained=True)
         self.eval()
-        self.normalize = T.Normalize(mean, std)
 
     def device(self):
         return next(self.parameters()).device
@@ -34,3 +36,43 @@ class ResNet50FeatureExtractor(nn.Module):
         x = self.model.avgpool(x)
         x = torch.flatten(x, 1)
         return x        
+
+def wrap_with_resize(size: int, func):
+    """Interpolate a tensor to a new size"""
+    def _wrap(x: torch.Tensor):
+        x = F.interpolate(x, size=(size, size), mode='bilinear', align_corners=False)
+        return func(x)
+    return _wrap
+
+class SmallResNet18(nn.Module):
+    """Patch torchvision.models.resnet18 to work with smaller images, such as 
+    TinyImageNet (64x64)
+    """
+
+    def __init__(self, num_classes: int, pretrained: bool = False):
+        super(SmallResNet18, self).__init__()
+        self.resnet = models.resnet18(pretrained)
+
+        # Patch early layers that overly downsample the image
+        self.resnet.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1)
+        self.resnet.maxpool = nn.Identity()
+
+        # Patch the final layer to output the correct number of classes
+        self.resnet.fc = nn.Linear(512, num_classes)
+
+        self.forward = wrap_with_resize(64, self.resnet.forward)
+
+def small_r18_extractor(save: str) -> nn.Module:
+    """Create a feature extractor from a pre-trained SmallResNet18"""
+    model = SmallResNet18(num_classes=200, pretrained=False)
+    model.load_state_dict(torch.load(save))
+    model.resnet.fc = nn.Identity()
+    return model
+    
+def r18_extractor() -> nn.Module:
+    """Create a feature extractor from a pre-trained ResNet18"""
+    model = models.resnet18(pretrained=True)
+    model.fc = nn.Identity()
+    model.forward = wrap_with_resize(224, model.forward)
+    return model
+    
