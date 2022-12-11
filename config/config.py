@@ -3,143 +3,116 @@ import json
 import typing as t
 
 class ExpConfig():
-    label: str
-    """Label given by the user"""
-    name: str
-    """Name of the experiment"""
-    tensorboard_dir: str = "experiment_logs"
-    """Directory to store tensorboard logs"""
-
-    # 
-    # Meta
-    # 
-    repo_hash: t.Optional[str] = None
-    
-    #
-    # Dataset
-    #
-    dataset_name: str 
-    """Name of the dataset e.g CIFAR10"""
-    scenario_name: str
-    """Name of the scenario e.g S-FMNIST"""
-    dataset_root: str = "/Scratch/al183/datasets"
-    """Root of the dataset"""
-    fixed_class_order: t.Optional[t.List[int]]
-    """Whether to use the same class order for all runs"""
-    n_experiences: int
-    """Number of experiences in the scenario"""
-    input_shape: t.Tuple[int, int, int]
-    """The dimensions of the image data"""
-    is_image_data: bool
-    """Whether the dataset is image data"""
-    n_classes: int
-
-    #
-    # Loss
-    #
-    use_classifier_loss: bool
-    """Whether to use cross entropy loss for classification"""
-    classifier_loss_weight: float
-    """Weight of the classifier loss"""
-    use_reconstruction_loss: bool
-    """Whether to use reconstruction loss for AE and VAE"""
-    recon_loss_type: t.Literal["mse", "bce"]
-    """Type of loss function to use"""
-    reconstruction_loss_weight: float
-    """Weight of the reconstruction loss"""
-    use_vae_loss: bool
-    """Whether to use VAE loss for VAE"""
-    vae_loss_weight: float
-    """Weight of the VAE loss"""
-
-    # 
-    # Architecture
-    #
-    latent_dims: int
-    """Latent dimensions of the VAE/AE"""
-    architecture: t.Literal["AE", "VAE"]
-    """Type of autoencoder to use"""
-    network_style: t.Literal["vanilla_cnn", "residual", "mlp"]
-    """Type of network to be used"""
-    embedding_module: t.Literal["None", "ResNet50"]
-    """Optionally configure the experiment to embed the dataset"""
-    network_cfg: t.Dict[str, t.Any]
-    """Other network configuration options"""
-
-    normalization_mean: None
-    """Mean of the dataset used for the feature extractor"""
-    normalization_std: None
-    """Standard deviation of the dataset used for the feature extractor"""
-
-    #
-    # Training
-    #
-    total_task_epochs: int
-    """Total number of training epochs in a task"""
-    batch_size: int
-    """Batch size"""
-    learning_rate: float
-    """Learning rate"""
-    device: str
-    """Device to use for training"""
-    use_adam: bool
-    """
-    Configure the experiment to use the Adam optimizer. If false, the SGD 
-    optimizer is used instead
-    """
-
-    #
-    # PackNet
-    #
-    use_packnet: bool
-    """Whether to use packnet"""
-    prune_proportion: t.Union[float, t.List[float]]
-    """Proportion of the network to prune"""
-    retrain_epochs: int
-    """Number of epochs post-pruning to retrain the network"""
-    task_inference_strategy: t.Literal["task_oracle", "task_reconstruction_loss"]
-    """Type of task inference strategy to use"""
-
-    # Baselines
-    # Experience replay
-    use_experience_replay: bool
-    replay_buffer: int
-
-    # Synaptic intelligence
-    use_synaptic_intelligence: bool
-    si_lambda: float
-
-    # Learning without forgetting
-    use_learning_without_forgetting: bool
-    lwf_alpha: float
-
-    # generative replay
-    use_generative_replay: bool
-
-    def toJSON(self):
-        return json.dumps(self.__dict__, sort_keys=True, indent=4)
 
     def __init__(self) -> None:
-        # Default Values
-        self.batch_size = 64
-        self.learning_rate = 0.0001
-        self.device = "cuda"
-        self.classifier_loss_weight = 1.0
-        self.reconstruction_loss_weight = 1.0
-        self.recon_loss_type = "bce"
-        self.embedding_module = "None"
-        self.prune_proportion = 0.5
 
-        self.use_packnet = False
-        self.use_experience_replay = False
-        self.use_synaptic_intelligence = False
-        self.use_learning_without_forgetting = False
-        self.use_generative_replay = False
+        # EXPERIMENT METADATA
+        self.label: str
+        """Label of an experiment given by the user, probably shouldn't use '_'
+        because they are used to split the label into the experiment name.
+        """
+        self.name: str
+        """Long name of the experiment used to track the repository hash,
+        label, scenario, strategy, and architecture.
+        """
+        self.tensorboard_dir: str = "experiment_logs"
+        """Directory to store tensorboard logs. This is relative to the root of the
+        project.
+        """
+        self.repo_hash: t.Optional[str] = None
+        """Hash of the repository at the time of the experiment. This ensures
+        that the experiment is reproducible. This will be marked as dirty
+        if there are uncommitted changes.
+        """
+        
+        # SCENARIO
+        self.dataset_name: str 
+        """Short code to select the dataset e.g CIFAR10"""
+        self.scenario_name: str
+        """Short code to select the correct scenario e.g S-FMNIST"""
+        self.dataset_root: str = "/Scratch/al183/datasets"
+        """Where datasets should be accessed from or downloaded to"""
+        self.fixed_class_order: t.Optional[t.List[int]] = None
+        """A fixed class order to use for the scenario. Randomized if None"""
+        self.n_experiences: int
+        """Number of experiences/tasks in the scenario"""
+        self.input_shape: t.Tuple[int, int, int]
+        """Dimensions of inputs to the network"""
+        self.is_image_data: bool
+        """Does attempting to display the output of the network make sense?"""
+        self.n_classes: int
+        """Number of classes in the dataset"""
+        self.normalize: bool = False
+        """Should the data be normalized? We normalize only SE-CIFAR100 and
+        SE-CORe50 because they use pre-trained frozen feature extractors, that
+        expect normalized data. We don't normalize the other datasets because
+        they are reconstructed using BCE loss, which expects data scaled to
+        between 0 and 1.
+        """
 
-        self.use_adam = True
-        self.fixed_class_order = None
-        self.network_cfg = {}
-        self.repo_hash = None
+        # LOSS
+        self.classifier_loss_weight: t.Optional[float] = 1.0
+        """Weight of the classifier loss. None if classifier loss is not used"""
+        self.reconstruction_loss_type: t.Literal["mse", "bce"] = "bce"
+        """Type of loss function to use"""
+        self.reconstruction_loss_weight: t.Optional[float] = None
+        """Weight of the reconstruction loss. None if reconstruction loss is
+        not used"""
+        self.vae_loss_weight: t.Optional[float] = None
+        """Weight of the VAE loss or Kullback-Leibler divergence strength. 
+        None if VAE loss is not used"""
+
+        # ARCHITECTURE
+        self.latent_dims: int
+        """Number of latent dimensions of the VAE/AE"""
+        self.architecture: t.Literal["AE", "VAE"]
+        """Type of auto-encoder to use"""
+        self.network_style: t.Literal["vanilla_cnn", "residual", "mlp"]
+        """Type of network to be used"""
+        self.embedding_module: t.Literal["None", "ResNet50", "SmallResNet18", "ResNet18"] = "None"
+        """Optionally configure the experiment to embed the dataset"""
+        self.network_cfg: t.Dict[str, t.Any] = {}
+        """Other network configuration options"""
+        self.pretrained_root: t.Optional[str] = "pretrained"
+        """Where to store and retrieve pretrained models from"""
+
+
+        # TRAINING
+        self.total_task_epochs: int
+        """Total number of training epochs in a task"""
+        self.batch_size: int = 64
+        """Batch size"""
+        self.learning_rate: float = 0.0001
+        """Learning rate"""
+        self.device: str = "cuda"
+        """Device to use for training"""
+
+        # PackNet and SurpriseNet specific
+        self.use_packnet: bool = False
+        """Whether to use the packnet training procedure"""
+        self.prune_proportion: t.Union[float, t.List[float]] = 0.5
+        """Proportion of the network to prune"""
+        self.retrain_epochs: int
+        """Number of epochs post-pruning to retrain the network"""
+        self.task_inference_strategy: t.Literal["TaskOracle", "SurpriseNet"]
+        """Type of task inference strategy to use"""
+
+        # OTHER STRATEGIES
+        # Experience replay
+        self.replay_buffer: t.Optional[int] = None
+        """Number of instances to store in the replay buffer. If 0 or None, no
+        replay buffer is used.
+        """
+        # Synaptic intelligence
+        self.si_lambda: t.Optional[float] = None
+        """Synaptic Intelligence Lambda. If 0 or None, no
+        synaptic intelligence is used."""
+
+        self.lwf_alpha: t.Optional[float] = None
+        """Learning without Forgetting alpha. If None LWF is not used"""
+
+    def toJSON(self):
+        return json.dumps(self.__dict__, indent=4)
 
     # 
     # Networks
@@ -151,7 +124,7 @@ class ExpConfig():
         self.network_cfg["base_channels"] = 128
         return self
 
-    def _network_mlp(self: 'ExpConfig') -> 'ExpConfig':
+    def _network_mlp(self) -> 'ExpConfig':
         """Configure the experiment to use a rectangular network"""
         self.network_style = "mlp"
         self.network_cfg["width"] = 512
@@ -160,7 +133,6 @@ class ExpConfig():
     def _network_resnet(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to use a ResNet CNN"""
         self.network_style = "residual"
-        self.latent_dims = 64
         return self
 
     # 
@@ -169,6 +141,7 @@ class ExpConfig():
 
     def scenario_fmnist(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment for the Fashion-MNIST dataset"""
+        self._network_cnn()
         self.dataset_name = "FMNIST"
         self.input_shape = (1, 32, 32)
         self.is_image_data = True
@@ -177,11 +150,11 @@ class ExpConfig():
         self.n_experiences = 5
         self.retrain_epochs = 5
         self.total_task_epochs = 20
-        self._network_cnn()
         return self
 
     def scenario_cifar10(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment for the CIFAR10 dataset"""
+        self._network_resnet()
         self.dataset_name = "CIFAR10"
         self.input_shape = (3, 32, 32)
         self.is_image_data = True
@@ -190,11 +163,11 @@ class ExpConfig():
         self.n_experiences = 5
         self.retrain_epochs = 10
         self.total_task_epochs = 50
-        self._network_resnet()
         return self
 
-    def scenario_cifar100(self: 'ExpConfig') -> 'ExpConfig':
+    def scenario_cifar100(self) -> 'ExpConfig':
         """Configure the experiment for the CIFAR100 dataset"""
+        self._network_resnet()
         self.dataset_name = "CIFAR100"
         self.input_shape = (3, 32, 32)
         self.is_image_data = True
@@ -203,11 +176,11 @@ class ExpConfig():
         self.n_experiences = 10
         self.retrain_epochs = 30
         self.total_task_epochs = 100
-        self._network_resnet()
         return self
 
     def scenario_core50(self: "ExpConfig") -> 'ExpConfig':
         """Configure the experiment for the Core50 dataset"""
+        self._network_resnet()
         self.dataset_name = "CORe50_NC"
         self.input_shape = (3, 128, 128)
         self.is_image_data = True
@@ -216,60 +189,54 @@ class ExpConfig():
         self.n_experiences = 10
         self.retrain_epochs = 1
         self.total_task_epochs = 2
-        self._network_resnet()
         return self
 
     def scenario_embedded_cifar100(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to use the embedded CIFAR100 dataset"""
+        self._network_mlp()
         self.dataset_name = "CIFAR100"
-        self.embedding_module = "ResNet50"
-        self.input_shape = (2048,)
+        self.embedding_module = "SmallResNet18"
+        self.input_shape = (512,)
         self.is_image_data = False
         self.latent_dims = 256
         self.n_classes = 100
         self.n_experiences = 10
-        self.normalization_mean = [0.5071, 0.4867, 0.4408]
-        self.normalization_std  = [0.2675, 0.2565, 0.2761]
         self.prune_proportion = 0.5
-        self.recon_loss_type = "mse"
+        self.reconstruction_loss_type = "mse"
         self.retrain_epochs = 30
+        self.normalize = True
         self.total_task_epochs = 100
-        self._network_mlp()
         return self
 
     def scenario_embedded_core50(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to use the embedded CIFAR100 dataset"""
+        self._network_mlp()
         self.dataset_name = "CORe50_NC"
-        self.embedding_module = "ResNet50"
+        self.embedding_module = "ResNet18"
         self.input_shape = (2048,)
         self.is_image_data = False
         self.latent_dims = 512
         self.n_classes = 50
         self.n_experiences = 10
-        self.normalization_mean = [0.6001, 0.5721, 0.5416]
-        self.normalization_std  = [0.1965, 0.2066, 0.2183] 
         self.prune_proportion = 0.5
-        self.recon_loss_type = "mse"
+        self.reconstruction_loss_type = "mse"
         self.retrain_epochs = 1
         self.total_task_epochs = 2
-        self._network_mlp()
+        self.normalize = True
         return self
 
 
     def arch_autoencoder(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to use an AutoEncoder"""
         self.architecture = "AE"
-        self.use_classifier_loss = True
-        self.use_reconstruction_loss = True
+        self.reconstruction_loss_weight = 1.0
         self.use_vae_loss = False
         return self
 
     def arch_variational_auto_encoder(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to use a variational AutoEncoder"""
         self.architecture = "VAE"
-        self.use_classifier_loss = True
-        self.use_reconstruction_loss = True
-        self.use_vae_loss = True
+        self.reconstruction_loss_weight = 1.0
         self.vae_loss_weight = 0.001
         return self
 
