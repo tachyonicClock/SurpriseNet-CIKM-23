@@ -136,8 +136,9 @@ class Experiment(BaseExperiment):
         if cfg.embedding_module == "None":
             pass
         elif cfg.embedding_module == "SmallResNet18":
+            print("! Using Small ResNet18 as embedding module")
             strategy.batch_transform = small_r18_extractor(
-                f"{cfg.pretrained_root}/64x64ResNet18TinyImageNet.pkl"
+                f"{cfg.pretrained_root}/32x32ResNet18CIFAR10.pkl"
             ).to(cfg.device)
         else:
             raise NotImplementedError("Unknown embedding module")

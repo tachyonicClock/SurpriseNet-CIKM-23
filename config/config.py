@@ -196,7 +196,7 @@ class ExpConfig():
         self._network_mlp()
         self.dataset_name = "CIFAR100"
         self.embedding_module = "SmallResNet18"
-        self.input_shape = (512,)
+        self.input_shape = (16384,)
         self.is_image_data = False
         self.latent_dims = 256
         self.n_classes = 100

@@ -2,6 +2,9 @@ import typing as t
 import click
 import git
 import os
+import torch
+import random
+import numpy as np
 from packnet.plugin import equal_capacity_prune_schedule
 from train import Experiment
 from config.config import ExpConfig
@@ -34,8 +37,50 @@ def run(cfg: ExpConfig):
     experiment = Experiment(cfg)
     experiment.train()
 
+class TrainCommand(click.Group):
+    def invoke(self, ctx):
+        n = ctx.params['repeat']
+        seed = ctx.params['seed'] or torch.initial_seed()
+        
+        if n == 1:
+            super().invoke(ctx)
+        else:
+            # Sub-processes ensure nothing is shared between runs, such as
+            # singletons, global variables, etc. I don't know why this is
+            # necessary. I don't think it is an issue with avalanche-cli but
+            # rather with avalanche itself, at least for some of the
+            # strategies. 
+            for i in range(n):
+                click.secho(f"Running experiment {i+1}/{n}", fg="green")
+                click.secho("="*80, fg="green")
 
-@click.group()
+
+                if os.fork() == 0:
+                    # Set seeds for all experiments
+                    seed = (seed + i) % 2**32 
+                    click.secho(f"Setting seed to {seed}", fg="green")
+                    torch.manual_seed(seed)
+                    np.random.seed(seed)
+                    random.seed(seed)
+                        
+                    # Child process
+                    super(TrainCommand, self).invoke(ctx)
+                    break
+                else:
+                    # Parent process
+                    child_exit = os.wait()
+                    if child_exit[1] != 0:
+                        click.secho(f"Experiment {i+1}/{n} failed", fg="red")
+                        exit(1)
+                    click.secho("="*80, fg="green")
+
+
+
+@click.group(cls=TrainCommand)
+@click.option("-r", "--repeat", type=int, default=1,
+                help="Repeat the experiment N times")
+@click.option("-s", "--seed", type=int, default=None,
+                help="Seed for the random number generator")
 @click.option("--ignore-dirty", is_flag=True, default=False,
               help="Do NOT abort when uncommitted changes exist")
 @click.option("--epochs", type=int, default=None,
@@ -43,6 +88,9 @@ def run(cfg: ExpConfig):
     " given scenario.")
 @click.option("-z", "--latent-dim", type=int, default=None,
     help="Latent dimension of the autoencoder. Default varies based on the" +
+    " given scenario.")
+@click.option("--lr", type=float, default=None,
+    help="Learning rate. Default varies based on the" +
     " given scenario.")
 @click.argument("label", type=str)
 @click.argument("scenario", type=click.Choice(SCENARIOS.keys()), required=True)
@@ -53,8 +101,11 @@ def cli(ctx,
         epochs: t.Optional[int], 
         label: str, 
         scenario: str, 
-        architecture: str, 
-        latent_dim: t.Optional[int]):
+        architecture: str,
+        lr: t.Optional[float], 
+        latent_dim: t.Optional[int],
+        repeat: int,
+        seed: t.Optional[int]):
     # Start building an experiment configuation
     cfg = ExpConfig()
 
@@ -82,11 +133,14 @@ def cli(ctx,
     # Override the default number of epochs if given
     if epochs is not None:
         cfg.total_task_epochs = epochs
+    # Override the default learning rate if given
+    if lr is not None:
+        cfg.learning_rate = lr
     
     ctx.obj = cfg
 
 @cli.command()
-@click.option("--prune-proportion", type=float, default=0.5,
+@click.option("-p", "--prune-proportion", type=float, default=0.5,
               help="PackNet prunes the network to this proportion each experience")
 @click.pass_obj
 def packNet(cfg: ExpConfig, prune_proportion: float):
@@ -104,7 +158,7 @@ def packNet(cfg: ExpConfig, prune_proportion: float):
     run(cfg)
 
 @cli.command()
-@click.option("--prune-proportion", type=float, default=None,
+@click.option("-p", "--prune-proportion", type=float, default=None,
                 help="PackNet prunes the network to this proportion each experience")
 @click.option("--equal-prune", is_flag=True, default=False,
                 help="Prune such that each task has the same number of parameters")
@@ -131,7 +185,7 @@ def ci_packnet(cfg: ExpConfig, prune_proportion: float, equal_prune: bool):
 
 
 @cli.command()
-@click.option("--buffer-size", type=int, default=1000, 
+@click.option("-m", "--buffer-size", type=int, default=1000, 
     help="Size of the replay buffer")
 @click.pass_obj
 def replay(cfg: ExpConfig, buffer_size: int):
@@ -154,6 +208,11 @@ def non_continual(cfg: ExpConfig):
     cfg.name = get_experiment_name(
         cfg.repo_hash, cfg.label, cfg.scenario_name, cfg.architecture, "nonContinual")
     run(cfg)
+
+@cli.command()
+@click.pass_obj
+def dummy(cfg: ExpConfig):
+    print("Dummy command")
 
 if __name__ == "__main__":
     cli()

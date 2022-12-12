@@ -60,7 +60,19 @@ class SmallResNet18(nn.Module):
         # Patch the final layer to output the correct number of classes
         self.resnet.fc = nn.Linear(512, num_classes)
 
-        self.forward = wrap_with_resize(64, self.resnet.forward)
+    def forward(self, x: torch.Tensor):
+        x = self.resnet.conv1(x)
+        x = self.resnet.bn1(x)
+        x = self.resnet.relu(x)
+        x = self.resnet.maxpool(x)
+
+        x = self.resnet.layer1(x)
+        x = self.resnet.layer2(x)
+        x = self.resnet.layer3(x)
+        # print(x.shape)
+        # x = self.resnet.layer4(x)
+        x = torch.flatten(x, 1)
+        return x
 
 def small_r18_extractor(save: str) -> nn.Module:
     """Create a feature extractor from a pre-trained SmallResNet18"""
@@ -73,6 +85,6 @@ def r18_extractor() -> nn.Module:
     """Create a feature extractor from a pre-trained ResNet18"""
     model = models.resnet18(pretrained=True)
     model.fc = nn.Identity()
-    model.forward = wrap_with_resize(224, model.forward)
+    # model.forward = wrap_with_resize(224, model.forward)
     return model
     
