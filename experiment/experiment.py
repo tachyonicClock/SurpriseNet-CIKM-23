@@ -121,7 +121,7 @@ class BaseExperiment(SupervisedPlugin):
 
         return EvaluationPlugin(
             loss_metrics(epoch=True, experience=True,
-                         stream=True, minibatch=False),
+                         stream=True, minibatch=self.cfg.log_mini_batch),
             EpochClock(),
             *plugins,
             loggers=loggers

@@ -1,5 +1,5 @@
 import torch
-from network.feature_extractor import small_r18_extractor
+from network.feature_extractor import r18_extractor
 from experiment.experiment import BaseExperiment
 import avalanche as cl
 import avalanche.training.plugins as cl_plugins
@@ -34,33 +34,28 @@ class Experiment(BaseExperiment):
     def make_task_inference_strategy(self) -> TaskInferenceStrategy:
         return TASK_INFERENCE_STRATEGIES[self.cfg.task_inference_strategy](self)
 
-    def setup_packnet(self, network: nn.Module) -> nn.Module:
-        """Setup packnet"""
-
-        if not self.cfg.use_packnet:
-            return network
-
-        # Wrap network in packnet
-        if self.cfg.architecture == "VAE":
-            network = pn.PackNetVariationalAutoEncoder(
-                network,
-                self.make_task_inference_strategy()
-            )
-        elif self.cfg.architecture == "AE":
-            network = pn.PackNetAutoEncoder(
-                network,
-                self.make_task_inference_strategy()
-            )
-
-        self.plugins.append(
-            PackNetPlugin(network, self, self.cfg.prune_proportion,
-                          self.cfg.retrain_epochs)
-        )
-        return network
-
     def make_network(self) -> nn.Module:
         network = construct_network(self.cfg)
-        return self.setup_packnet(network)
+        # If using PackNet/SurpriseNet then wrap the network in a PackNet
+        # and add a PackNetPlugin
+        if self.cfg.use_packnet:
+            # Wrap network in packnet
+            if self.cfg.architecture == "VAE":
+                network = pn.PackNetVariationalAutoEncoder(
+                    network,
+                    self.make_task_inference_strategy()
+                )
+            elif self.cfg.architecture == "AE":
+                network = pn.PackNetAutoEncoder(
+                    network,
+                    self.make_task_inference_strategy()
+                )
+
+            self.plugins.append(
+                PackNetPlugin(network, self, self.cfg.prune_proportion,
+                            self.cfg.retrain_epochs)
+            )
+        return network
 
     def make_objective(self) -> MultipleObjectiveLoss:
         """Create a loss objective from the config"""
@@ -140,6 +135,9 @@ class Experiment(BaseExperiment):
             strategy.batch_transform = small_r18_extractor(
                 f"{cfg.pretrained_root}/32x32ResNet18CIFAR10.pkl"
             ).to(cfg.device)
+        elif cfg.embedding_module == "ResNet18":
+            print("! Using ResNet18 as embedding module")
+            strategy.batch_transform = r18_extractor().to(cfg.device)
         else:
             raise NotImplementedError("Unknown embedding module")
 

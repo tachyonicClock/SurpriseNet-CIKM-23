@@ -92,6 +92,9 @@ class TrainCommand(click.Group):
 @click.option("--lr", type=float, default=None,
     help="Learning rate. Default varies based on the" +
     " given scenario.")
+@click.option("--log-mini-batches", type=bool, default=False, is_flag=True,
+    help="Log each mini-batches"
+)
 @click.argument("label", type=str)
 @click.argument("scenario", type=click.Choice(SCENARIOS.keys()), required=True)
 @click.argument("architecture", type=click.Choice(ARCHITECTURES.keys()), required=True)
@@ -104,10 +107,12 @@ def cli(ctx,
         architecture: str,
         lr: t.Optional[float], 
         latent_dim: t.Optional[int],
+        log_mini_batches: bool,
         repeat: int,
         seed: t.Optional[int]):
     # Start building an experiment configuation
     cfg = ExpConfig()
+    cfg.log_mini_batch = log_mini_batches
 
     # Abort on dirty?
     # Store the repository version

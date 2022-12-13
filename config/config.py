@@ -111,6 +111,9 @@ class ExpConfig():
         self.lwf_alpha: t.Optional[float] = None
         """Learning without Forgetting alpha. If None LWF is not used"""
 
+        self.log_mini_batch: bool = False
+        """Log the loss and accuracy of each minibatch"""
+
     def toJSON(self):
         return json.dumps(self.__dict__, indent=4)
 
@@ -181,30 +184,30 @@ class ExpConfig():
     def scenario_core50(self: "ExpConfig") -> 'ExpConfig':
         """Configure the experiment for the Core50 dataset"""
         self._network_resnet()
-        self.dataset_name = "CORe50_NC"
-        self.input_shape = (3, 128, 128)
+        self.dataset_name = "M_CORe50_NC"
+        self.input_shape = (3, 32, 32)
         self.is_image_data = True
         self.latent_dims = 512
         self.n_classes = 50
         self.n_experiences = 10
-        self.retrain_epochs = 1
-        self.total_task_epochs = 2
+        self.retrain_epochs = 2
+        self.total_task_epochs = 10
         return self
 
     def scenario_embedded_cifar100(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to use the embedded CIFAR100 dataset"""
         self._network_mlp()
         self.dataset_name = "CIFAR100"
-        self.embedding_module = "SmallResNet18"
-        self.input_shape = (16384,)
+        self.embedding_module = "ResNet18"
+        self.input_shape = (512,)
         self.is_image_data = False
         self.latent_dims = 256
         self.n_classes = 100
         self.n_experiences = 10
         self.prune_proportion = 0.5
         self.reconstruction_loss_type = "mse"
-        self.retrain_epochs = 30
         self.normalize = True
+        self.retrain_epochs = 30
         self.total_task_epochs = 100
         return self
 
@@ -213,16 +216,16 @@ class ExpConfig():
         self._network_mlp()
         self.dataset_name = "CORe50_NC"
         self.embedding_module = "ResNet18"
-        self.input_shape = (2048,)
+        self.input_shape = (512,)
         self.is_image_data = False
         self.latent_dims = 512
         self.n_classes = 50
         self.n_experiences = 10
         self.prune_proportion = 0.5
         self.reconstruction_loss_type = "mse"
-        self.retrain_epochs = 1
-        self.total_task_epochs = 2
         self.normalize = True
+        self.retrain_epochs = 2
+        self.total_task_epochs = 10
         return self
 
 
