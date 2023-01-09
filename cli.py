@@ -147,8 +147,10 @@ def cli(ctx,
 @cli.command()
 @click.option("-p", "--prune-proportion", type=float, default=0.5,
               help="PackNet prunes the network to this proportion each experience")
+@click.option("--equal-prune", is_flag=True, default=False,
+                help="Prune such that each task has the same number of parameters")
 @click.pass_obj
-def packNet(cfg: ExpConfig, prune_proportion: float):
+def packNet(cfg: ExpConfig, prune_proportion: float, equal_prune: bool):
     """Use task incremental PackNet
 
     Mallya, A., & Lazebnik, S. (2018). PackNet: Adding Multiple Tasks to a 
@@ -157,7 +159,15 @@ def packNet(cfg: ExpConfig, prune_proportion: float):
     https://doi.org/10.1109/CVPR.2018.00810
     """
     cfg.strategy_packnet()
-    cfg.prune_proportion = prune_proportion
+
+        # Setup pruning scheme
+    if not equal_prune:
+        cfg.prune_proportion = prune_proportion if prune_proportion != None else 0.5
+    else:
+        if prune_proportion is not None:
+            click.secho("Warning: --prune-proportion is ignored when using equal pruning", fg="yellow")
+        cfg.prune_proportion = equal_capacity_prune_schedule(cfg.n_experiences)
+
     cfg.name = get_experiment_name(
         cfg.repo_hash, cfg.label, cfg.scenario_name, cfg.architecture, "taskOracle")
     run(cfg)
