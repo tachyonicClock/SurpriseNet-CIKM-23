@@ -86,9 +86,7 @@ def process_experiment(args) -> dict:
     return record
 
 
-def load_events_to_df(pattern: str) -> pd.DataFrame:
-    experiment_logs = "experiment_logs"
-
+def load_events_to_df(experiment_logs: str, pattern: str) -> pd.DataFrame:
     records = []
 
     # Loop over each directory in a directory
@@ -101,5 +99,5 @@ def load_events_to_df(pattern: str) -> pd.DataFrame:
     return pd.DataFrame.from_dict(records)
 
 
-df = load_events_to_df(".*")
-df.to_csv("results/all_experiments.csv")
+df = load_events_to_df("experiment_logs", ".*")
+df.to_csv("results/data/ExperimentLogs.csv")

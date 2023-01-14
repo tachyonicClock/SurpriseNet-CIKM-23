@@ -1,0 +1,18 @@
+# ,"Brain Inspired Replay
+# 
+# The columns SE-CORe50-M and S-CORe50-M refer to the mini 32x32 CORe50 dataset.
+# https://github.com/tachyonicClock/brain-inspired-replay
+# 
+# van de Ven, G. M., Siegelmann, H. T., & Tolias, A. S. (2020). Brain-inspired replay for continual learning with artificial neural networks. Nature Communications, 11(1), 4069. https://doi.org/10.1038/s41467-020-17866-2.
+# ",,,,,
+,S-FMNIST,S-CIFAR10,S-CIFAR100,S-CORe50,SE-CORe50,SE-CIFAR100
+0,0.7399,0.4848,0.2163,0.067,0.661,0.299
+1,0.7112,0.5331,0.2158,0.043,0.652,0.226
+2,0.7216,0.5681,0.2205,0.054,0.683,0.292
+3,0.7224,0.5192,0.1958,0.060,0.648,0.263
+4,0.7224,0.4299,0.2132,0.055,0.664,0.278
+5,0.732,0.5091,0.1987,0.071,0.679,0.267
+6,0.725,0.5518,0.2151,0.048,0.669,0.303
+7,0.7249,0.5536,0.2171,0.048,0.678,0.295
+8,0.7311,0.5326,0.2045,0.033,0.666,0.299
+9,0.7244,0.532,0.2277,0.056,0.647,0.298
