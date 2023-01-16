@@ -114,6 +114,8 @@ class ExpConfig():
         self.log_mini_batch: bool = False
         """Log the loss and accuracy of each minibatch"""
 
+        self.cumulative: bool = False
+
     def toJSON(self):
         return json.dumps(self.__dict__, indent=4)
 

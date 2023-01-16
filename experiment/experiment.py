@@ -37,6 +37,7 @@ class BaseExperiment(SupervisedPlugin):
     evaluator: EvaluationPlugin
     objective: MultipleObjectiveLoss
     plugins: t.List[BasePlugin]
+    strategy_type: t.Type[SupervisedPlugin]
     cfg: ExpConfig
 
     def __init__(self, cfg: ExpConfig) -> None:

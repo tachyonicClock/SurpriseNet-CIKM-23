@@ -9,7 +9,7 @@ from network.networks import construct_network
 from packnet.plugin import PackNetPlugin
 from packnet.task_inference import TaskInferenceStrategy, TaskReconstruction, UseTaskOracle
 from experiment.scenario import scenario
-from experiment.strategy import Strategy
+from experiment.strategy import Strategy, CumulativeTraining
 from torch import nn
 
 import packnet.packnet as pn
@@ -106,6 +106,11 @@ class Experiment(BaseExperiment):
             # halve the batch size.
             cfg.batch_size = cfg.batch_size//2
 
+        if cfg.cumulative:
+            print("! Using Cumulative")
+            # Replace the strategy with a cumulative strategy
+            self.strategy_type = CumulativeTraining
+
     def make_strategy(self) -> Strategy:
         cfg = self.cfg
 
@@ -115,7 +120,7 @@ class Experiment(BaseExperiment):
 
         self.add_strategy_plugins()
 
-        strategy = Strategy(
+        strategy = self.strategy_type(
             self.network,
             self.optimizer,
             criterion=self.make_criterion(),

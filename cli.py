@@ -226,6 +226,14 @@ def non_continual(cfg: ExpConfig):
 
 @cli.command()
 @click.pass_obj
+def cumulative(cfg: ExpConfig):
+    cfg.cumulative = True
+    cfg.name = get_experiment_name(
+        cfg.repo_hash, cfg.label, cfg.scenario_name, cfg.architecture, "cumulative")
+    run(cfg)
+
+@cli.command()
+@click.pass_obj
 def finetuning(cfg: ExpConfig):
     """Train a model on all experiences at once. This is a baseline for
     comparison with continual learning methods.

@@ -5,6 +5,7 @@ from typing import Protocol
 from avalanche.models import avalanche_forward
 from avalanche.training.templates import SupervisedTemplate
 from torch import Tensor, nn
+import avalanche as cl
 import torch
 
 @dataclass
@@ -75,3 +76,6 @@ class Strategy(SupervisedTemplate):
     @property
     def step(self) -> int:
         return self.clock.train_iterations
+
+class CumulativeTraining(cl.training.Cumulative, Strategy):
+    pass
