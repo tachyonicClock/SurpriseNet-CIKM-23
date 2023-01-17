@@ -29,7 +29,7 @@ python cli.py [OPTIONS] LABEL SCENARIO {AE|VAE} STRATEGY
 but is only meaningful to you.
 - `SCENARIO` - Choose between: `S-FMNIST`, `S-CIFAR10`, `S-CIFAR100`, `S-CORe50`, `SE-CIFAR100`, or `SE-CORe50`.
 - `AE|VAE` - Choose between an autoencoder or variational autoencoder
-- `STRATEGY` - Choose a continual learning strategy, where `ci-packnet` is our approach
+- `STRATEGY` - Choose a continual learning strategy, where `surpriseNet` is our approach
 
 
 For full details run:
@@ -69,7 +69,7 @@ python cli.py myExperiment SE-CIFAR100 AE finetuning
 ```
 SurpriseNet with a specific prune proportion:
 ```
-python cli.py myExperiment SE-CIFAR100 VAE ci-packnet -p 0.5
+python cli.py myExperiment SE-CIFAR100 VAE surpriseNet -p 0.5
 ```
 Experience replay:
 ```

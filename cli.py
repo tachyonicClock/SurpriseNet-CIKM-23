@@ -178,8 +178,8 @@ def packNet(cfg: ExpConfig, prune_proportion: float, equal_prune: bool):
 @click.option("--equal-prune", is_flag=True, default=False,
                 help="Prune such that each task has the same number of parameters")
 @click.pass_obj
-def ci_packnet(cfg: ExpConfig, prune_proportion: float, equal_prune: bool):
-    """Use  CI-PackNet (ours). CI-PackNet performs the same pruning as PackNet,
+def surpriseNet(cfg: ExpConfig, prune_proportion: float, equal_prune: bool):
+    """SurpriseNet performs the same pruning as PackNet,
     but uses anomaly detection inspired task inference to infer task labels, 
     removing the reliance on a task oracle. Additionally it can be pruned
     such that each task has the same number of parameters.
@@ -195,7 +195,7 @@ def ci_packnet(cfg: ExpConfig, prune_proportion: float, equal_prune: bool):
         cfg.prune_proportion = equal_capacity_prune_schedule(cfg.n_experiences)
 
     cfg.name = get_experiment_name(
-        cfg.repo_hash, cfg.label, cfg.scenario_name, cfg.architecture, "taskInference")
+        cfg.repo_hash, cfg.label, cfg.scenario_name, cfg.architecture, "surpriseNet")
     run(cfg)
 
 
