@@ -53,6 +53,10 @@ class Strategy(SupervisedTemplate):
     for greater modification than just plugins. An avalanche strategy is
     responsible for activating callbacks and for the flow of data between
     subsystems.
+
+    We use this class to add ForwardOutput to the avalanche strategy. Allowing
+    us to pass around multiple outputs of the model in a single object. This
+    is useful for auto-encoders.
     """
 
     batch_transform: nn.Module = nn.Identity()
