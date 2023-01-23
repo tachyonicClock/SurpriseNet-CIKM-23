@@ -178,7 +178,7 @@ def packNet(cfg: ExpConfig, prune_proportion: float, equal_prune: bool):
 @click.option("--equal-prune", is_flag=True, default=False,
                 help="Prune such that each task has the same number of parameters")
 @click.pass_obj
-def surpriseNet(cfg: ExpConfig, prune_proportion: float, equal_prune: bool):
+def surprise_net(cfg: ExpConfig, prune_proportion: float, equal_prune: bool):
     """SurpriseNet performs the same pruning as PackNet,
     but uses anomaly detection inspired task inference to infer task labels, 
     removing the reliance on a task oracle. Additionally it can be pruned

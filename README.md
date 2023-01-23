@@ -69,7 +69,7 @@ python cli.py myExperiment SE-CIFAR100 AE finetuning
 ```
 SurpriseNet with a specific prune proportion:
 ```
-python cli.py myExperiment SE-CIFAR100 VAE surpriseNet -p 0.5
+python cli.py myExperiment SE-CIFAR100 VAE surprise-net -p 0.5
 ```
 Experience replay:
 ```
