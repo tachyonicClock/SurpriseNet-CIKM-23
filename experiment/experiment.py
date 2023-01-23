@@ -43,6 +43,8 @@ class BaseExperiment(SupervisedPlugin):
     def __init__(self, cfg: ExpConfig) -> None:
         super().__init__()
 
+        self.strategy_type = Strategy 
+
         self.cfg = cfg
         self.label = f"{max(self._get_log_numbers())+1:04d}_{self.cfg.name}"
         self.plugins = []
