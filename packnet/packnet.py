@@ -1,5 +1,4 @@
 import math
-from turtle import forward
 import typing as t
 from enum import Enum
 
@@ -70,21 +69,6 @@ class PackNetDecorator(PackNet, ModuleDecorator):
                 f"Function only valid for {previous} instead PackNet was in the {self.state} state")
         self.state = next
 
-    z_mask: Tensor
-    """
-    Z mask is a depth index of weights in an imaginary "stack" that makes up the
-    PackNet. The masks values corresponds to each task.
-    """
-
-    _Z_PRUNED = 255
-    """Index tracking if a weight has been pruned"""
-    _z_top: int = 0
-    """Index top of the 'stack'. Should only increase"""
-    _z_active: int = 0
-    """
-    Index defining which subset is used for a forward pass
-    """
-
     @property
     def top_mask(self) -> Tensor:
         """Return a mask of weights at the top of the `stack`"""
@@ -102,17 +86,6 @@ class PackNetDecorator(PackNet, ModuleDecorator):
     @property
     def bias(self) -> Tensor:
         return NotImplemented
-
-    def __init__(self, wrappee: nn.Module) -> None:
-        super().__init__(wrappee)
-        self.register_buffer("z_mask", torch.ones(
-            self.weight.shape).byte() * self._z_top)
-        self.state = self.State.MUTABLE_TOP
-
-        assert self.weight != NotImplemented, "Concrete decorator must implement self.weight"
-        assert self.bias != NotImplemented, "Concrete decorator must implement self.bias"
-        self.weight.register_hook(self._remove_gradient_hook)
-
 
     def _remove_gradient_hook(self, grad: Tensor) -> Tensor:
         """
@@ -145,7 +118,7 @@ class PackNetDecorator(PackNet, ModuleDecorator):
         return rank[un_prunable.count_nonzero():]
 
     def _prune_weights(self, indices: Tensor):
-        self.z_mask.flatten()[indices] = self._Z_PRUNED
+        self.z_mask.flatten()[indices] = self._Z_PRUNED.item()
 
         # "Weight initialization plays a big role in deep learning (Mishkin &
         # Matas (2015)). Conventional training has only one chance of
@@ -181,7 +154,7 @@ class PackNetDecorator(PackNet, ModuleDecorator):
             [self.State.MUTABLE_TOP, self.State.IMMUTABLE], next_state)
 
         task_id = min(max(task_id, 0), self._z_top)
-        self._z_active = task_id
+        self._z_active.fill_(task_id)
 
     def use_top_subset(self):
         """Forward should use the top subset"""
@@ -194,14 +167,14 @@ class PackNetDecorator(PackNet, ModuleDecorator):
         dist = torch.distributions.Normal(0, stddev)
         with torch.no_grad():
             self.weight[self.top_mask] = dist.sample(
-                (self.top_mask.count_nonzero(),)).to(self.weight.device)
+                (self.top_mask.count_nonzero(),)).to(self.device)
 
     def push_pruned(self):
         self.next_state([self.State.PRUNED_TOP], self.State.MUTABLE_TOP)
         # The top is now one higher up
         self._z_top += 1
         # Move pruned weights to the top
-        self.z_mask[self.pruned_mask] = self._z_top
+        self.z_mask[self.pruned_mask] = self._z_top.item()
         # Change the active z_index
         self.use_top_subset()
 
@@ -210,12 +183,73 @@ class PackNetDecorator(PackNet, ModuleDecorator):
         if self.bias != None:
             self.bias.requires_grad = False
 
+    def unfreeze_all(self):
+        # set entire tensor to mutable
+        self._z_top.fill_(0)
+        self._z_active.fill_(0)
+        self.z_mask.fill_(self._z_top)
+
+    @property
+    def device(self) -> torch.device:
+        return self.weight.device
+
+    def __init__(self, wrappee: nn.Module) -> None:
+        super().__init__(wrappee)
+
+        self._z_top: torch.Tensor
+        self._z_active: torch.Tensor
+        self._Z_PRUNED: torch.Tensor
+        self.z_mask: torch.Tensor
+
+        # Register buffers. Buffers are tensors that are not parameters, but
+        # should be saved with the model.
+
+        self.register_buffer("_z_top",  torch.tensor(0, dtype=torch.int))
+        """Index top of the 'stack'. Should only increase"""
+        self.register_buffer("_z_active", torch.tensor(0, dtype=torch.int))
+        """
+        Index defining which subset is used for a forward pass
+        """
+        self.register_buffer("_Z_PRUNED", torch.tensor(255, dtype=torch.int))
+        """Index tracking if a weight has been pruned"""
+        self.register_buffer("z_mask", torch.ones(
+            self.weight.shape).byte() * self._z_top)
+        """
+        Z mask is a depth index of weights in an imaginary "stack" that makes up the
+        PackNet. The masks values corresponds to each task.
+        """
+        self.register_buffer("_state",  torch.tensor(
+            self.State.MUTABLE_TOP.value, dtype=torch.int))
+        """The state of the PackNet used to avoid getting into invalid states"""
+
+        assert self.weight != NotImplemented, "Concrete decorator must implement self.weight"
+        assert self.bias != NotImplemented, "Concrete decorator must implement self.bias"
+        self.weight.register_hook(self._remove_gradient_hook)
+
+    @property
+    def state(self) -> State:
+        return self.State(self._state.item())
+
+    @state.setter
+    def state(self, state: State):
+        self._state.fill_(state.value)
+
 
 class _PnBatchNorm(PackNet, ModuleDecorator):
     """BatchNorm is insanely annoying 
     """
 
-    frozen: bool = False
+    def __init__(self, wrappee: nn.Module) -> None:
+        super().__init__(wrappee)
+        self.register_buffer("_frozen", torch.tensor(False, dtype=torch.bool))
+
+    @property
+    def frozen(self) -> bool:
+        return self._frozen.item()
+
+    @frozen.setter
+    def frozen(self, frozen: bool):
+        self._frozen.fill_(frozen)
 
     def prune(self, to_prune_proportion: float) -> None:
         # Hopefully this freezes batch norm
@@ -241,11 +275,16 @@ class _PnBatchNorm(PackNet, ModuleDecorator):
     def use_top_subset(self):
         pass
 
+    def unfreeze_all(self):
+        self.wrappee.weight.requires_grad = True
+        self.wrappee.bias.requires_grad = True
+        self.frozen = False
+
 
 class _PnLinear(PackNetDecorator):
-    wrappee: nn.Linear
 
     def __init__(self, wrappee: nn.Linear) -> None:
+        self.wrappee: nn.Linear
         super().__init__(wrappee)
         self.weight_count = self.wrappee.in_features * self.wrappee.out_features
 
@@ -267,9 +306,8 @@ class _PnLinear(PackNetDecorator):
 
 class _PnConv2d(PackNetDecorator):
 
-    wrappee: nn.Conv2d
-
     def __init__(self, wrappee: nn.Conv2d) -> None:
+        wrappee: nn.Conv2d
         super().__init__(wrappee)
 
     @property
@@ -293,9 +331,9 @@ class _PnConv2d(PackNetDecorator):
 
 
 class _PnConvTransposed2d(PackNetDecorator):
-    wrappee: nn.ConvTranspose2d
 
     def __init__(self, wrappee: nn.ConvTranspose2d) -> None:
+        wrappee: nn.ConvTranspose2d
         super().__init__(wrappee)
 
     @property
@@ -357,6 +395,9 @@ class _PackNetParent(PackNet, nn.Module):
     :param nn.Module: Inherit ability to apply a function
     """
 
+    def __init__(self) -> None:
+        super().__init__()
+
     def _pn_apply(self, func: t.Callable[['PackNet'], None]):
         @torch.no_grad()
         def __pn_apply(module):
@@ -380,12 +421,16 @@ class _PackNetParent(PackNet, nn.Module):
     def use_top_subset(self):
         self._pn_apply(lambda x: x.use_top_subset())
 
+    def unfreeze_all(self):
+        self._pn_apply(lambda x: x.unfreeze_all())
+
 
 class PackNetAutoEncoder(InferTask, AutoEncoder, _PackNetParent):
     """
     A wrapper for AutoEncoder adding the InferTask trait and PackNet
     functionality
     """
+
     def __init__(self,
                  auto_encoder: AutoEncoder,
                  task_inference_strategy: TaskInferenceStrategy) -> None:
@@ -415,7 +460,8 @@ class PackNetVariationalAutoEncoder(InferTask, VariationalAutoEncoder, _PackNetP
     def __init__(self,
                  auto_encoder: VariationalAutoEncoder,
                  task_inference_strategy: TaskInferenceStrategy) -> None:
-        super().__init__(auto_encoder.encoder, auto_encoder.bottleneck, auto_encoder.decoder, auto_encoder.classifier)
+        super().__init__(auto_encoder.encoder, auto_encoder.bottleneck,
+                         auto_encoder.decoder, auto_encoder.classifier)
         wrap(auto_encoder)
         self.task_inference_strategy = task_inference_strategy
 
