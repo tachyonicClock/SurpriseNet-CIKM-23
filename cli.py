@@ -177,8 +177,21 @@ def packNet(cfg: ExpConfig, prune_proportion: float, equal_prune: bool):
                 help="PackNet prunes the network to this proportion each experience")
 @click.option("--equal-prune", is_flag=True, default=False,
                 help="Prune such that each task has the same number of parameters")
+@click.option("--chf", is_flag=True, default=False,
+                help="Whether to use the continual hyperparameter framework (Delange et al., 2021)"
+)
+@click.option("--retrain-epochs", type=int, default=None,
+                help="Override the default number of epochs to retrain the" + 
+                "network after pruning"
+)
 @click.pass_obj
-def surprise_net(cfg: ExpConfig, prune_proportion: float, equal_prune: bool):
+def surprise_net(
+        cfg: ExpConfig, 
+        prune_proportion: float,
+        equal_prune: bool,
+        chf: bool,
+        retrain_epochs: t.Optional[int]
+    ):
     """SurpriseNet performs the same pruning as PackNet,
     but uses anomaly detection inspired task inference to infer task labels, 
     removing the reliance on a task oracle. Additionally it can be pruned
@@ -186,13 +199,31 @@ def surprise_net(cfg: ExpConfig, prune_proportion: float, equal_prune: bool):
     """
     cfg.strategy_ci_packnet()
 
+    assert not (equal_prune and chf), "Cannot use both equal pruning and CHF"
+    assert not (equal_prune and prune_proportion is not None), \
+        "Cannot use both equal pruning and prune proportion"
+    assert not (chf and prune_proportion is not None), \
+        "Cannot use both CHF and prune proportion"
+
     # Setup pruning scheme
-    if not equal_prune:
+    if prune_proportion is not None:
         cfg.prune_proportion = prune_proportion if prune_proportion != None else 0.5
-    else:
-        if prune_proportion is not None:
-            click.secho("Warning: --prune-proportion is ignored when using equal pruning", fg="yellow")
+    elif chf:
+        cfg.prune_proportion = 0.95
+        cfg.continual_hyperparameter_framework = True
+    elif equal_prune:
         cfg.prune_proportion = equal_capacity_prune_schedule(cfg.n_experiences)
+    else:
+        click.secho("Warning: No pruning schedule specified, using default", fg="yellow")
+        cfg.prune_proportion = 0.5
+
+    if retrain_epochs is not None:
+        click.secho("INFO: Overriding default retrain epochs", fg="yellow")
+        cfg.retrain_epochs = retrain_epochs
+
+    assert cfg.retrain_epochs < cfg.total_task_epochs, \
+        f"Retrain epochs ({cfg.retrain_epochs}) must be less than total task" + \
+        f" epochs ({cfg.total_task_epochs})"
 
     cfg.name = get_experiment_name(
         cfg.repo_hash, cfg.label, cfg.scenario_name, cfg.architecture, "surpriseNet")

@@ -201,6 +201,10 @@ class PackNet(ABC):
     def use_top_subset(self):
         pass
 
+    @abstractmethod
+    def unfreeze_all(self):
+        pass
+
 
 
 

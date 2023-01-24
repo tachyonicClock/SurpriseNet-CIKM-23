@@ -24,24 +24,24 @@ from experiment.loss import MultipleObjectiveLoss
 from experiment.strategy import ForwardOutput, Strategy
 
 
-class BaseExperiment(SupervisedPlugin):
+class BaseExperiment():
     """
     Py-lightning inspired for continual learning with avalanche
     """
 
-    strategy: Strategy
-    network:  nn.Module
-    logger:   av.logging.TensorboardLogger
-    scenario: av.benchmarks.NCScenario
-    optimizer: torch.optim.Optimizer
-    evaluator: EvaluationPlugin
-    objective: MultipleObjectiveLoss
-    plugins: t.List[BasePlugin]
-    strategy_type: t.Type[SupervisedPlugin]
-    cfg: ExpConfig
 
     def __init__(self, cfg: ExpConfig) -> None:
         super().__init__()
+        self.strategy: Strategy
+        self.network:  nn.Module
+        self.logger:   av.logging.TensorboardLogger
+        self.scenario: av.benchmarks.NCScenario
+        self.optimizer: torch.optim.Optimizer
+        self.evaluator: EvaluationPlugin
+        self.objective: MultipleObjectiveLoss
+        self.plugins: t.List[BasePlugin]
+        self.strategy_type: t.Type[SupervisedPlugin]
+        self.cfg: ExpConfig
 
         self.strategy_type = Strategy 
 

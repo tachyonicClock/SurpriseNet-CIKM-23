@@ -10,6 +10,7 @@ from packnet.plugin import PackNetPlugin
 from packnet.task_inference import TaskInferenceStrategy, TaskReconstruction, UseTaskOracle
 from experiment.scenario import scenario
 from experiment.strategy import Strategy, CumulativeTraining
+from experiment.chf import CHF_SurpriseNet
 from torch import nn
 
 import packnet.packnet as pn
@@ -52,8 +53,7 @@ class Experiment(BaseExperiment):
                 )
 
             self.plugins.append(
-                PackNetPlugin(network, self, self.cfg.prune_proportion,
-                            self.cfg.retrain_epochs)
+                PackNetPlugin(self.cfg.prune_proportion, self.cfg.retrain_epochs)
             )
         return network
 
@@ -106,13 +106,17 @@ class Experiment(BaseExperiment):
             # halve the batch size.
             cfg.batch_size = cfg.batch_size//2
 
-        if cfg.cumulative:
+    def make_strategy(self) -> Strategy:
+        cfg = self.cfg
+
+        if cfg.continual_hyperparameter_framework:
+            print("! Using CHF")
+            assert cfg.use_packnet, "Our CHF is only compatible with SurpriseNet/PackNet"
+            self.strategy_type = CHF_SurpriseNet
+        elif cfg.cumulative:
             print("! Using Cumulative")
             # Replace the strategy with a cumulative strategy
             self.strategy_type = CumulativeTraining
-
-    def make_strategy(self) -> Strategy:
-        cfg = self.cfg
 
         # Ensure that total epochs takes the retrain_epochs into account
         train_epochs = cfg.total_task_epochs - cfg.retrain_epochs \
@@ -133,15 +137,26 @@ class Experiment(BaseExperiment):
             evaluator=self.evaluator
         )
 
-        if cfg.embedding_module == "None":
-            pass
-        elif cfg.embedding_module == "ResNet18":
+        # Set CHF parameters
+        if isinstance(strategy, CHF_SurpriseNet):
+            strategy.set_chf_params(
+                cfg.chf_validation_split_proportion,
+                cfg.chf_lr_grid,
+                cfg.chf_accuracy_drop_threshold,
+                cfg.chf_stability_decay
+            )
+
+        # Enable a feature extractor
+        if cfg.embedding_module == "ResNet18":
             print("! Using ResNet18 as embedding module")
             strategy.batch_transform = r18_extractor().to(cfg.device)
+        if cfg.embedding_module == "None":
+            pass
         else:
             raise NotImplementedError("Unknown embedding module")
-
+        
         return strategy
+
 
     def dump_config(self):
         with open(f"{self.logdir}/config.json", "w") as f:

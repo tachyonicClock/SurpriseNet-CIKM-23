@@ -106,17 +106,17 @@ class ConditionalMetrics(_MyMetric):
     @property
     def correct_given_correct_task_id(self) -> float:
         """P(correct|correct exp id)"""
-        return float(self.correct_and_correct_task_id/self.correct_task_id)
+        return float(self.correct_and_correct_task_id/(self.correct_task_id+1))
 
     @property
     def correct_given_wrong_task_id(self) -> float:
         """P(correct|wrong exp id)"""
-        return float(self.correct_and_wrong_task_id/self.wrong_task_id)
+        return float(self.correct_and_wrong_task_id/(self.wrong_task_id + 1))
 
     @property
     def task_id_accuracy(self) -> float:
         """P(correct_exp_id)"""
-        return float(self.correct_task_id / (self.wrong_task_id + self.correct_task_id))
+        return float(self.correct_task_id / (self.wrong_task_id + self.correct_task_id + 1))
 
     def update(self, y: Tensor, y_hat: Tensor, task_label: Tensor, task_pred: Tensor):
 

@@ -1,11 +1,9 @@
 
 from dataclasses import dataclass
-from typing import Protocol
 
-from avalanche.models import avalanche_forward
 from avalanche.training.templates import SupervisedTemplate
+from avalanche.training import Cumulative
 from torch import Tensor, nn
-import avalanche as cl
 import torch
 
 @dataclass
@@ -43,10 +41,6 @@ class ForwardOutput():
     def __getitem__(self, i):
          return self.y_hat[i]
 
-class Network(Protocol):
-    def forward(self, x: Tensor) -> ForwardOutput:
-        pass
-
 class Strategy(SupervisedTemplate):
     """
     Strategy inherits from avalanche's `SupervisedTemplate`. It allows
@@ -81,5 +75,5 @@ class Strategy(SupervisedTemplate):
     def step(self) -> int:
         return self.clock.train_iterations
 
-class CumulativeTraining(cl.training.Cumulative, Strategy):
+class CumulativeTraining(Cumulative, Strategy):
     pass

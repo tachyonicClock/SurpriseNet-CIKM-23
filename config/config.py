@@ -116,6 +116,18 @@ class ExpConfig():
 
         self.cumulative: bool = False
 
+        # CONTINUAL HYPERPARAMETER FRAMEWORK
+        self.continual_hyperparameter_framework: bool = False
+        """Whether to use the continual hyperparameter framework"""
+        self.chf_validation_split_proportion: float = 0.2
+        """What fraction of the experience should be used for validation"""
+        self.chf_lr_grid = [0.00005, 0.0001, 0.0005, 0.001]
+        """Learning rate grid to search over during maximal plasticity search"""
+        self.chf_accuracy_drop_threshold = 0.2
+        """Threshold for acceptable accuracy drop"""
+        self.chf_stability_decay = 0.9
+        """How quickly the stability decays during stability decay search"""
+
     def toJSON(self):
         return json.dumps(self.__dict__, indent=4)
 
