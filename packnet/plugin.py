@@ -3,7 +3,7 @@ from avalanche.core import SupervisedPlugin
 from torch import nn
 import numpy as np
 from click import secho
-
+import collections
 
 from experiment.experiment import BaseExperiment
 
@@ -60,6 +60,9 @@ class PackNetPlugin(SupervisedPlugin):
         
         secho(f"Pruning {prune_proportion*100:0.1f}% reclaiming {self.capacity*100:0.1f}% capacity", fg="green")
         network.prune(prune_proportion)
+        # The network has changed, so the optimizer state is invalid
+        strategy.reset_optimizer()
+
 
         # Retrain post prune
         for _ in range(self.post_prune_epochs):
@@ -69,3 +72,6 @@ class PackNetPlugin(SupervisedPlugin):
 
         secho("Freezing Task-Specific Subset", fg="green")
         network.push_pruned()
+        # The network has changed, so the optimizer state is invalid
+        strategy.reset_optimizer()
+

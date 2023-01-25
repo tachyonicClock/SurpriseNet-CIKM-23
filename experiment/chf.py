@@ -47,6 +47,19 @@ class CHF_SurpriseNet(Strategy):
     This module overloads Strategy to allow for hyper-parameter
     optimization. It is based on the CHF framework by Delange et al. (2021).
 
+
+    The use of SurpriseNet with CHF raised the question of whether the 
+    parameters in Maximal Plasticity Search (MPS) should be kept frozen. If the
+    parameters are unfrozen, it creates a problem where Stability Decay (SD)
+    cannot be adjusted enough to match MPS. This is because, even though SD
+    decreases stability, it cannot reach maximum plasticity if the parameters
+    remain frozen. Therefore, MPS had to be frozen for CHF to work properly.
+
+    SurpriseNet only decides on the stability vs plasticity trade-off when it 
+    prunes the model, unlike other methods that decide the tradeoff during
+    training. SD only needs the prune and retrain steps to tune the trade-off.
+    This insight decreases the time of CHF for SurpriseNet.
+
     Delange, M., Aljundi, R., Masana, M., Parisot, S., Jia, X., Leonardis, A., 
     Slabaugh, G., & Tuytelaars, T. (2021). A continual learning survey: 
     Defying forgetting in classification tasks. IEEE Transactions on Pattern 
@@ -88,7 +101,7 @@ class CHF_SurpriseNet(Strategy):
         self.chf_accuracy_drop_threshold = accuracy_drop_threshold
         self.chf_stability_decay = stability_decay
 
-    def maximal_plasticity_search(self,
+    def search_lr(self,
                                   train_exp: NCExperience,
                                   valid_exp: NCExperience,
                                   **kwargs) -> float:
@@ -98,11 +111,11 @@ class CHF_SurpriseNet(Strategy):
         """
         best_lr = None
         best_acc = 0
+        best_model: t.OrderedDict[str, torch.Tensor] = None
 
         # Disable PackNetPlugin, so that we can train without constraints. And
         # disable metrics so that we don't clutter the tensorboard logs.
         self.pack_net_plugin.enabled = False
-        self.evaluator.active = False
         original_model = copy.deepcopy(self.model.state_dict())
         original_clock = copy.deepcopy(self.clock.__dict__)
 
@@ -112,37 +125,41 @@ class CHF_SurpriseNet(Strategy):
             self.metric.reset()
             self.model.load_state_dict(copy.deepcopy(original_model))
             self.clock.__dict__ = copy.deepcopy(original_clock)
-            self.model.unfreeze_all()
+            self.optimizer.state = {} # Stops optimizer from remembering old state
             self.optimizer.param_groups[0]['lr'] = lr
 
             print(f"  Testing lr: {lr}",)
             self._inner_train(train_exp, eval_streams=[valid_exp], **kwargs)
             self.experience = valid_exp
+
+            # Use the validation set. We do not log these results because of
+            # bugs in my metric implementations.
+            self.evaluator.active = False
             self.eval(valid_exp, **kwargs)
+            self.evaluator.active = True
 
             if self.metric.result() > best_acc:
                 best_acc = self.metric.result()
                 best_lr = lr
+                best_model = copy.deepcopy(self.model.state_dict())
 
         # Re-enable metrics and PackNetPlugin
-        self.evaluator.active = True
         self.pack_net_plugin.enabled = True
 
-        # Reset state
-        self.clock.__dict__ = copy.deepcopy(original_clock)
-        self.model.load_state_dict(copy.deepcopy(original_model))
+        # Restore the best model
+        self.model.load_state_dict(copy.deepcopy(best_model))
         print(f"  Learning Rate: {best_lr} Accuracy: {best_acc:0.2f}")
         print()
         return best_lr, best_acc
 
 
-    def stability_decay_search(self,
+    def search_tradeoff(self,
                                train_exp: NCExperience,
                                valid_exp: NCExperience,
                                reference_accuracy: float,
                                **kwargs) -> float:
         print(f"Starting Stability Decay Search")
-        stability = self.pack_net_plugin.prune_amount
+        prune = self.pack_net_plugin.prune_amount
 
         def in_threshold() -> bool:
             """Returns true if the accuracy is within the margin of the reference accuracy"""
@@ -163,27 +180,31 @@ class CHF_SurpriseNet(Strategy):
             self.pack_net_plugin.__dict__ = copy.deepcopy(original_packnet)
             self.model.load_state_dict(copy.deepcopy(original_model))
 
-            self.pack_net_plugin.prune_amount = stability
-            self._inner_train(train_exp, eval_streams=[valid_exp], **kwargs)
-
-            self.evaluator.active = False
-            self.eval(valid_exp, **kwargs)
-            self.evaluator.active = True
+            # Run SurpriseNet prune and retrain
+            self.pack_net_plugin.prune_amount = prune
+            self.experience = train_exp
+            self.pack_net_plugin.after_training_exp(self, **kwargs)
+            self._silent_validation(valid_exp, **kwargs)
             print(f"  Accuracy: {self.metric.result():0.2f}")
 
             if in_threshold():
                 break
             else:
                 print(
-                    f"  Stability: {stability:.2f} -> {stability*self.chf_stability_decay:.2f}")
-                stability *= self.chf_stability_decay
+                    f"  Prune Proportion: {prune:.2f} -> {prune*self.chf_stability_decay:.2f}")
+                prune *= self.chf_stability_decay
 
-            if stability < 0.05:
-                print(f"  Stability too low. Giving Up.")
-                exit(1)
 
     def _inner_train(self, experiences, eval_streams=None, **kwargs):
         super().train(experiences, eval_streams, **kwargs)
+
+    def _silent_validation(self, valid_exp, **kwargs):
+        # Use the validation set. We do not log these results because some
+        # of my metrics do not support validation sets durning training phases.
+        self.evaluator.active = False
+        self.eval(valid_exp, **kwargs)
+        self.evaluator.active = True
+
 
     def train(self,
               experiences,
@@ -197,12 +218,12 @@ class CHF_SurpriseNet(Strategy):
             experiences, self.chf_validation_split_proportion)
 
         # Use Maximal Plasticity Search to find the best learning rate
-        lr, reference_accuracy = self.maximal_plasticity_search(
+        lr, reference_accuracy = self.search_lr(
             train_exp, valid_exp, **kwargs)
         self.optimizer.param_groups[0]['lr'] = lr
 
         # Use Stability Decay Search to find the best pruning proportion
-        self.stability_decay_search(
+        self.search_tradeoff(
             train_exp, valid_exp, reference_accuracy, **kwargs)
 
         print("="*80)

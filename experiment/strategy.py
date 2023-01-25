@@ -5,6 +5,7 @@ from avalanche.training.templates import SupervisedTemplate
 from avalanche.training import Cumulative
 from torch import Tensor, nn
 import torch
+from collections import defaultdict
 
 @dataclass
 class ForwardOutput():
@@ -74,6 +75,11 @@ class Strategy(SupervisedTemplate):
     @property
     def step(self) -> int:
         return self.clock.train_iterations
+
+
+    def reset_optimizer(self):
+        """Reset the optimizer"""
+        self.optimizer.state = defaultdict(dict)
 
 class CumulativeTraining(Cumulative, Strategy):
     pass
