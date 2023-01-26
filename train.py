@@ -150,9 +150,7 @@ class Experiment(BaseExperiment):
         if cfg.embedding_module == "ResNet18":
             print("! Using ResNet18 as embedding module")
             strategy.batch_transform = r18_extractor().to(cfg.device)
-        if cfg.embedding_module == "None":
-            pass
-        else:
+        elif cfg.embedding_module != "None":
             raise NotImplementedError("Unknown embedding module")
         
         return strategy
