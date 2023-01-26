@@ -21,7 +21,7 @@ from anomaly detection to gain cross-task knowledge without replay.
 ## Usage
 
 The CLI follows the following basic structure:
-```
+```sh
 python cli.py [OPTIONS] LABEL SCENARIO {AE|VAE} STRATEGY
 ```
 - `OPTIONS` - Override default configurations. Set seed etc
@@ -31,9 +31,14 @@ but is only meaningful to you.
 - `AE|VAE` - Choose between an autoencoder or variational autoencoder
 - `STRATEGY` - Choose a continual learning strategy, where `surpriseNet` is our approach
 
+Ensure you setup the `DATASETS` environment variable:
+```sh
+export DATASETS=/path/to/datasets
+```
+
 
 For full details run:
-```
+```sh
 python cli.py --help
 ```
 
@@ -78,7 +83,12 @@ python cli.py myExperiment S-CORe50 AE replay -m 1000
 
 Equal prune:
 ```
-python cli.py myExperiment S-CIFAR100 AE equal-prune -p 0.5
+python cli.py myExperiment S-CIFAR100 AE surprise-net --equal-prune
+```
+
+Continual hyper-parameter framework (slow):
+```
+python cli.py myExperiment SE-CIFAR100 VAE surprise-net --chf
 ```
 
 ## Areas of interest

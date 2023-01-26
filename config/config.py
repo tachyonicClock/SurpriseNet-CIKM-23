@@ -1,6 +1,7 @@
 import copy
 import json
 import typing as t
+import os
 
 class ExpConfig():
 
@@ -30,7 +31,7 @@ class ExpConfig():
         """Short code to select the dataset e.g CIFAR10"""
         self.scenario_name: str
         """Short code to select the correct scenario e.g S-FMNIST"""
-        self.dataset_root: str = "/Scratch/al183/datasets"
+        self.dataset_root: t.Optional[str] = os.environ.get("DATASETS", None)
         """Where datasets should be accessed from or downloaded to"""
         self.fixed_class_order: t.Optional[t.List[int]] = None
         """A fixed class order to use for the scenario. Randomized if None"""
@@ -127,6 +128,11 @@ class ExpConfig():
         """Threshold for acceptable accuracy drop"""
         self.chf_stability_decay = 0.9
         """How quickly the stability decays during stability decay search"""
+        
+
+        if self.dataset_root is None:
+            print("Please specify the dataset root using the DATASETS environment variable")
+            exit(1)
 
     def toJSON(self):
         return json.dumps(self.__dict__, indent=4)
