@@ -95,6 +95,8 @@ class TrainCommand(click.Group):
 @click.option("--log-mini-batches", type=bool, default=False, is_flag=True,
     help="Log each mini-batches"
 )
+@click.option("--no-reconstruction", is_flag=True, default=False,
+    help="Set reconstruction loss to zero")
 @click.argument("label", type=str)
 @click.argument("scenario", type=click.Choice(SCENARIOS.keys()), required=True)
 @click.argument("architecture", type=click.Choice(ARCHITECTURES.keys()), required=True)
@@ -108,6 +110,7 @@ def cli(ctx,
         lr: t.Optional[float], 
         latent_dim: t.Optional[int],
         log_mini_batches: bool,
+        no_reconstruction: bool,
         repeat: int,
         seed: t.Optional[int]):
     # Start building an experiment configuation
@@ -141,6 +144,8 @@ def cli(ctx,
     # Override the default learning rate if given
     if lr is not None:
         cfg.learning_rate = lr
+    if no_reconstruction:
+        cfg.reconstruction_loss_weight = None
     
     ctx.obj = cfg
 
