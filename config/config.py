@@ -124,7 +124,7 @@ class ExpConfig():
         """What fraction of the experience should be used for validation"""
         self.chf_lr_grid = [0.00005, 0.0001, 0.0005, 0.001]
         """Learning rate grid to search over during maximal plasticity search"""
-        self.chf_accuracy_drop_threshold = 0.2
+        self.chf_accuracy_drop_threshold = 0.1
         """Threshold for acceptable accuracy drop"""
         self.chf_stability_decay = 0.9
         """How quickly the stability decays during stability decay search"""
