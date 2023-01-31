@@ -71,11 +71,13 @@ class TaskReconstruction(TaskInferenceStrategy):
         loss_by_layer = torch.zeros((self.n_experiences, x.shape[0]))
 
         model = self.experiment.strategy.model
-        sample_size = 1
         assert isinstance(
             model, PackNet), "Task inference only works on PackNet"
         model.use_task_subset(0)
 
+        # Originally we planned to use multiple samples for the VAE, but it
+        # seems that a single sample is okay
+        sample_size = 1
         best_loss, best_out = sample(forward_func, x, sample_size)
         loss_by_layer[0, :] = best_loss
         best_out.pred_exp_id = torch.zeros(
@@ -108,8 +110,6 @@ def bce_task_inference_loss(input: Tensor, target: Tensor) -> Tensor:
     return F.mse_loss(input, target)
 
 
-# TODO this is not the final sampling logic and needs work. We should
-# probably use the mean
 @torch.no_grad()
 def sample(
         forward_func: t.Callable[[Tensor], ForwardOutput],
