@@ -32,6 +32,7 @@ class BaseExperiment():
 
     def __init__(self, cfg: ExpConfig) -> None:
         super().__init__()
+        self.plugins: t.List[BasePlugin] = []
         self.strategy: Strategy
         self.network:  nn.Module
         self.logger:   av.logging.TensorboardLogger
@@ -42,13 +43,12 @@ class BaseExperiment():
         self.plugins: t.List[BasePlugin]
         self.strategy_type: t.Type[SupervisedPlugin]
         self.cfg: ExpConfig
-
         self.strategy_type = Strategy 
-
         self.cfg = cfg
+
+        os.makedirs(self.cfg.tensorboard_dir, exist_ok=True)
         self.label = f"{max(self._get_log_numbers())+1:04d}_{self.cfg.name}"
-        self.plugins = []
-        setproctitle(self.label)
+        setproctitle(os.getlogin() + "::" + self.label)
 
         # Create a new logger with sequential names
         self.logdir = self.cfg.tensorboard_dir+"/"+self.label
