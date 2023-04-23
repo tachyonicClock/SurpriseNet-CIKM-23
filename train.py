@@ -8,7 +8,7 @@ from experiment.loss import BCEReconstructionLoss, MSEReconstructionLoss, Multip
 from network.networks import construct_network
 from packnet.plugin import PackNetPlugin
 from packnet.task_inference import TaskInferenceStrategy, TaskReconstruction, UseTaskOracle
-from experiment.scenario import scenario
+from experiment.scenario import split_scenario, gaussian_schedule_scenario
 from experiment.strategy import Strategy, CumulativeTraining
 from experiment.chf import CHF_SurpriseNet
 from torch import nn
@@ -25,12 +25,21 @@ class Experiment(BaseExperiment):
 
     def make_scenario(self) -> cl.benchmarks.NCScenario:
         """Create a scenario from the config"""
-        return scenario(
-            self.cfg.dataset_name,
-            self.cfg.dataset_root,
-            self.cfg.n_experiences,
-            self.cfg.fixed_class_order,
-            self.cfg.normalize)
+
+        if self.cfg.task_free:
+            return gaussian_schedule_scenario(
+                self.cfg.dataset_root,
+                self.cfg.dataset_name,
+                self.cfg.task_free_microtask_size,
+                self.cfg.normalize,
+            )
+        else:
+            return split_scenario(
+                self.cfg.dataset_name,
+                self.cfg.dataset_root,
+                self.cfg.n_experiences,
+                self.cfg.fixed_class_order,
+                self.cfg.normalize)
 
     def make_task_inference_strategy(self) -> TaskInferenceStrategy:
         return TASK_INFERENCE_STRATEGIES[self.cfg.task_inference_strategy](self)

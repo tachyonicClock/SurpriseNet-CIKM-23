@@ -50,6 +50,13 @@ class ExpConfig():
         they are reconstructed using BCE loss, which expects data scaled to
         between 0 and 1.
         """
+        self.task_free = False
+        """Should a task-free scenario be used?"""
+        self.task_free_microtask_size: int = None
+        """If the scenario is task-free, what should the size of the microtasks
+        be?"""
+        self.test_every: int = 1
+        self.final_class_order: t.List[t.List[int]] = None
 
         # LOSS
         self.classifier_loss_weight: t.Optional[float] = 1.0
@@ -248,6 +255,23 @@ class ExpConfig():
         self.total_task_epochs = 10
         return self
 
+    def scenario_gaussian_schedule_fmnist(self: 'ExpConfig') -> 'ExpConfig':
+        """Configure the experiment for the Fashion-MNIST dataset with a Gaussian schedule"""
+        self._network_cnn()
+        self.learning_rate = 0.01
+        self.task_free = True
+        self.dataset_name = "FMNIST"
+        self.input_shape = (1, 32, 32)
+        self.is_image_data = True
+        self.latent_dims = 64
+        self.n_classes = 10
+    
+        self.task_free_microtask_size = 64
+        self.n_experiences = 200 # Can't be changed
+        self.test_every = 20
+        self.retrain_epochs = 0
+        self.total_task_epochs = 1
+        return self
 
     def arch_autoencoder(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to use an AutoEncoder"""

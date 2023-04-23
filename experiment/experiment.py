@@ -68,7 +68,7 @@ class BaseExperiment():
 
     def _experience_log(self, exp: av.benchmarks.NCExperience):
         print(f"Start of experience: {exp.current_experience}")
-        print(f"Current Classes:     {exp.classes_in_this_experience}")
+        print(f"Current Classes:     {set(map(int, exp.classes_in_this_experience))}")
         print(f"Experience size:     {len(exp.dataset)}")
 
     def train_experience(self, experience: av.benchmarks.NCExperience):
@@ -77,11 +77,17 @@ class BaseExperiment():
     def train(self):
         self.preflight()
         results = []
-        for exp in self.scenario.train_stream:
+        for i, exp in enumerate(self.scenario.train_stream):
             self._experience_log(exp)
             self.train_experience(exp)
             test_subset = self.scenario.test_stream
-            results.append(self.strategy.eval(test_subset))
+
+            if i > 0 and i % self.cfg.test_every == 0 \
+                    or i == len(self.scenario.train_stream)-1:
+                print("Testing")
+                results.append(self.strategy.eval(test_subset))
+
+
         self.logger.writer.flush()
         return results
 
@@ -119,7 +125,7 @@ class BaseExperiment():
             plugins.append(forgetting_metrics(experience=True, stream=True))
 
         for name, objective in self.objective:
-            plugins.append(LossObjectiveMetric(name, objective))
+            plugins.append(LossObjectiveMetric(name, objective, on_iteration=self.cfg.log_mini_batch))
             plugins.append(EvalLossObjectiveMetric(name, objective))
 
         return EvaluationPlugin(
@@ -146,6 +152,15 @@ class BaseExperiment():
         print("-"*80)
         count_parameters(self.network)
         print("-"*80)
+
+        # Save the class composition of each experience
+        assert self.cfg.final_class_order is None, \
+            "Final class order should be left to None, it is set automatically"
+        self.cfg.final_class_order = []
+        for task_classes in self.scenario.classes_in_experience["train"]:
+            task_classes = list(set(map(int, task_classes)))
+            self.cfg.final_class_order.append(task_classes)
+
         print()
         self.dump_config()
 

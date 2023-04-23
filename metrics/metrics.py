@@ -172,25 +172,31 @@ class LossObjectiveMetric(_MyMetric):
     n_samples: int
     loss_sum: float
 
-    def __init__(self, name: str, loss_part: LossObjective):
+    def __init__(self, name: str, loss_part: LossObjective, on_iteration: bool = False):
         super().__init__()
         self.loss_part = loss_part
         self.name = name
         self.reset()
+        self.on_iteration = on_iteration
 
     def after_training_iteration(self, strategy: Strategy) -> "MetricResult":
         self.loss_sum += float(self.loss_part.loss)
         self.n_samples += 1
+        step = strategy.clock.train_iterations
+
+        if self.on_iteration:
+            return MetricValue(self, f"TrainLossPartsMB/{self.name}", float(self.loss_part.loss), step)
 
     def reset(self):
         self.n_samples = 0.0
         self.loss_sum = 0.0
 
     def result(self):
-        return self.loss_sum/self.n_samples
+        return self.loss_sum/self.n_samples        
+
 
     def after_training_epoch(self, strategy: Strategy) -> "MetricResult":
-        step = strategy.clock.total_iterations
+        step = strategy.clock.train_iterations
         value = self.result()
         self.reset()
         return MetricValue(self, f"TrainLossPart/{self.name}", value, step)
