@@ -8,7 +8,7 @@ from avalanche.benchmarks.scenarios.new_classes import NCExperience
 from avalanche.evaluation.metrics.accuracy import StreamAccuracy
 
 from experiment.strategy import Strategy
-from packnet.plugin import PackNetPlugin
+from surprisenet.plugin import PackNetPlugin
 
 
 def _split_experience(experience: NCExperience, split_proportion: float) \

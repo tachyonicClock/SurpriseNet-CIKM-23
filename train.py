@@ -6,14 +6,14 @@ import avalanche.training.plugins as cl_plugins
 
 from experiment.loss import BCEReconstructionLoss, MSEReconstructionLoss, MultipleObjectiveLoss, ClassifierLoss, VAELoss
 from network.networks import construct_network
-from packnet.plugin import PackNetPlugin
-from packnet.task_inference import TaskInferenceStrategy, TaskReconstruction, UseTaskOracle
+from surprisenet.plugin import PackNetPlugin
+from surprisenet.task_inference import TaskInferenceStrategy, TaskReconstruction, UseTaskOracle
 from experiment.scenario import split_scenario, gaussian_schedule_scenario
 from experiment.strategy import Strategy, CumulativeTraining
 from experiment.chf import CHF_SurpriseNet
 from torch import nn
 
-import packnet.packnet as pn
+import surprisenet.packnet as pn
 
 TASK_INFERENCE_STRATEGIES = {
     "task_reconstruction_loss": TaskReconstruction,

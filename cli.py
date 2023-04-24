@@ -5,7 +5,7 @@ import os
 import torch
 import random
 import numpy as np
-from packnet.plugin import equal_capacity_prune_schedule
+from surprisenet.plugin import equal_capacity_prune_schedule
 from train import Experiment
 from config.config import ExpConfig
 
