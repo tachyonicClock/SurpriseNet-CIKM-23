@@ -425,7 +425,7 @@ class _PackNetParent(PackNet, nn.Module):
         self._pn_apply(lambda x: x.unfreeze_all())
 
 
-class PackNetAutoEncoder(InferTask, AutoEncoder, _PackNetParent):
+class SurpriseNetAutoEncoder(InferTask, AutoEncoder, _PackNetParent):
     """
     A wrapper for AutoEncoder adding the InferTask trait and PackNet
     functionality
@@ -451,7 +451,7 @@ class PackNetAutoEncoder(InferTask, AutoEncoder, _PackNetParent):
         return self.multi_forward(x).y_hat
 
 
-class PackNetVariationalAutoEncoder(InferTask, VariationalAutoEncoder, _PackNetParent, ConditionedSample):
+class SurpriseNetVariationalAutoEncoder(InferTask, VariationalAutoEncoder, _PackNetParent, ConditionedSample):
     """
     A wrapper for VariationalAutoEncoder adding the InferTask trait and PackNet
     functionality.

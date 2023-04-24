@@ -3,9 +3,7 @@ from avalanche.core import SupervisedPlugin
 from torch import nn
 import numpy as np
 from click import secho
-import collections
 
-from experiment.experiment import BaseExperiment
 
 
 def equal_capacity_prune_schedule(n_experiences: int) -> t.List[float]:
@@ -22,8 +20,9 @@ def equal_capacity_prune_schedule(n_experiences: int) -> t.List[float]:
         schedule.append((n_experiences-1-i)/(n_experiences-i))
     return schedule
 
-class PackNetPlugin(SupervisedPlugin):
-    """Plugin that calls PackNet functionality during training"""
+
+class SurpriseNetPlugin(SupervisedPlugin):
+    """Plugin that calls SurpriseNet and PackNet functionality during training"""
 
     def __init__(
             self,
@@ -62,7 +61,6 @@ class PackNetPlugin(SupervisedPlugin):
         network.prune(prune_proportion)
         # The network has changed, so the optimizer state is invalid
         strategy.reset_optimizer()
-
 
         # Retrain post prune
         for _ in range(self.post_prune_epochs):

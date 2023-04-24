@@ -6,7 +6,7 @@ import avalanche.training.plugins as cl_plugins
 
 from experiment.loss import BCEReconstructionLoss, MSEReconstructionLoss, MultipleObjectiveLoss, ClassifierLoss, VAELoss
 from network.networks import construct_network
-from surprisenet.plugin import PackNetPlugin
+from surprisenet.plugin import SurpriseNetPlugin
 from surprisenet.task_inference import TaskInferenceStrategy, TaskReconstruction, UseTaskOracle
 from experiment.scenario import split_scenario, gaussian_schedule_scenario
 from experiment.strategy import Strategy, CumulativeTraining
@@ -51,18 +51,18 @@ class Experiment(BaseExperiment):
         if self.cfg.use_packnet:
             # Wrap network in packnet
             if self.cfg.architecture == "VAE":
-                network = pn.PackNetVariationalAutoEncoder(
+                network = pn.SurpriseNetVariationalAutoEncoder(
                     network,
                     self.make_task_inference_strategy()
                 )
             elif self.cfg.architecture == "AE":
-                network = pn.PackNetAutoEncoder(
+                network = pn.SurpriseNetAutoEncoder(
                     network,
                     self.make_task_inference_strategy()
                 )
 
             self.plugins.append(
-                PackNetPlugin(self.cfg.prune_proportion, self.cfg.retrain_epochs)
+                SurpriseNetPlugin(self.cfg.prune_proportion, self.cfg.retrain_epochs)
             )
         return network
 

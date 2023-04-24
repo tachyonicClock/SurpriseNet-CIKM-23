@@ -8,7 +8,7 @@ from avalanche.benchmarks.scenarios.new_classes import NCExperience
 from avalanche.evaluation.metrics.accuracy import StreamAccuracy
 
 from experiment.strategy import Strategy
-from surprisenet.plugin import PackNetPlugin
+from surprisenet.plugin import SurpriseNetPlugin
 
 
 def _split_experience(experience: NCExperience, split_proportion: float) \
@@ -77,13 +77,13 @@ class CHF_SurpriseNet(Strategy):
         """Threshold for acceptable accuracy drop"""
         self.chf_stability_decay: float
         """How quickly the stability decays during stability decay search"""
-        self.pack_net_plugin: PackNetPlugin
+        self.pack_net_plugin: SurpriseNetPlugin
         """The PackNet plugin used to learn continually"""
         self.metric = StreamAccuracy()
         """The metric used to evaluate the model during CHF"""
 
         for plugin in self.plugins:
-            if isinstance(plugin, PackNetPlugin):
+            if isinstance(plugin, SurpriseNetPlugin):
                 self.pack_net_plugin = plugin
         assert self.pack_net_plugin is not None, \
             "PackNetPlugin is required for SurpriseNetWithCHF"
