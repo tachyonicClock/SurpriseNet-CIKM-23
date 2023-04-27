@@ -4,14 +4,13 @@ import typing as t
 import numpy as np
 import torch
 from avalanche.evaluation import PluginMetric
-from avalanche.evaluation.metric_results import MetricValue, MetricResult
+from avalanche.evaluation.metric_results import MetricResult, MetricValue
 from experiment.loss import LossObjective
 from experiment.strategy import Strategy
 from matplotlib import pyplot as plt
+from network.trait import PackNet
 from torch import Tensor
 from torchmetrics import ConfusionMatrix
-
-from network.trait import PackNet
 
 from .reconstructions import figure_to_image
 
@@ -69,7 +68,8 @@ class ExperienceIdentificationCM(_MyMetric):
         print("ExperienceIdentificationCM")
 
     def update(self, predictions: Tensor, target: int):
-        self.cm.update(predictions.cpu(), torch.ones((predictions.shape)).int() * target)
+        self.cm.update(predictions.cpu(), torch.ones(
+            (predictions.shape)).int() * target)
 
     def result(self):
         cm = self.cm.compute()
@@ -94,6 +94,7 @@ class ExperienceIdentificationCM(_MyMetric):
     def after_eval(self, strategy: Strategy):
         return MetricValue(self, f"ExperienceIdentificationCM", self.result(), strategy.clock.total_iterations)
 
+
 class SubsetRecognition(_MyMetric):
 
     def __init__(self, n_classes: int) -> None:
@@ -109,7 +110,8 @@ class SubsetRecognition(_MyMetric):
         # Add counts
         for i in range(self.cm.shape[0]):
             for j in range(self.cm.shape[1]):
-                ax.text(j, i, f"{int(self.cm[i, j])}", ha="center", va="center", color="orange")
+                ax.text(j, i, f"{int(self.cm[i, j])}",
+                        ha="center", va="center", color="orange")
         return figure_to_image(fig)
 
     def reset(self):
@@ -229,8 +231,7 @@ class LossObjectiveMetric(_MyMetric):
         self.loss_sum = 0.0
 
     def result(self):
-        return self.loss_sum/self.n_samples        
-
+        return self.loss_sum/self.n_samples
 
     def after_training_epoch(self, strategy: Strategy) -> "MetricResult":
         step = strategy.clock.train_iterations

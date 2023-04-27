@@ -1,11 +1,12 @@
 
+from collections import defaultdict
 from dataclasses import dataclass
 
-from avalanche.training.templates import SupervisedTemplate
-from avalanche.training import Cumulative
-from torch import Tensor, nn
 import torch
-from collections import defaultdict
+from avalanche.training import Cumulative
+from avalanche.training.templates import SupervisedTemplate
+from torch import Tensor, nn
+
 
 @dataclass
 class ForwardOutput():
@@ -59,21 +60,21 @@ class Strategy(SupervisedTemplate):
         with torch.no_grad():
             self.mbatch[0] = self.batch_transform(self.mb_x)
 
-        self.last_forward_output: ForwardOutput = self.model.multi_forward(self.mbatch[0])
+        self.last_forward_output: ForwardOutput = self.model.multi_forward(
+            self.mbatch[0])
         self.last_forward_output.x = self.mb_x
         self.last_forward_output.y = self.mb_y
 
         return self.last_forward_output.y_hat
 
-
     @property
     def step(self) -> int:
         return self.clock.train_iterations
 
-
     def reset_optimizer(self):
         """Reset the optimizer"""
         self.optimizer.state = defaultdict(dict)
+
 
 class CumulativeTraining(Cumulative, Strategy):
     pass

@@ -8,8 +8,7 @@ from avalanche.benchmarks.classic import (SplitCIFAR10, SplitCIFAR100,
 from avalanche.benchmarks.datasets import CORe50Dataset
 from torch import Tensor
 from torch.utils import data
-
-from torchvision.datasets import FashionMNIST, MNIST
+from torchvision.datasets import MNIST, FashionMNIST
 
 from experiment.gaussian_schedule import gaussian_schedule_dataset
 
@@ -74,7 +73,6 @@ TRAIN_TRANSFORMS = {
         T.ToTensor(),
     ])
 }
-
 
 
 def split_scenario(

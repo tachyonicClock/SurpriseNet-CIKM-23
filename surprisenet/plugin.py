@@ -1,9 +1,9 @@
 import typing as t
-from avalanche.core import SupervisedPlugin
-from torch import nn
-import numpy as np
-from click import secho
 
+import numpy as np
+from avalanche.core import SupervisedPlugin
+from click import secho
+from torch import nn
 
 
 def equal_capacity_prune_schedule(n_experiences: int) -> t.List[float]:
@@ -56,8 +56,9 @@ class SurpriseNetPlugin(SupervisedPlugin):
             raise ValueError("prune_schedule must be a float or a list")
 
         self.capacity *= prune_proportion
-        
-        secho(f"Pruning {prune_proportion*100:0.1f}% reclaiming {self.capacity*100:0.1f}% capacity", fg="green")
+
+        secho(
+            f"Pruning {prune_proportion*100:0.1f}% reclaiming {self.capacity*100:0.1f}% capacity", fg="green")
         network.prune(prune_proportion)
         # The network has changed, so the optimizer state is invalid
         strategy.reset_optimizer()
@@ -72,4 +73,3 @@ class SurpriseNetPlugin(SupervisedPlugin):
         network.push_pruned()
         # The network has changed, so the optimizer state is invalid
         strategy.reset_optimizer()
-

@@ -2,7 +2,6 @@ import os
 import typing as t
 
 import avalanche as av
-from setproctitle import setproctitle
 import torch
 from avalanche.core import BasePlugin, SupervisedPlugin
 from avalanche.evaluation.metrics import (accuracy_metrics,
@@ -10,25 +9,48 @@ from avalanche.evaluation.metrics import (accuracy_metrics,
                                           forgetting_metrics, loss_metrics)
 from avalanche.training.plugins import EvaluationPlugin
 from config.config import ExpConfig
-from experiment.util import count_parameters
 from metrics.metrics import (ConditionalMetrics, EpochClock,
                              EvalLossObjectiveMetric,
-                             ExperienceIdentificationCM, LossObjectiveMetric, SubsetRecognition)
+                             ExperienceIdentificationCM, LossObjectiveMetric,
+                             SubsetRecognition)
 from metrics.reconstructions import GenerateReconstruction, GenerateSamples
 from network.trait import (NETWORK_TRAITS, AutoEncoder, Classifier,
                            ConditionedSample, InferTask, Samplable)
+from setproctitle import setproctitle
 from torch import Tensor, nn
 from torch.utils.tensorboard.summary import hparams
 
 from experiment.loss import MultipleObjectiveLoss
 from experiment.strategy import ForwardOutput, Strategy
 
+def count_parameters(model, verbose=True):
+    '''
+    Count number of parameters, print to screen.
+
+    This snippet is taken from https://github.com/GMvandeVen/brain-inspired-replay
+    '''
+    total_params = learnable_params = fixed_params = 0
+    for param in model.parameters():
+        n_params = index_dims = 0
+        for dim in param.size():
+            n_params = dim if index_dims == 0 else n_params*dim
+            index_dims += 1
+        total_params += n_params
+        if param.requires_grad:
+            learnable_params += n_params
+        else:
+            fixed_params += n_params
+    if verbose:
+        print("--> this network has {} parameters (~{} million)"
+              .format(total_params, round(total_params / 1000000, 1)))
+    return total_params, learnable_params, fixed_params
+
+
 
 class BaseExperiment():
     """
     Py-lightning inspired for continual learning with avalanche
     """
-
 
     def __init__(self, cfg: ExpConfig) -> None:
         super().__init__()
@@ -43,7 +65,7 @@ class BaseExperiment():
         self.plugins: t.List[BasePlugin]
         self.strategy_type: t.Type[SupervisedPlugin]
         self.cfg: ExpConfig
-        self.strategy_type = Strategy 
+        self.strategy_type = Strategy
         self.cfg = cfg
 
         os.makedirs(self.cfg.tensorboard_dir, exist_ok=True)
@@ -68,7 +90,8 @@ class BaseExperiment():
 
     def _experience_log(self, exp: av.benchmarks.NCExperience):
         print(f"Start of experience: {exp.current_experience}")
-        print(f"Current Classes:     {set(map(int, exp.classes_in_this_experience))}")
+        print(
+            f"Current Classes:     {set(map(int, exp.classes_in_this_experience))}")
         print(f"Experience size:     {len(exp.dataset)}")
 
     def train_experience(self, experience: av.benchmarks.NCExperience):
@@ -86,7 +109,6 @@ class BaseExperiment():
                     or i == len(self.scenario.train_stream)-1:
                 print("Testing")
                 results.append(self.strategy.eval(test_subset))
-
 
         self.logger.writer.flush()
         return results
@@ -123,11 +145,12 @@ class BaseExperiment():
             plugins.append(accuracy_metrics(epoch=True, stream=True,
                            experience=True, trained_experience=True))
             plugins.append(confusion_matrix_metrics(normalize='true',
-                num_classes=num_classes, stream=True))
+                                                    num_classes=num_classes, stream=True))
             plugins.append(forgetting_metrics(experience=True, stream=True))
 
         for name, objective in self.objective:
-            plugins.append(LossObjectiveMetric(name, objective, on_iteration=self.cfg.log_mini_batch))
+            plugins.append(LossObjectiveMetric(name, objective,
+                           on_iteration=self.cfg.log_mini_batch))
             plugins.append(EvalLossObjectiveMetric(name, objective))
 
         return EvaluationPlugin(
@@ -140,7 +163,6 @@ class BaseExperiment():
 
     def dump_config(self):
         pass
-
 
     def _save_class_order(self):
         class_order = []

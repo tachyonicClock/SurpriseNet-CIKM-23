@@ -1,10 +1,11 @@
 import numbers
-from avalanche.core import SupervisedPlugin
 import typing as t
 
+from avalanche.core import SupervisedPlugin
+from click import secho
 from experiment.loss import LossObjective
 from network.trait import PackNet
-from click import secho
+
 
 class DriftDetector(t.Protocol):
 
@@ -53,7 +54,7 @@ class ClockOracle(DriftDetector):
         # Ensure we are not triggered multiple times
         if self.task_counter == self.last_triggered:
             return False
-    
+
         if self.task_counter % self.drift_period == self.drift_period - self.warn_in_advance:
             self.last_triggered = self.task_counter
             return True
@@ -85,10 +86,10 @@ class SurpriseNetDriftHandler(DriftHandler):
         self.capacity *= self.prune_amount
         network: PackNet = strategy.model
 
-        secho(f"Pruning {self.prune_amount*100:0.1f}% reclaiming {self.capacity*100:0.1f}% capacity", fg="green")
+        secho(
+            f"Pruning {self.prune_amount*100:0.1f}% reclaiming {self.capacity*100:0.1f}% capacity", fg="green")
         network.prune(self.capacity)
         strategy.reset_optimizer()
-
 
     def on_drift(self, strategy):
         super().on_drift(strategy)
@@ -115,4 +116,3 @@ class DriftDetectorPlugin(SupervisedPlugin):
 
     def after_training_epoch(self, strategy, *args, **kwargs):
         self.after_training_iteration(strategy, *args, **kwargs)
-

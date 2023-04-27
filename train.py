@@ -1,20 +1,25 @@
-import torch
-from network.feature_extractor import r18_extractor
-from experiment.experiment import BaseExperiment
 import avalanche as cl
 import avalanche.training.plugins as cl_plugins
-
-from experiment.loss import BCEReconstructionLoss, ClassifierLossMasked, LossObjective, MSEReconstructionLoss, MultipleObjectiveLoss, ClassifierLoss, VAELoss
-from network.networks import construct_network
-from surprisenet.drift_detection import ClockOracle, DriftDetector, DriftDetectorPlugin, SurpriseNetDriftHandler
-from surprisenet.plugin import SurpriseNetPlugin
-from surprisenet.task_inference import TaskInferenceStrategy, TaskReconstruction, UseTaskOracle
-from experiment.scenario import split_scenario, gaussian_schedule_scenario
-from experiment.strategy import Strategy, CumulativeTraining
-from experiment.chf import CHF_SurpriseNet
+import torch
 from torch import nn
 
 import surprisenet.packnet as pn
+from experiment.chf import CHF_SurpriseNet
+from experiment.experiment import BaseExperiment
+from experiment.loss import (BCEReconstructionLoss, ClassifierLoss,
+                             ClassifierLossMasked, LossObjective,
+                             MSEReconstructionLoss, MultipleObjectiveLoss,
+                             VAELoss)
+from experiment.scenario import gaussian_schedule_scenario, split_scenario
+from experiment.strategy import CumulativeTraining, Strategy
+from network.feature_extractor import r18_extractor
+from network.networks import construct_network
+from surprisenet.drift_detection import (ClockOracle, DriftDetector,
+                                         DriftDetectorPlugin,
+                                         SurpriseNetDriftHandler)
+from surprisenet.plugin import SurpriseNetPlugin
+from surprisenet.task_inference import (TaskInferenceStrategy,
+                                        TaskReconstruction, UseTaskOracle)
 
 TASK_INFERENCE_STRATEGIES = {
     "task_reconstruction_loss": TaskReconstruction,
@@ -46,7 +51,6 @@ class Experiment(BaseExperiment):
 
     def make_task_inference_strategy(self) -> TaskInferenceStrategy:
         return TASK_INFERENCE_STRATEGIES[self.cfg.task_inference_strategy](self)
-
 
     def make_drift_detection_plugin(self) -> DriftDetectorPlugin:
 
@@ -96,7 +100,8 @@ class Experiment(BaseExperiment):
             )
         else:
             self.plugins.append(
-                SurpriseNetPlugin(self.cfg.prune_proportion, self.cfg.retrain_epochs)
+                SurpriseNetPlugin(self.cfg.prune_proportion,
+                                  self.cfg.retrain_epochs)
             )
         return network
 
@@ -203,9 +208,8 @@ class Experiment(BaseExperiment):
             strategy.batch_transform = r18_extractor().to(cfg.device)
         elif cfg.embedding_module != "None":
             raise NotImplementedError("Unknown embedding module")
-        
-        return strategy
 
+        return strategy
 
     def dump_config(self):
         with open(f"{self.logdir}/config.json", "w") as f:

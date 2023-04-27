@@ -1,7 +1,8 @@
 import copy
 import json
-import typing as t
 import os
+import typing as t
+
 
 class ExpConfig():
 
@@ -25,9 +26,9 @@ class ExpConfig():
         that the experiment is reproducible. This will be marked as dirty
         if there are uncommitted changes.
         """
-        
+
         # SCENARIO
-        self.dataset_name: str 
+        self.dataset_name: str
         """Short code to select the dataset e.g CIFAR10"""
         self.scenario_name: str
         """Short code to select the correct scenario e.g S-FMNIST"""
@@ -51,7 +52,6 @@ class ExpConfig():
         between 0 and 1.
         """
 
-
         # GAUSSIAN SCHEDULE
         self.task_free = False
         """Should a task-free scenario be used?"""
@@ -70,7 +70,6 @@ class ExpConfig():
         self.task_free_drift_detector_kwargs: t.Optional[t.Dict[str, t.Any]] = None
         """If the scenario is task-free, what kwargs should be passed to the
         drift detector?"""
-
 
         # LOSS
         self.classifier_loss_weight: t.Optional[float] = 1.0
@@ -92,13 +91,13 @@ class ExpConfig():
         """Type of auto-encoder to use"""
         self.network_style: t.Literal["vanilla_cnn", "residual", "mlp"]
         """Type of network to be used"""
-        self.embedding_module: t.Literal["None", "ResNet50", "SmallResNet18", "ResNet18"] = "None"
+        self.embedding_module: t.Literal["None",
+                                         "ResNet50", "SmallResNet18", "ResNet18"] = "None"
         """Optionally configure the experiment to embed the dataset"""
         self.network_cfg: t.Dict[str, t.Any] = {}
         """Other network configuration options"""
         self.pretrained_root: t.Optional[str] = "pretrained"
         """Where to store and retrieve pretrained models from"""
-
 
         # TRAINING
         self.total_task_epochs: int
@@ -151,20 +150,19 @@ class ExpConfig():
         self.chf_stability_decay = 0.9
         """How quickly the stability decays during stability decay search"""
 
-
         self.optimizer: t.Literal["Adam", "SGD"] = "Adam"
-        
 
         if self.dataset_root is None:
-            print("Please specify the dataset root using the DATASETS environment variable")
+            print(
+                "Please specify the dataset root using the DATASETS environment variable")
             exit(1)
 
     def toJSON(self):
         return json.dumps(self.__dict__, indent=4)
 
-    # 
+    #
     # Networks
-    # 
+    #
 
     def _network_cnn(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to use a vanilla CNN"""
@@ -183,9 +181,9 @@ class ExpConfig():
         self.network_style = "residual"
         return self
 
-    # 
+    #
     # Scenarios
-    # 
+    #
 
     def scenario_fmnist(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment for the Fashion-MNIST dataset"""
@@ -292,7 +290,6 @@ class ExpConfig():
         self.task_free_instances_in_task = self.batch_size * 10
         self.task_free_width = 1/20
 
-
         self.test_every = self.n_experiences/self.n_classes
         self.retrain_epochs = 0
         self.total_task_epochs = 1
@@ -326,7 +323,7 @@ class ExpConfig():
         self.use_packnet = True
         self.task_inference_strategy = "task_oracle"
         return self
-    
+
     def strategy_ci_packnet(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to use CI-PackNet"""
         self.use_packnet = True
@@ -337,7 +334,7 @@ class ExpConfig():
         """Configure the experiment to not do any continual learning"""
         self.n_experiences = 1
         return self
-    
+
     def strategy_replay(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to use replay"""
         self.use_experience_replay = True

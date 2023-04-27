@@ -1,13 +1,15 @@
+import os
+import random
 import typing as t
+
 import click
 import git
-import os
-import torch
-import random
 import numpy as np
+import torch
+
+from config.config import ExpConfig
 from surprisenet.plugin import equal_capacity_prune_schedule
 from train import Experiment
-from config.config import ExpConfig
 
 
 def get_experiment_name(repo_hash, experiment, scenario, architecture, strategy):
@@ -38,11 +40,12 @@ def run(cfg: ExpConfig):
     experiment = Experiment(cfg)
     experiment.train()
 
+
 class TrainCommand(click.Group):
     def invoke(self, ctx):
         n = ctx.params['repeat']
         seed = ctx.params['seed'] or torch.initial_seed()
-        
+
         if n == 1:
             super().invoke(ctx)
         else:
@@ -50,20 +53,19 @@ class TrainCommand(click.Group):
             # singletons, global variables, etc. I don't know why this is
             # necessary. I don't think it is an issue with avalanche-cli but
             # rather with avalanche itself, at least for some of the
-            # strategies. 
+            # strategies.
             for i in range(n):
                 click.secho(f"Running experiment {i+1}/{n}", fg="green")
                 click.secho("="*80, fg="green")
 
-
                 if os.fork() == 0:
                     # Set seeds for all experiments
-                    seed = (seed + i) % 2**32 
+                    seed = (seed + i) % 2**32
                     click.secho(f"Setting seed to {seed}", fg="green")
                     torch.manual_seed(seed)
                     np.random.seed(seed)
                     random.seed(seed)
-                        
+
                     # Child process
                     super(TrainCommand, self).invoke(ctx)
                     break
@@ -76,39 +78,38 @@ class TrainCommand(click.Group):
                     click.secho("="*80, fg="green")
 
 
-
 @click.group(cls=TrainCommand)
 @click.option("-r", "--repeat", type=int, default=1,
-                help="Repeat the experiment N times")
+              help="Repeat the experiment N times")
 @click.option("-s", "--seed", type=int, default=None,
-                help="Seed for the random number generator")
+              help="Seed for the random number generator")
 @click.option("--ignore-dirty", is_flag=True, default=False,
               help="Do NOT abort when uncommitted changes exist")
 @click.option("--epochs", type=int, default=None,
-    help="Number of epochs to train each task on. Default varies based on the" +
-    " given scenario.")
+              help="Number of epochs to train each task on. Default varies based on the" +
+              " given scenario.")
 @click.option("-z", "--latent-dim", type=int, default=None,
-    help="Latent dimension of the autoencoder. Default varies based on the" +
-    " given scenario.")
+              help="Latent dimension of the autoencoder. Default varies based on the" +
+              " given scenario.")
 @click.option("--lr", type=float, default=None,
-    help="Learning rate. Default varies based on the" +
-    " given scenario.")
+              help="Learning rate. Default varies based on the" +
+              " given scenario.")
 @click.option("--log-mini-batches", type=bool, default=False, is_flag=True,
-    help="Log each mini-batches"
-)
+              help="Log each mini-batches"
+              )
 @click.option("--no-reconstruction", is_flag=True, default=False,
-    help="Set reconstruction loss to zero")
+              help="Set reconstruction loss to zero")
 @click.argument("label", type=str)
 @click.argument("scenario", type=click.Choice(SCENARIOS.keys()), required=True)
 @click.argument("architecture", type=click.Choice(ARCHITECTURES.keys()), required=True)
 @click.pass_context
-def cli(ctx, 
-        ignore_dirty: bool, 
-        epochs: t.Optional[int], 
-        label: str, 
-        scenario: str, 
+def cli(ctx,
+        ignore_dirty: bool,
+        epochs: t.Optional[int],
+        label: str,
+        scenario: str,
         architecture: str,
-        lr: t.Optional[float], 
+        lr: t.Optional[float],
         latent_dim: t.Optional[int],
         log_mini_batches: bool,
         no_reconstruction: bool,
@@ -147,14 +148,15 @@ def cli(ctx,
         cfg.learning_rate = lr
     if no_reconstruction:
         cfg.reconstruction_loss_weight = None
-    
+
     ctx.obj = cfg
+
 
 @cli.command()
 @click.option("-p", "--prune-proportion", type=float, default=0.5,
               help="PackNet prunes the network to this proportion each experience")
 @click.option("--equal-prune", is_flag=True, default=False,
-                help="Prune such that each task has the same number of parameters")
+              help="Prune such that each task has the same number of parameters")
 @click.pass_obj
 def packNet(cfg: ExpConfig, prune_proportion: float, equal_prune: bool):
     """Use task incremental PackNet
@@ -166,38 +168,40 @@ def packNet(cfg: ExpConfig, prune_proportion: float, equal_prune: bool):
     """
     cfg.strategy_packnet()
 
-        # Setup pruning scheme
+    # Setup pruning scheme
     if not equal_prune:
         cfg.prune_proportion = prune_proportion if prune_proportion != None else 0.5
     else:
         if prune_proportion is not None:
-            click.secho("Warning: --prune-proportion is ignored when using equal pruning", fg="yellow")
+            click.secho(
+                "Warning: --prune-proportion is ignored when using equal pruning", fg="yellow")
         cfg.prune_proportion = equal_capacity_prune_schedule(cfg.n_experiences)
 
     cfg.name = get_experiment_name(
         cfg.repo_hash, cfg.label, cfg.scenario_name, cfg.architecture, "taskOracle")
     run(cfg)
 
+
 @cli.command()
 @click.option("-p", "--prune-proportion", type=float, default=None,
-                help="PackNet prunes the network to this proportion each experience")
+              help="PackNet prunes the network to this proportion each experience")
 @click.option("--equal-prune", is_flag=True, default=False,
-                help="Prune such that each task has the same number of parameters")
+              help="Prune such that each task has the same number of parameters")
 @click.option("--chf", is_flag=True, default=False,
-                help="Whether to use the continual hyperparameter framework (Delange et al., 2021)"
-)
+              help="Whether to use the continual hyperparameter framework (Delange et al., 2021)"
+              )
 @click.option("--retrain-epochs", type=int, default=None,
-                help="Override the default number of epochs to retrain the" + 
-                "network after pruning"
-)
+              help="Override the default number of epochs to retrain the" +
+              "network after pruning"
+              )
 @click.pass_obj
 def surprise_net(
-        cfg: ExpConfig, 
-        prune_proportion: float,
-        equal_prune: bool,
-        chf: bool,
-        retrain_epochs: t.Optional[int]
-    ):
+    cfg: ExpConfig,
+    prune_proportion: float,
+    equal_prune: bool,
+    chf: bool,
+    retrain_epochs: t.Optional[int]
+):
     """SurpriseNet performs the same pruning as PackNet,
     but uses anomaly detection inspired task inference to infer task labels, 
     removing the reliance on a task oracle. Additionally it can be pruned
@@ -220,7 +224,8 @@ def surprise_net(
     elif equal_prune:
         cfg.prune_proportion = equal_capacity_prune_schedule(cfg.n_experiences)
     else:
-        click.secho("Warning: No pruning schedule specified, using default", fg="yellow")
+        click.secho(
+            "Warning: No pruning schedule specified, using default", fg="yellow")
         cfg.prune_proportion = 0.5
 
     if retrain_epochs is not None:
@@ -237,8 +242,8 @@ def surprise_net(
 
 
 @cli.command()
-@click.option("-m", "--buffer-size", type=int, default=1000, 
-    help="Size of the replay buffer")
+@click.option("-m", "--buffer-size", type=int, default=1000,
+              help="Size of the replay buffer")
 @click.pass_obj
 def replay(cfg: ExpConfig, buffer_size: int):
     """Use replay buffer strategy, where the network is trained using a 
@@ -249,6 +254,7 @@ def replay(cfg: ExpConfig, buffer_size: int):
     cfg.name = get_experiment_name(
         cfg.repo_hash, cfg.label, cfg.scenario_name, cfg.architecture, "replay")
     run(cfg)
+
 
 @cli.command()
 @click.pass_obj
@@ -261,6 +267,7 @@ def non_continual(cfg: ExpConfig):
         cfg.repo_hash, cfg.label, cfg.scenario_name, cfg.architecture, "nonContinual")
     run(cfg)
 
+
 @cli.command()
 @click.pass_obj
 def cumulative(cfg: ExpConfig):
@@ -268,6 +275,7 @@ def cumulative(cfg: ExpConfig):
     cfg.name = get_experiment_name(
         cfg.repo_hash, cfg.label, cfg.scenario_name, cfg.architecture, "cumulative")
     run(cfg)
+
 
 @cli.command()
 @click.pass_obj
@@ -279,10 +287,12 @@ def finetuning(cfg: ExpConfig):
         cfg.repo_hash, cfg.label, cfg.scenario_name, cfg.architecture, "finetuning")
     run(cfg)
 
+
 @cli.command()
 @click.pass_obj
 def dummy(cfg: ExpConfig):
     print("Dummy command")
+
 
 if __name__ == "__main__":
     cli()

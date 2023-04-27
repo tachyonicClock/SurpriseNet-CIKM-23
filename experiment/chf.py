@@ -6,9 +6,9 @@ import typing as t
 import torch
 from avalanche.benchmarks.scenarios.new_classes import NCExperience
 from avalanche.evaluation.metrics.accuracy import StreamAccuracy
+from surprisenet.plugin import SurpriseNetPlugin
 
 from experiment.strategy import Strategy
-from surprisenet.plugin import SurpriseNetPlugin
 
 
 def _split_experience(experience: NCExperience, split_proportion: float) \
@@ -102,9 +102,9 @@ class CHF_SurpriseNet(Strategy):
         self.chf_stability_decay = stability_decay
 
     def search_lr(self,
-                                  train_exp: NCExperience,
-                                  valid_exp: NCExperience,
-                                  **kwargs) -> float:
+                  train_exp: NCExperience,
+                  valid_exp: NCExperience,
+                  **kwargs) -> float:
         """ Maximal plasticity search, tries to find the best learning rate
         for the method without constraints, such as PackNet or EWC. This
         gives CHF a baseline to compare against.
@@ -125,7 +125,7 @@ class CHF_SurpriseNet(Strategy):
             self.metric.reset()
             self.model.load_state_dict(copy.deepcopy(original_model))
             self.clock.__dict__ = copy.deepcopy(original_clock)
-            self.optimizer.state = {} # Stops optimizer from remembering old state
+            self.optimizer.state = {}  # Stops optimizer from remembering old state
             self.optimizer.param_groups[0]['lr'] = lr
 
             print(f"  Testing lr: {lr}",)
@@ -152,12 +152,11 @@ class CHF_SurpriseNet(Strategy):
         print()
         return best_lr, best_acc
 
-
     def search_tradeoff(self,
-                               train_exp: NCExperience,
-                               valid_exp: NCExperience,
-                               reference_accuracy: float,
-                               **kwargs) -> float:
+                        train_exp: NCExperience,
+                        valid_exp: NCExperience,
+                        reference_accuracy: float,
+                        **kwargs) -> float:
         print(f"Starting Stability Decay Search")
         prune = self.pack_net_plugin.prune_amount
 
@@ -194,7 +193,6 @@ class CHF_SurpriseNet(Strategy):
                     f"  Prune Proportion: {prune:.2f} -> {prune*self.chf_stability_decay:.2f}")
                 prune *= self.chf_stability_decay
 
-
     def _inner_train(self, experiences, eval_streams=None, **kwargs):
         super().train(experiences, eval_streams, **kwargs)
 
@@ -204,7 +202,6 @@ class CHF_SurpriseNet(Strategy):
         self.evaluator.active = False
         self.eval(valid_exp, **kwargs)
         self.evaluator.active = True
-
 
     def train(self,
               experiences,

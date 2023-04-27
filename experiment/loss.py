@@ -7,6 +7,7 @@ from torch.nn import functional as F
 
 from experiment.strategy import ForwardOutput
 
+
 class LossObjective(ABC):
     name: str = "Untitled"
     loss: Tensor = 0.0
@@ -59,6 +60,7 @@ class BCEReconstructionLoss(LossObjective):
     def update(self, out: ForwardOutput, target: Tensor = None):
         self.loss = F.binary_cross_entropy(out.x_hat, out.x)
 
+
 class MSEReconstructionLoss(LossObjective):
     name = "MSEReconstruction"
 
@@ -67,6 +69,7 @@ class MSEReconstructionLoss(LossObjective):
 
     def update(self, out: ForwardOutput, target: Tensor = None):
         self.loss = F.mse_loss(out.x_hat, out.x)
+
 
 class ClassifierLoss(LossObjective):
     name = "Classifier"
@@ -96,9 +99,10 @@ class ClassifierLossMasked(LossObjective):
         out.y_hat = out.y_hat * batch_class_mask
         self.loss = F.cross_entropy(out.y_hat, target)
 
+
 class VAELoss(LossObjective):
     name = "VAE"
 
     def update(self, out: ForwardOutput, target: Tensor = None):
-        self.loss = torch.mean(-0.5 * torch.sum(1 + out.log_var - out.mu ** 2 - out.log_var.exp(), dim = 1), dim = 0)
-
+        self.loss = torch.mean(-0.5 * torch.sum(1 + out.log_var -
+                               out.mu ** 2 - out.log_var.exp(), dim=1), dim=0)

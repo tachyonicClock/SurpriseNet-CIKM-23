@@ -1,9 +1,11 @@
-import typing as t
-from torch.utils import data
-from avalanche.benchmarks.generators import dataset_benchmark
-import torchvision.transforms as T
 import random
+import typing as t
+
 import numpy as np
+import torchvision.transforms as T
+from avalanche.benchmarks.generators import dataset_benchmark
+from torch.utils import data
+
 
 def _schedule(class_count: int, task_count: int, width: float) -> t.Tuple[t.List[t.List[float]], t.List[t.List[int]]]:
     """
@@ -15,7 +17,8 @@ def _schedule(class_count: int, task_count: int, width: float) -> t.Tuple[t.List
         """What is the probability of a Gaussian with peak at `peak` and width `width`
         at position `position`?
         """
-        out = np.exp(- ((position/task_count - peak/task_count)**2 / (2 * (width)**2)))
+        out = np.exp(- ((position/task_count - peak/task_count)
+                     ** 2 / (2 * (width)**2)))
         return out
 
     schedule_length = task_count
@@ -24,7 +27,6 @@ def _schedule(class_count: int, task_count: int, width: float) -> t.Tuple[t.List
     # TODO: Uncomment this line to make the schedule random
     # labels = np.random.permutation(labels)
 
-
     # Each class label appears according to a Gaussian probability distribution
     # with peaks spread evenly over the schedule
     peak_every = schedule_length // class_count
@@ -32,7 +34,8 @@ def _schedule(class_count: int, task_count: int, width: float) -> t.Tuple[t.List
     micro_task_count = schedule_length
 
     label_schedule = []
-    probabilities: t.List[t.List[float]] = [[0] * micro_task_count for _ in range(class_count)]
+    probabilities: t.List[t.List[float]] = [
+        [0] * micro_task_count for _ in range(class_count)]
 
     for micro_task_i in range(0, micro_task_count):
 
@@ -49,7 +52,6 @@ def _schedule(class_count: int, task_count: int, width: float) -> t.Tuple[t.List
         label_schedule.append(lbls)
 
     return probabilities, label_schedule
-
 
 
 def _get_indices(targets: t.List[int]) -> t.Dict[int, t.List[int]]:
@@ -95,6 +97,7 @@ def _gs_indices(
 
     return micro_tasks
 
+
 def _print_stats(micro_task_indices: t.List[t.List[int]]):
 
     total_size = 0
@@ -104,11 +107,12 @@ def _print_stats(micro_task_indices: t.List[t.List[int]]):
     unique_instances = set()
     for micro_task in micro_task_indices:
         unique_instances.update(micro_task)
-    
+
     print("Gaussian Schedule Stats:")
     print(f"  Micro tasks: {len(micro_task_indices)}")
     print(f"  Total size: {total_size}")
     print(f"  Unique Instances: {len(unique_instances)}")
+
 
 def gaussian_schedule_dataset(
     train_targets: t.List[int],
@@ -139,9 +143,9 @@ def gaussian_schedule_dataset(
 
     class_indices = _get_indices(train_targets)
     micro_task_indices = _gs_indices(
-        class_indices, 
-        microtask_count=microtask_count, 
-        width=width, 
+        class_indices,
+        microtask_count=microtask_count,
+        width=width,
         instances_in_task=instances_in_task)
 
     if verbose:
@@ -150,7 +154,6 @@ def gaussian_schedule_dataset(
     micro_tasks = []
     for micro_task in micro_task_indices:
         micro_tasks.append(data.Subset(train_dataset, micro_task))
-    
 
     return dataset_benchmark(
         micro_tasks,

@@ -9,9 +9,10 @@ from avalanche.evaluation import PluginMetric
 from avalanche.evaluation.metric_definitions import MetricValue
 from experiment.strategy import ForwardOutput, Strategy
 from matplotlib.axes import Axes
-from network.trait import (AutoEncoder, Classifier, Samplable)
+from network.trait import AutoEncoder, Classifier, Samplable
 from PIL import Image
 from torchvision.transforms.functional import to_pil_image
+
 
 def MRAE(x_hat: torch.Tensor, x: torch.Tensor, reduce_batch=True) -> torch.Tensor:
     """Relative absolute error"""
@@ -20,6 +21,7 @@ def MRAE(x_hat: torch.Tensor, x: torch.Tensor, reduce_batch=True) -> torch.Tenso
     x_mu = x.mean()
     x_hat = x_hat.flatten(start)
     return (x_hat - x).abs().sum(dim=[start])/(x - x_mu).abs().sum()
+
 
 def figure_to_image(fig: plt.Figure) -> Image.Image:
     """Convert a Matplotlib figure to a PIL Image and return it"""
@@ -31,13 +33,16 @@ def figure_to_image(fig: plt.Figure) -> Image.Image:
 
 LabeledExample = typing.Tuple[int, torch.Tensor]
 
+
 def hide_axis(axes: Axes):
     # Hide axis
     axes.get_xaxis().set_ticks([])
     axes.get_yaxis().set_ticks([])
 
+
 def to_image(img: torch.Tensor) -> torch.Tensor:
     return to_pil_image(img.squeeze())
+
 
 class GenerateReconstruction(PluginMetric):
     examples_per_experience: int
@@ -51,7 +56,8 @@ class GenerateReconstruction(PluginMetric):
 
         while True:
             # Find each class in a monte carlo way
-            x, y, _ = experience.dataset[random.randint(len(experience.dataset))]
+            x, y, _ = experience.dataset[random.randint(
+                len(experience.dataset))]
             class_examples[y] = (x, y)
 
             # Exit when one of each class is found
@@ -63,9 +69,9 @@ class GenerateReconstruction(PluginMetric):
     def add_image(
             self,
             axes:   typing.Sequence[Axes],
-            input:  torch.Tensor, 
+            input:  torch.Tensor,
             output: torch.Tensor,
-            label:  int, 
+            label:  int,
             pred:   int,
             pred_exp: int):
 
@@ -77,7 +83,6 @@ class GenerateReconstruction(PluginMetric):
 
         for ax in axes:
             hide_axis(ax)
-    
 
         input, output = to_image(input), to_image(output)
 
@@ -114,7 +119,6 @@ class GenerateReconstruction(PluginMetric):
         model = strategy.model
         assert isinstance(model, AutoEncoder), "Network must be auto encoder"
 
-
         n_tasks = len(self.patterns)
         n_patterns_per_task = len(self.patterns[0])
 
@@ -124,7 +128,7 @@ class GenerateReconstruction(PluginMetric):
         ax.set_axis_off()
         task_figs = fig.subfigures(1, self.n_experiences)
 
-        # For each 
+        # For each
         for task_id, task_patterns in self.patterns.items():
             if self.n_experiences == 1:
                 task_fig = task_figs
@@ -136,13 +140,15 @@ class GenerateReconstruction(PluginMetric):
             # are using
             strategy.experience.current_experience = task_id
 
-            task_plots = task_fig.subplots(len(task_patterns), 2, squeeze=False)
+            task_plots = task_fig.subplots(
+                len(task_patterns), 2, squeeze=False)
             for pattern, pattern_plot in zip(task_patterns, task_plots):
                 x, y = pattern
                 x: torch.Tensor = x.to(strategy.device)
 
                 # Pass data through auto-encoder
-                out: ForwardOutput = strategy.model.multi_forward(x.unsqueeze(0))
+                out: ForwardOutput = strategy.model.multi_forward(
+                    x.unsqueeze(0))
 
                 class_prediction = "NA"
                 if out.y_hat != None:
@@ -152,10 +158,12 @@ class GenerateReconstruction(PluginMetric):
                 if out.pred_exp_id != None:
                     experience_prediction = int(out.pred_exp_id)
 
-                self.add_image(pattern_plot, x, out.x_hat, y, class_prediction, experience_prediction)
+                self.add_image(pattern_plot, x, out.x_hat, y,
+                               class_prediction, experience_prediction)
 
         x_plot = strategy.clock.train_exp_counter
-        metric = MetricValue(self, "Reconstructions", figure_to_image(fig), x_plot)
+        metric = MetricValue(self, "Reconstructions",
+                             figure_to_image(fig), x_plot)
 
         plt.close("all")
         return metric
@@ -175,11 +183,12 @@ class GenerateReconstruction(PluginMetric):
         self.n_experiences = len(scenario.test_stream)
         random.set_state(state)
 
-class GenerateSamples(PluginMetric):
-    rows: int # How may columns to generate
-    cols: int # How many rows to generate
 
-    img_size: float = 2.0 # How big each image should be matplotlib units
+class GenerateSamples(PluginMetric):
+    rows: int  # How may columns to generate
+    cols: int  # How many rows to generate
+
+    img_size: float = 2.0  # How big each image should be matplotlib units
 
     def add_image(self, axes: Axes, model: Samplable):
         # Randomly generate the latent dimension
@@ -196,7 +205,8 @@ class GenerateSamples(PluginMetric):
 
     @torch.no_grad()
     def after_eval(self, strategy: 'BaseStrategy') -> 'MetricResult':
-        assert isinstance(strategy.model, Samplable), "Network must be `Samplable`"
+        assert isinstance(
+            strategy.model, Samplable), "Network must be `Samplable`"
 
         self.device = strategy.device
         plt.ioff()
@@ -213,7 +223,8 @@ class GenerateSamples(PluginMetric):
                     ax.set_ylabel(f"Subnet {task_id}")
                 self.add_image(ax, strategy.model)
 
-        metric = MetricValue(self, "Sample", figure_to_image(fig), x_plot=strategy.clock.train_exp_counter)
+        metric = MetricValue(self, "Sample", figure_to_image(
+            fig), x_plot=strategy.clock.train_exp_counter)
         plt.close(fig)
         plt.ion()
         return metric

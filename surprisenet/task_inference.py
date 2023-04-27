@@ -1,5 +1,4 @@
 import typing as t
-from abc import ABC,  abstractmethod
 from dataclasses import fields
 
 import torch
@@ -14,7 +13,7 @@ class TaskInferenceStrategy():
     def forward_with_task_inference(self,
                                     forward_func: t.Callable[[Tensor], ForwardOutput],
                                     x: Tensor) -> ForwardOutput:
-        pass
+        raise NotImplementedError()
 
 
 class UseTaskOracle(TaskInferenceStrategy):
@@ -106,7 +105,7 @@ class TaskReconstruction(TaskInferenceStrategy):
 
 def task_inference_loss(input: Tensor, target: Tensor) -> Tensor:
     # NOTE: The reduction is done manually to allow for per-instance losses
-    return F.mse_loss(input, target, reduction='none').sum(dim=(1, 2, 3))
+    return F.mse_loss(input, target, reduction='none').mean(dim=(1, 2, 3))
 
 
 @torch.no_grad()
