@@ -7,6 +7,7 @@ from avalanche.core import BasePlugin, SupervisedPlugin
 from avalanche.evaluation.metrics import (accuracy_metrics,
                                           confusion_matrix_metrics,
                                           forgetting_metrics, loss_metrics)
+from avalanche.evaluation.metric_utils import default_cm_image_creator
 from avalanche.training.plugins import EvaluationPlugin
 from config.config import ExpConfig
 from metrics.metrics import (ConditionalMetrics, EpochClock,
@@ -18,10 +19,12 @@ from network.trait import (NETWORK_TRAITS, AutoEncoder, Classifier,
                            ConditionedSample, InferTask, Samplable)
 from setproctitle import setproctitle
 from torch import Tensor, nn
-from torch.utils.tensorboard.summary import hparams
+from functools import partial
+from matplotlib import pyplot as plt
 
 from experiment.loss import MultipleObjectiveLoss
 from experiment.strategy import ForwardOutput, Strategy
+
 
 def count_parameters(model, verbose=True):
     '''
@@ -44,7 +47,6 @@ def count_parameters(model, verbose=True):
         print("--> this network has {} parameters (~{} million)"
               .format(total_params, round(total_params / 1000000, 1)))
     return total_params, learnable_params, fixed_params
-
 
 
 class BaseExperiment():
@@ -82,32 +84,21 @@ class BaseExperiment():
         self.evaluator = self.make_evaluator(
             [self.logger], self.scenario.n_classes)
         self.optimizer = self.make_optimizer(self.network.parameters())
-
         self.strategy = self.make_strategy()
-
-    def add_plugin(self, plugin: BasePlugin):
-        self.plugins.append(plugin)
-
-    def _experience_log(self, exp: av.benchmarks.NCExperience):
-        print(f"Start of experience: {exp.current_experience}")
-        print(
-            f"Current Classes:     {set(map(int, exp.classes_in_this_experience))}")
-        print(f"Experience size:     {len(exp.dataset)}")
-
-    def train_experience(self, experience: av.benchmarks.NCExperience):
-        self.strategy.train(experience)
 
     def train(self):
         self.preflight()
         results = []
         for i, exp in enumerate(self.scenario.train_stream):
-            self._experience_log(exp)
-            self.train_experience(exp)
+            unique_classes = set(map(int, exp.classes_in_this_experience))
+            print(f"Start of experience: {exp.current_experience}")
+            print(f"Current Classes:     {unique_classes}")
+            print(f"Experience size:     {len(exp.dataset)}")
+
+            self.strategy.train(exp)
             test_subset = self.scenario.test_stream
 
-            if (i+1) % self.cfg.test_every == 0 \
-                    or i == len(self.scenario.train_stream)-1:
-                print("Testing")
+            if (i+1) % self.cfg.test_every == 0:
                 results.append(self.strategy.eval(test_subset))
 
         self.logger.writer.flush()
@@ -127,27 +118,37 @@ class BaseExperiment():
 
     def make_evaluator(self, loggers, num_classes) -> EvaluationPlugin:
         """Overload to define the evaluation plugin"""
+        cm_image_creator = partial(default_cm_image_creator,
+                                   cmap=plt.rcParams['image.cmap'])
+
         plugins = []
         is_images = self.cfg.is_image_data
         if isinstance(self.network, AutoEncoder) and is_images:
             plugins.append(GenerateReconstruction(self.scenario, 2, 1))
+
         if isinstance(self.network, Samplable) and is_images:
-            plugins.append(GenerateSamples(
-                5, 4, rows_are_experiences=isinstance(self.network, ConditionedSample)))
+            rows_are_experiences = isinstance(self.network, ConditionedSample)
+            plugins.append(GenerateSamples(5, 4, rows_are_experiences))
 
         if isinstance(self.network, InferTask) and not self.cfg.task_free:
             plugins.append(ConditionalMetrics())
             plugins.append(ExperienceIdentificationCM(self.n_experiences))
+
         if isinstance(self.network, InferTask):
             plugins.append(SubsetRecognition(self.cfg.n_classes))
 
         if isinstance(self.network, Classifier):
             plugins.append(accuracy_metrics(epoch=True, stream=True,
                            experience=True, trained_experience=True))
-            plugins.append(confusion_matrix_metrics(normalize='true',
-                                                    num_classes=num_classes, stream=True))
+            plugins.append(confusion_matrix_metrics(
+                normalize='true',
+                image_creator=cm_image_creator,
+                stream=True,
+                num_classes=num_classes
+            ))
             plugins.append(forgetting_metrics(experience=True, stream=True))
 
+        # Add metric for each objective
         for name, objective in self.objective:
             plugins.append(LossObjectiveMetric(name, objective,
                            on_iteration=self.cfg.log_mini_batch))
@@ -203,24 +204,11 @@ class BaseExperiment():
             "EvalLossPart/Experience_0/Reconstruction": 0
         }
 
-    def add_hparams(self, hp: dict):
-        print(hp)
-        exp, ssi, sei = hparams(hp, self.make_dependent_variables(), {})
-        self.logger.writer.file_writer.add_summary(exp)
-        self.logger.writer.file_writer.add_summary(ssi)
-        self.logger.writer.file_writer.add_summary(sei)
-
     def make_optimizer(self, parameters) -> torch.optim.Optimizer:
         raise NotImplemented
 
     def make_scenario(self) -> av.benchmarks.NCScenario:
         raise NotImplemented
-
-    def log_scalar(self, name, value, step=None):
-        self.logger.writer.add_scalar(
-            name,
-            value,
-            step if step else self.strategy.clock.total_iterations)
 
     @property
     def lr(self) -> float:

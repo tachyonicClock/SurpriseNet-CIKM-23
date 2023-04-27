@@ -1,4 +1,3 @@
-import pickle
 import typing as t
 
 import numpy as np
@@ -107,11 +106,16 @@ class SubsetRecognition(_MyMetric):
         ax.imshow(self.cm)
         ax.set_ylabel("Subset Used")
         ax.set_xlabel("True Label")
+
         # Add counts
         for i in range(self.cm.shape[0]):
             for j in range(self.cm.shape[1]):
                 ax.text(j, i, f"{int(self.cm[i, j])}",
-                        ha="center", va="center", color="orange")
+                        ha="center", va="center", color="blue")
+
+        # Use an integer tick per cell
+        ax.set_xticks(np.arange(self.cm.shape[1], dtype=int))
+        ax.set_yticks(np.arange(self.cm.shape[0], dtype=int))
         return figure_to_image(fig)
 
     def reset(self):

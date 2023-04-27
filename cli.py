@@ -4,12 +4,21 @@ import typing as t
 
 import click
 import git
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
 from config.config import ExpConfig
 from surprisenet.plugin import equal_capacity_prune_schedule
 from train import Experiment
+
+plt.rcParams.update(
+    {
+        'font.family': 'Alegreya Sans',
+        'font.size': 12,
+        "image.cmap": "cividis"
+    }
+)
 
 
 def get_experiment_name(repo_hash, experiment, scenario, architecture, strategy):

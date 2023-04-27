@@ -1,14 +1,11 @@
-import os
 import typing as t
 
 import torchvision.transforms as T
-from avalanche.benchmarks import NCScenario, nc_benchmark
+from avalanche.benchmarks import NCScenario
 from avalanche.benchmarks.classic import (SplitCIFAR10, SplitCIFAR100,
                                           SplitFMNIST, SplitMNIST)
 from avalanche.benchmarks.datasets import CORe50Dataset
-from torch import Tensor
-from torch.utils import data
-from torchvision.datasets import MNIST, FashionMNIST
+from torchvision.datasets import MNIST
 
 from experiment.gaussian_schedule import gaussian_schedule_dataset
 
