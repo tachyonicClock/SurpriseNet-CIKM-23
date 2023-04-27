@@ -73,7 +73,7 @@ class TaskReconstruction(TaskInferenceStrategy):
         model = self.experiment.strategy.model
         assert isinstance(
             model, PackNet), "Task inference only works on PackNet"
-        model.use_task_subset(0)
+        model.use_subset(0)
 
         # Originally we planned to use multiple samples for the VAE, but it
         # seems that a single sample is okay
@@ -83,9 +83,9 @@ class TaskReconstruction(TaskInferenceStrategy):
         best_out.pred_exp_id = torch.zeros(
             x.shape[0]).int().to(best_out.x_hat.device)
 
-        for i in range(1, self.experiment.strategy.clock.train_exp_counter):
+        for i in range(1, model.subset_count()):
             # Use a specific subset
-            model.use_task_subset(i)
+            model.use_subset(i)
 
             new_loss, new_out = sample(forward_func, x, sample_size)
             loss_by_layer[i, :] = new_loss
@@ -104,10 +104,9 @@ class TaskReconstruction(TaskInferenceStrategy):
         return best_out
 
 
-def bce_task_inference_loss(input: Tensor, target: Tensor) -> Tensor:
-    # mse: Tensor = F.mse_loss(input, target, reduction="none")
-    # Mean each
-    return F.mse_loss(input, target)
+def task_inference_loss(input: Tensor, target: Tensor) -> Tensor:
+    # NOTE: The reduction is done manually to allow for per-instance losses
+    return F.mse_loss(input, target, reduction='none').sum(dim=(1, 2, 3))
 
 
 @torch.no_grad()
@@ -117,12 +116,14 @@ def sample(
         sample_size: int) -> t.Tuple[Tensor, ForwardOutput]:
 
     best_out: ForwardOutput = forward_func(x)
-    best_loss: Tensor = bce_task_inference_loss(best_out.x_hat, x)
+    best_loss: Tensor = task_inference_loss(best_out.x_hat, x)
     loss_total: Tensor = best_loss.detach().clone()
 
     for i in range(1, sample_size):
         new_out: ForwardOutput = forward_func(x)
-        new_loss = bce_task_inference_loss(best_out.x_hat, x)
+        new_loss = task_inference_loss(best_out.x_hat, x)
+        assert new_loss.shape[0] == x.shape[0], \
+            "Loss must be per instance in batch"
         loss_total += new_loss
 
         # Update best_out if the current subset is better

@@ -147,18 +147,21 @@ class PackNetDecorator(PackNet, ModuleDecorator):
             weight[mask] = 0.0
         return weight
 
-    def use_task_subset(self, task_id):
+    def use_subset(self, subset_id):
         """Setter to set the sub-set of the network to be used on forward pass"""
-        next_state = self.State.MUTABLE_TOP if self._z_top == task_id else self.State.IMMUTABLE
+        assert subset_id >= 0 and subset_id <= self._z_top, \
+            f"subset_id {subset_id} must be between 0 and {self._z_top}"
+
+        next_state = self.State.MUTABLE_TOP if self._z_top == subset_id else self.State.IMMUTABLE
         self.next_state(
             [self.State.MUTABLE_TOP, self.State.IMMUTABLE], next_state)
 
-        task_id = min(max(task_id, 0), self._z_top)
-        self._z_active.fill_(task_id)
+        subset_id = min(max(subset_id, 0), self._z_top)
+        self._z_active.fill_(subset_id)
 
     def use_top_subset(self):
         """Forward should use the top subset"""
-        self.use_task_subset(self._z_top)
+        self.use_subset(self._z_top)
 
     def initialize_top(self):
         """Re-initialize the top of the network"""
@@ -188,6 +191,9 @@ class PackNetDecorator(PackNet, ModuleDecorator):
         self._z_top.fill_(0)
         self._z_active.fill_(0)
         self.z_mask.fill_(self._z_top)
+
+    def subset_count(self) -> int:
+        return int(self._z_top.item())
 
     @property
     def device(self) -> torch.device:
@@ -241,7 +247,10 @@ class _PnBatchNorm(PackNet, ModuleDecorator):
 
     def __init__(self, wrappee: nn.Module) -> None:
         super().__init__(wrappee)
+        self._z_top: torch.Tensor
         self.register_buffer("_frozen", torch.tensor(False, dtype=torch.bool))
+        self.register_buffer("_z_top",  torch.tensor(0, dtype=torch.int))
+        """Index top of the 'stack'. Should only increase"""
 
     @property
     def frozen(self) -> bool:
@@ -267,13 +276,17 @@ class _PnBatchNorm(PackNet, ModuleDecorator):
         grad.fill_(0)
 
     def push_pruned(self) -> None:
-        pass
+        self._z_top += 1
 
-    def use_task_subset(self, task_id):
+    def use_subset(self, task_id):
         pass
 
     def use_top_subset(self):
         pass
+
+    def subset_count(self) -> int:
+        assert False
+        return int(self._z_top.item())
 
     def unfreeze_all(self):
         self.wrappee.weight.requires_grad = True
@@ -415,14 +428,19 @@ class _PackNetParent(PackNet, nn.Module):
     def push_pruned(self) -> None:
         self._pn_apply(lambda x: x.push_pruned())
 
-    def use_task_subset(self, task_id):
-        self._pn_apply(lambda x: x.use_task_subset(task_id))
+    def use_subset(self, task_id):
+        self._pn_apply(lambda x: x.use_subset(task_id))
 
     def use_top_subset(self):
         self._pn_apply(lambda x: x.use_top_subset())
 
     def unfreeze_all(self):
         self._pn_apply(lambda x: x.unfreeze_all())
+
+    def subset_count(self) -> int:
+        for p in self.modules():
+            if isinstance(p, PackNet) and not isinstance(p, _PackNetParent):
+                return p.subset_count()
 
 
 class SurpriseNetAutoEncoder(InferTask, AutoEncoder, _PackNetParent):
@@ -478,5 +496,5 @@ class SurpriseNetVariationalAutoEncoder(InferTask, VariationalAutoEncoder, _Pack
         return self.multi_forward(x).y_hat
 
     def conditioned_sample(self, n: int = 1, given_task: int = 0) -> Tensor:
-        self.use_task_subset(given_task)
+        self.use_subset(given_task)
         return self.sample(n)

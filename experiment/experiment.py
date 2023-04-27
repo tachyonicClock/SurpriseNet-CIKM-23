@@ -13,7 +13,7 @@ from config.config import ExpConfig
 from experiment.util import count_parameters
 from metrics.metrics import (ConditionalMetrics, EpochClock,
                              EvalLossObjectiveMetric,
-                             ExperienceIdentificationCM, LossObjectiveMetric)
+                             ExperienceIdentificationCM, LossObjectiveMetric, SubsetRecognition)
 from metrics.reconstructions import GenerateReconstruction, GenerateSamples
 from network.trait import (NETWORK_TRAITS, AutoEncoder, Classifier,
                            ConditionedSample, InferTask, Samplable)
@@ -82,7 +82,7 @@ class BaseExperiment():
             self.train_experience(exp)
             test_subset = self.scenario.test_stream
 
-            if i > 0 and i % self.cfg.test_every == 0 \
+            if (i+1) % self.cfg.test_every == 0 \
                     or i == len(self.scenario.train_stream)-1:
                 print("Testing")
                 results.append(self.strategy.eval(test_subset))
@@ -113,14 +113,16 @@ class BaseExperiment():
             plugins.append(GenerateSamples(
                 5, 4, rows_are_experiences=isinstance(self.network, ConditionedSample)))
 
-        if isinstance(self.network, InferTask):
+        if isinstance(self.network, InferTask) and not self.cfg.task_free:
             plugins.append(ConditionalMetrics())
             plugins.append(ExperienceIdentificationCM(self.n_experiences))
+        if isinstance(self.network, InferTask):
+            plugins.append(SubsetRecognition(self.cfg.n_classes))
 
         if isinstance(self.network, Classifier):
             plugins.append(accuracy_metrics(epoch=True, stream=True,
                            experience=True, trained_experience=True))
-            plugins.append(confusion_matrix_metrics(
+            plugins.append(confusion_matrix_metrics(normalize='true',
                 num_classes=num_classes, stream=True))
             plugins.append(forgetting_metrics(experience=True, stream=True))
 
@@ -139,6 +141,17 @@ class BaseExperiment():
     def dump_config(self):
         pass
 
+
+    def _save_class_order(self):
+        class_order = []
+        for task_classes in self.scenario.classes_in_experience["train"]:
+            task_classes = list(set(map(int, task_classes)))
+            class_order.append(task_classes)
+
+        with open(self.logdir+"/class_order.txt", "w") as f:
+            for classes in class_order:
+                f.write(",".join(map(str, classes))+"\n")
+
     def preflight(self):
         print(f"Network: {type(self.network)}")
         print(f"Traits:")
@@ -153,15 +166,8 @@ class BaseExperiment():
         count_parameters(self.network)
         print("-"*80)
 
-        # Save the class composition of each experience
-        assert self.cfg.final_class_order is None, \
-            "Final class order should be left to None, it is set automatically"
-        self.cfg.final_class_order = []
-        for task_classes in self.scenario.classes_in_experience["train"]:
-            task_classes = list(set(map(int, task_classes)))
-            self.cfg.final_class_order.append(task_classes)
-
         print()
+        self._save_class_order()
         self.dump_config()
 
     def make_network(self) -> nn.Module:

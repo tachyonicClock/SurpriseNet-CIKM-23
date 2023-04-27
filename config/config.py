@@ -50,13 +50,27 @@ class ExpConfig():
         they are reconstructed using BCE loss, which expects data scaled to
         between 0 and 1.
         """
+
+
+        # GAUSSIAN SCHEDULE
         self.task_free = False
         """Should a task-free scenario be used?"""
-        self.task_free_microtask_size: int = None
-        """If the scenario is task-free, what should the size of the microtasks
-        be?"""
+        self.task_free_instances_in_task: int = None
+        """In a task-free scenario, how many instances should be used per task"""
+        self.task_free_width: float = 1/20
+        """In a task-free scenario, how wide should the gaussian be"""
         self.test_every: int = 1
-        self.final_class_order: t.List[t.List[int]] = None
+        """Limit how often the test set is evaluated. This is useful for 
+        microtasks where there are lots of tasks and the test set is relatively
+        large.
+        """
+        # DRIFT DETECTION
+        self.task_free_drift_detector: t.Optional[t.Literal["clock_oracle"]] = None
+        """If the scenario is task-free, what drift detector should be used?"""
+        self.task_free_drift_detector_kwargs: t.Optional[t.Dict[str, t.Any]] = None
+        """If the scenario is task-free, what kwargs should be passed to the
+        drift detector?"""
+
 
         # LOSS
         self.classifier_loss_weight: t.Optional[float] = 1.0
@@ -69,6 +83,7 @@ class ExpConfig():
         self.vae_loss_weight: t.Optional[float] = None
         """Weight of the VAE loss or Kullback-Leibler divergence strength. 
         None if VAE loss is not used"""
+        self.mask_classifier_loss = False
 
         # ARCHITECTURE
         self.latent_dims: int
@@ -135,6 +150,9 @@ class ExpConfig():
         """Threshold for acceptable accuracy drop"""
         self.chf_stability_decay = 0.9
         """How quickly the stability decays during stability decay search"""
+
+
+        self.optimizer: t.Literal["Adam", "SGD"] = "Adam"
         
 
         if self.dataset_root is None:
@@ -255,22 +273,38 @@ class ExpConfig():
         self.total_task_epochs = 10
         return self
 
-    def scenario_gaussian_schedule_fmnist(self: 'ExpConfig') -> 'ExpConfig':
+    def scenario_gaussian_schedule_mnist(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment for the Fashion-MNIST dataset with a Gaussian schedule"""
         self._network_cnn()
-        self.learning_rate = 0.01
-        self.task_free = True
-        self.dataset_name = "FMNIST"
+        # self.learning_rate = 0.01
+        self.dataset_name = "MNIST"
         self.input_shape = (1, 32, 32)
         self.is_image_data = True
-        self.latent_dims = 64
+        self.latent_dims = 4
         self.n_classes = 10
-    
-        self.task_free_microtask_size = 64
-        self.n_experiences = 200 # Can't be changed
-        self.test_every = 20
+
+        # self.mask_classifier_loss = True
+        self.classifier_loss_weight = None
+
+        # Setup the schedule
+        self.n_experiences = 200
+        self.task_free = True
+        self.task_free_instances_in_task = self.batch_size * 10
+        self.task_free_width = 1/20
+
+
+        self.test_every = self.n_experiences/self.n_classes
         self.retrain_epochs = 0
         self.total_task_epochs = 1
+
+        self.task_free_drift_detector = "clock_oracle"
+        self.task_free_drift_detector_kwargs = dict(
+            drift_period=self.n_experiences/self.n_classes,
+            warn_in_advance=5,
+            drift_in_advance=1,
+        )
+
+        self.optimizer = "Adam"
         return self
 
     def arch_autoencoder(self: 'ExpConfig') -> 'ExpConfig':

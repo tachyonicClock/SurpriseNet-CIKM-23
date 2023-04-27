@@ -194,7 +194,7 @@ class PackNet(ABC):
         """
 
     @abstractmethod
-    def use_task_subset(self, task_id):
+    def use_subset(self, task_id):
         pass
 
     @abstractmethod
@@ -204,6 +204,10 @@ class PackNet(ABC):
     @abstractmethod
     def unfreeze_all(self):
         pass
+
+    @abstractmethod
+    def subset_count(self) -> int:
+        raise NotImplemented("subset_count not implemented")
 
 
 

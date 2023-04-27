@@ -4,8 +4,9 @@ from experiment.experiment import BaseExperiment
 import avalanche as cl
 import avalanche.training.plugins as cl_plugins
 
-from experiment.loss import BCEReconstructionLoss, MSEReconstructionLoss, MultipleObjectiveLoss, ClassifierLoss, VAELoss
+from experiment.loss import BCEReconstructionLoss, ClassifierLossMasked, LossObjective, MSEReconstructionLoss, MultipleObjectiveLoss, ClassifierLoss, VAELoss
 from network.networks import construct_network
+from surprisenet.drift_detection import ClockOracle, DriftDetector, DriftDetectorPlugin, SurpriseNetDriftHandler
 from surprisenet.plugin import SurpriseNetPlugin
 from surprisenet.task_inference import TaskInferenceStrategy, TaskReconstruction, UseTaskOracle
 from experiment.scenario import split_scenario, gaussian_schedule_scenario
@@ -28,10 +29,12 @@ class Experiment(BaseExperiment):
 
         if self.cfg.task_free:
             return gaussian_schedule_scenario(
-                self.cfg.dataset_root,
-                self.cfg.dataset_name,
-                self.cfg.task_free_microtask_size,
-                self.cfg.normalize,
+                dataset_root=self.cfg.dataset_root,
+                dataset=self.cfg.dataset_name,
+                instances_in_task=self.cfg.task_free_instances_in_task,
+                width=self.cfg.task_free_width,
+                microtask_count=self.cfg.n_experiences,
+                normalize=self.cfg.normalize,
             )
         else:
             return split_scenario(
@@ -44,23 +47,54 @@ class Experiment(BaseExperiment):
     def make_task_inference_strategy(self) -> TaskInferenceStrategy:
         return TASK_INFERENCE_STRATEGIES[self.cfg.task_inference_strategy](self)
 
+
+    def make_drift_detection_plugin(self) -> DriftDetectorPlugin:
+
+        # Get the metric used for reconstruction loss
+        metric: LossObjective
+        if self.cfg.reconstruction_loss_type == "mse":
+            metric = self.objective.objectives["MSEReconstruction"]
+        elif self.cfg.reconstruction_loss_type == "bce":
+            metric = self.objective.objectives["BCEReconstruction"]
+
+        # Construct the drift detector
+        detector: DriftDetector
+        if self.cfg.task_free_drift_detector == "clock_oracle":
+            detector = ClockOracle(**self.cfg.task_free_drift_detector_kwargs)
+        else:
+            raise ValueError("Unknown drift detector")
+
+        # What todo when a drift is detected
+        drift_handler = SurpriseNetDriftHandler(
+            self.cfg.prune_proportion
+        )
+
+        # Construct the plugin
+        return DriftDetectorPlugin(detector, metric, drift_handler)
+
     def make_network(self) -> nn.Module:
         network = construct_network(self.cfg)
-        # If using PackNet/SurpriseNet then wrap the network in a PackNet
-        # and add a PackNetPlugin
-        if self.cfg.use_packnet:
-            # Wrap network in packnet
-            if self.cfg.architecture == "VAE":
-                network = pn.SurpriseNetVariationalAutoEncoder(
-                    network,
-                    self.make_task_inference_strategy()
-                )
-            elif self.cfg.architecture == "AE":
-                network = pn.SurpriseNetAutoEncoder(
-                    network,
-                    self.make_task_inference_strategy()
-                )
+        # If not using PackNet/SurpriseNet then return the network
+        if not self.cfg.use_packnet:
+            return network
 
+        # Wrap network in packnet
+        if self.cfg.architecture == "VAE":
+            network = pn.SurpriseNetVariationalAutoEncoder(
+                network,
+                self.make_task_inference_strategy()
+            )
+        elif self.cfg.architecture == "AE":
+            network = pn.SurpriseNetAutoEncoder(
+                network,
+                self.make_task_inference_strategy()
+            )
+
+        if self.cfg.task_free:
+            self.plugins.append(
+                self.make_drift_detection_plugin()
+            )
+        else:
             self.plugins.append(
                 SurpriseNetPlugin(self.cfg.prune_proportion, self.cfg.retrain_epochs)
             )
@@ -71,8 +105,11 @@ class Experiment(BaseExperiment):
         loss = MultipleObjectiveLoss()
         # Add cross entropy loss
         if self.cfg.classifier_loss_weight:
-            loss.add(ClassifierLoss(self.cfg.classifier_loss_weight))
-        
+            if self.cfg.mask_classifier_loss:
+                loss.add(ClassifierLossMasked(self.cfg.classifier_loss_weight))
+            else:
+                loss.add(ClassifierLoss(self.cfg.classifier_loss_weight))
+
         # Add reconstruction loss
         if self.cfg.reconstruction_loss_weight:
             # Pick a type of reconstruction loss
@@ -91,7 +128,12 @@ class Experiment(BaseExperiment):
         return loss
 
     def make_optimizer(self, parameters) -> torch.optim.Optimizer:
-        return torch.optim.Adam(parameters, self.cfg.learning_rate)
+        if self.cfg.optimizer == "Adam":
+            return torch.optim.Adam(parameters, self.cfg.learning_rate)
+        elif self.cfg.optimizer == "SGD":
+            return torch.optim.SGD(parameters, self.cfg.learning_rate)
+        else:
+            raise ValueError("Unknown optimizer")
 
     def add_strategy_plugins(self):
         cfg = self.cfg

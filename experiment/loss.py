@@ -77,6 +77,25 @@ class ClassifierLoss(LossObjective):
         target = target.type(torch.LongTensor).to(out.y_hat.device)
         self.loss = F.cross_entropy(out.y_hat, target)
 
+
+class ClassifierLossMasked(LossObjective):
+    name = "ClassifierLossMasked"
+
+    def update(self, out: ForwardOutput, target: Tensor = None):
+        # Ignore the loss for classes that are not in the batch
+        batch_classes = torch.unique(target)
+        # Nothing to learn from classification if there is only one class
+        if len(batch_classes) <= 1:
+            self.loss = 0.0
+            return
+
+        batch_class_mask = torch.zeros_like(out.y_hat)
+        for batch_class in batch_classes:
+            batch_class_mask[:, batch_class] = 1.0
+
+        out.y_hat = out.y_hat * batch_class_mask
+        self.loss = F.cross_entropy(out.y_hat, target)
+
 class VAELoss(LossObjective):
     name = "VAE"
 

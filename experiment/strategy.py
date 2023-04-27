@@ -16,6 +16,8 @@ class ForwardOutput():
 
     y_hat: Tensor = None
     """The predicted class label"""
+    y: Tensor = None
+    """The actual class label"""
     x: Tensor = None
     """The original input"""
     x_hat: Tensor = None
@@ -30,17 +32,7 @@ class ForwardOutput():
     """The output of the mean layer in a VAE"""
     log_var: Tensor = None
     """The output of the variance layer in a VAE"""
-    loss_by_layer: Tensor = None
-    """
-    When using task inference we calculate the loss for each layer in the PackNet.
-    We store those here to create metrics. A tensor of shape (n_experiences, batch_size)
-    containing the loss for the appropriate instance
-    """
 
-    # NOTE: This is a hack to trick the learning without forgetting plugin
-    # to work with ForwardOutput since it expects the y_hat tensor instead
-    def __getitem__(self, i):
-         return self.y_hat[i]
 
 class Strategy(SupervisedTemplate):
     """
@@ -69,6 +61,8 @@ class Strategy(SupervisedTemplate):
 
         self.last_forward_output: ForwardOutput = self.model.multi_forward(self.mbatch[0])
         self.last_forward_output.x = self.mb_x
+        self.last_forward_output.y = self.mb_y
+
         return self.last_forward_output.y_hat
 
 

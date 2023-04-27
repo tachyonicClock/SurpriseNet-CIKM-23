@@ -9,7 +9,7 @@ from avalanche.benchmarks.datasets import CORe50Dataset
 from torch import Tensor
 from torch.utils import data
 
-from torchvision.datasets import FashionMNIST
+from torchvision.datasets import FashionMNIST, MNIST
 
 from experiment.gaussian_schedule import gaussian_schedule_dataset
 
@@ -23,6 +23,10 @@ MEAN_AND_STD = {
 
 EVAL_TRANSFORM = {
     "FMNIST": T.Compose([
+        T.Resize((32, 32)),
+        T.ToTensor(),
+    ]),
+    "MNIST": T.Compose([
         T.Resize((32, 32)),
         T.ToTensor(),
     ]),
@@ -42,6 +46,10 @@ EVAL_TRANSFORM = {
 
 TRAIN_TRANSFORMS = {
     "FMNIST": T.Compose([
+        T.Resize((32, 32)),
+        T.ToTensor(),
+    ]),
+    "MNIST": T.Compose([
         T.Resize((32, 32)),
         T.ToTensor(),
     ]),
@@ -144,7 +152,9 @@ def split_scenario(
 def gaussian_schedule_scenario(
     dataset_root: str,
     dataset: t.Literal["FMNIST", "CIFAR10", "CIFAR100"],
-    microtask_size: int,
+    instances_in_task: int,
+    width: int,
+    microtask_count: int,
     normalize: bool,
 ):
 
@@ -154,14 +164,16 @@ def gaussian_schedule_scenario(
         eval_transform.transforms.append(T.Normalize(*MEAN_AND_STD[dataset]))
         train_transform.transforms.append(T.Normalize(*MEAN_AND_STD[dataset]))
 
-    if dataset == "FMNIST":
-        train_dataset = FashionMNIST(dataset_root, train=True, download=True)
-        test_dataset = FashionMNIST(dataset_root, train=False, download=True)
+    if dataset == "MNIST":
+        train_dataset = MNIST(dataset_root, train=True, download=True)
+        test_dataset = MNIST(dataset_root, train=False, download=True)
         scenario = gaussian_schedule_dataset(
             train_dataset.targets,
             train_dataset,
             test_dataset,
-            microtask_size,
+            width,
+            microtask_count,
+            instances_in_task,
             eval_transform,
             train_transform
         )

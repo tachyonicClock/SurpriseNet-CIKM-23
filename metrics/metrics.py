@@ -11,6 +11,8 @@ from matplotlib import pyplot as plt
 from torch import Tensor
 from torchmetrics import ConfusionMatrix
 
+from network.trait import PackNet
+
 from .reconstructions import figure_to_image
 
 
@@ -62,7 +64,7 @@ class ExperienceIdentificationCM(_MyMetric):
 
     def __init__(self, n_experiences: int) -> None:
         self.n_experiences = n_experiences
-        self.cm = ConfusionMatrix(n_experiences)
+        self.cm = ConfusionMatrix("multiclass", num_classes=n_experiences)
         self.reset()
         print("ExperienceIdentificationCM")
 
@@ -91,6 +93,41 @@ class ExperienceIdentificationCM(_MyMetric):
 
     def after_eval(self, strategy: Strategy):
         return MetricValue(self, f"ExperienceIdentificationCM", self.result(), strategy.clock.total_iterations)
+
+class SubsetRecognition(_MyMetric):
+
+    def __init__(self, n_classes: int) -> None:
+        self.n_classes = n_classes
+        self.cm = None
+        self.reset()
+
+    def result(self):
+        fig, ax = plt.subplots()
+        ax.imshow(self.cm)
+        ax.set_ylabel("Subset Used")
+        ax.set_xlabel("True Label")
+        # Add counts
+        for i in range(self.cm.shape[0]):
+            for j in range(self.cm.shape[1]):
+                ax.text(j, i, f"{int(self.cm[i, j])}", ha="center", va="center", color="orange")
+        return figure_to_image(fig)
+
+    def reset(self):
+        pass
+
+    def before_eval(self, strategy) -> "MetricResult":
+        model: PackNet = strategy.model
+        self.cm = np.zeros((model.subset_count(), self.n_classes))
+
+    def after_eval_iteration(self, strategy: Strategy) -> "MetricResult":
+        subsets_used = strategy.last_forward_output.pred_exp_id
+        true_ys = strategy.last_forward_output.y
+
+        for subset, y in zip(subsets_used, true_ys):
+            self.cm[int(subset), int(y)] += 1
+
+    def after_eval(self, strategy: Strategy):
+        return MetricValue(self, f"SubsetRecognition", self.result(), strategy.clock.total_iterations)
 
 
 class ConditionalMetrics(_MyMetric):
@@ -229,33 +266,3 @@ class EvalLossObjectiveMetric(_MyMetric):
         value = self.result()
         self.reset()
         return MetricValue(self, f"EvalLossPart/Experience_{self.test_experience}/{self.name}", value, step)
-
-
-class TaskInferenceMetrics(_MyMetric):
-    def __init__(self, log_dir: str):
-        super().__init__()
-        self.loss_points: t.Set[t.Tuple[int, int, int, int, float]] = set()
-        self.logdir = log_dir
-        self.i = 0
-
-    def after_eval_iteration(self, strategy: Strategy) -> "MetricResult":
-        out = strategy.last_forward_output
-        y_true = strategy.mb_y
-        lbl = out.loss_by_layer
-
-        assert lbl != None, "Expected loss by layer to be populated"
-
-        for k, instance in enumerate(range(lbl.shape[1])):
-            for layer in range(lbl.shape[0]):
-                loss = lbl[layer, instance]
-                self.loss_points.add(
-                    (self.i, int(y_true[k]), layer, self.test_experience, float(loss)))
-            self.i += 1
-
-    def after_eval(self, strategy: Strategy) -> "MetricResult":
-        self.i = 0
-        # print(self.loss_points)
-        with open(f"{self.logdir}/{self.train_experience}_loss_points.pickle", "wb") as f:
-            pickle.dump(self.loss_points, f)
-
-        self.loss_points = set()
