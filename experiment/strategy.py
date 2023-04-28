@@ -75,6 +75,9 @@ class Strategy(SupervisedTemplate):
         """Reset the optimizer"""
         self.optimizer.state = defaultdict(dict)
 
+    def make_train_dataloader(self, *args, **kwargs):
+        return super().make_train_dataloader(num_workers=4, *args, **kwargs)
+
 
 class CumulativeTraining(Cumulative, Strategy):
     pass
