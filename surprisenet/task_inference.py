@@ -98,6 +98,6 @@ def sample(forward_func: t.Callable[[Tensor], ForwardOutput],
            x: Tensor) -> t.Tuple[Tensor, ForwardOutput]:
     out: ForwardOutput = forward_func(x)
     # NOTE: The reduction is done manually to allow for per-instance losses
-    loss = F.mse_loss(out.x_hat, x, reduction='none').mean(dim=(1, 2, 3))
+    loss = F.mse_loss(out.x_hat, x, reduction='none').flatten(1).mean(1)
     assert loss.shape[0] == x.shape[0]
     return loss, out
