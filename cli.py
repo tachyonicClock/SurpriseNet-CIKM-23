@@ -108,6 +108,7 @@ class TrainCommand(click.Group):
               )
 @click.option("--no-reconstruction", is_flag=True, default=False,
               help="Set reconstruction loss to zero")
+@click.option("--log-directory", type=str, default=None)
 @click.argument("label", type=str)
 @click.argument("scenario", type=click.Choice(SCENARIOS.keys()), required=True)
 @click.argument("architecture", type=click.Choice(ARCHITECTURES.keys()), required=True)
@@ -122,6 +123,7 @@ def cli(ctx,
         latent_dim: t.Optional[int],
         log_mini_batches: bool,
         no_reconstruction: bool,
+        log_directory: str,
         repeat: int,
         seed: t.Optional[int]):
     # Start building an experiment configuation
@@ -145,6 +147,7 @@ def cli(ctx,
     cfg.scenario_name = scenario
     cfg = ARCHITECTURES[architecture](cfg)
     cfg.label = label
+    cfg.tensorboard_dir = log_directory or cfg.tensorboard_dir
 
     # Override the default latent dimension if given
     if latent_dim is not None:

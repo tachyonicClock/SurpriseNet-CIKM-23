@@ -74,7 +74,12 @@ class BaseExperiment():
 
         os.makedirs(self.cfg.tensorboard_dir, exist_ok=True)
         self.label = f"{max(self._get_log_numbers())+1:04d}_{self.cfg.name}"
-        setproctitle(os.getlogin() + "::" + self.label)
+
+        # In some environments, we cannot set the process title.
+        try:
+            setproctitle(os.getlogin() + "::" + self.label)
+        except Exception:
+            pass
 
         # Create a new logger with sequential names
         self.logdir = self.cfg.tensorboard_dir+"/"+self.label
