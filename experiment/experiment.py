@@ -1,6 +1,8 @@
 import os
 import typing as t
 
+import gzip
+import pickle
 import avalanche as av
 import torch
 from avalanche.core import BasePlugin, SupervisedPlugin
@@ -102,6 +104,7 @@ class BaseExperiment():
                 results.append(self.strategy.eval(test_subset))
 
         self.logger.writer.flush()
+        self.post_flight(results)
         return results
 
     def make_strategy(self) -> SupervisedPlugin:
@@ -192,6 +195,25 @@ class BaseExperiment():
         print()
         self._save_class_order()
         self.dump_config()
+
+    def post_flight(self, results: t.List[t.Dict]):
+        print("Saving results... to ", self.logdir)
+        # Filter results to only include str, int, and float types
+        filtered_results = []
+        for i, result in enumerate(results):
+            filtered_results.append({})
+            for key, value in result.items():
+                if isinstance(value, (int, float, str)):
+                    filtered_results[i][key] = value
+
+        # Save results to disk
+        with gzip.open(self.logdir+"/results.pkl.gz", "wb") as f:
+            pickle.dump(filtered_results, f)
+
+        # Save results to disk
+        with gzip.open(self.logdir+"/model.pt.gz", "wb") as f:
+           torch.save(self.network.state_dict(), f)
+
 
     def make_network(self) -> nn.Module:
         raise NotImplemented
