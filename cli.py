@@ -1,3 +1,6 @@
+import sys
+sys.path.append("network/hvae")
+
 import os
 import random
 import typing as t
@@ -39,6 +42,7 @@ SCENARIOS: t.Dict[str, t.Callable[[ExpConfig], ExpConfig]] = {
 ARCHITECTURES: t.Dict[str, t.Callable[[ExpConfig], ExpConfig]] = {
     "AE": ExpConfig.arch_autoencoder,
     "VAE": ExpConfig.arch_variational_auto_encoder,
+    "DeepVAE": ExpConfig.arch_deep_vae,
 }
 
 
@@ -144,8 +148,8 @@ def cli(ctx,
         click.secho("Warning: running with uncommitted changes", fg="yellow")
 
     cfg = SCENARIOS[scenario](cfg)
-    cfg.scenario_name = scenario
     cfg = ARCHITECTURES[architecture](cfg)
+    cfg.scenario_name = scenario
     cfg.label = label
     cfg.tensorboard_dir = log_directory or cfg.tensorboard_dir
 

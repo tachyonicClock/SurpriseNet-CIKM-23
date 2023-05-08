@@ -74,7 +74,7 @@ class ExpConfig():
         # LOSS
         self.classifier_loss_weight: t.Optional[float] = 1.0
         """Weight of the classifier loss. None if classifier loss is not used"""
-        self.reconstruction_loss_type: t.Literal["mse", "bce"] = "bce"
+        self.reconstruction_loss_type: t.Literal["mse", "bce", "DeepVAE_ELBO"] = "bce"
         """Type of loss function to use"""
         self.reconstruction_loss_weight: t.Optional[float] = None
         """Weight of the reconstruction loss. None if reconstruction loss is
@@ -83,13 +83,14 @@ class ExpConfig():
         """Weight of the VAE loss or Kullback-Leibler divergence strength. 
         None if VAE loss is not used"""
         self.mask_classifier_loss = False
+        self.HVAE_schedule: t.Optional[dict] = None
 
         # ARCHITECTURE
         self.latent_dims: int
         """Number of latent dimensions of the VAE/AE"""
-        self.architecture: t.Literal["AE", "VAE"]
+        self.architecture: t.Literal["AE", "VAE", "DeepVAE"]
         """Type of auto-encoder to use"""
-        self.network_style: t.Literal["vanilla_cnn", "residual", "mlp"]
+        self.network_style: t.Literal["vanilla_cnn", "residual", "mlp", "DeepVAE_FMNIST"]
         """Type of network to be used"""
         self.embedding_module: t.Literal["None",
                                          "ResNet50", "SmallResNet18", "ResNet18"] = "None"
@@ -102,7 +103,7 @@ class ExpConfig():
         # TRAINING
         self.total_task_epochs: int
         """Total number of training epochs in a task"""
-        self.batch_size: int = 64
+        self.batch_size: int = 128
         """Batch size"""
         self.learning_rate: float = 0.0001
         """Learning rate"""
@@ -316,6 +317,23 @@ class ExpConfig():
         self.architecture = "VAE"
         self.reconstruction_loss_weight = 1.0
         self.vae_loss_weight = 0.001
+        return self
+
+    def arch_deep_vae(self: 'ExpConfig') -> 'ExpConfig':
+        """Configure the experiment to use a deep VAE"""
+        self.architecture = "DeepVAE"
+        self.reconstruction_loss_weight = 1.0
+        self.reconstruction_loss_type = "DeepVAE_ELBO"
+        self.classifier_loss_weight = None
+        self.HVAE_schedule = {
+            "free_nat_start_value": 2.0,
+            "free_nats_epochs": 400,
+            "warmup_epochs": 200
+        }
+        self.total_task_epochs = 400
+
+        if self.dataset_name == "FMNIST":
+            self.network_style = "DeepVAE_FMNIST"
         return self
 
     def strategy_packnet(self: 'ExpConfig') -> 'ExpConfig':

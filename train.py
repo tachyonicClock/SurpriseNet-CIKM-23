@@ -2,6 +2,7 @@ import avalanche as cl
 import avalanche.training.plugins as cl_plugins
 import torch
 from torch import nn
+from network.deep_vae import DeepVAELoss
 
 import surprisenet.packnet as pn
 from experiment.chf import CHF_SurpriseNet
@@ -124,6 +125,15 @@ class Experiment(BaseExperiment):
             elif self.cfg.reconstruction_loss_type == "bce":
                 loss.add(BCEReconstructionLoss(
                     self.cfg.reconstruction_loss_weight))
+            elif self.cfg.reconstruction_loss_type == "DeepVAE_ELBO":
+                deep_vae_loss = DeepVAELoss(
+                    self.cfg.reconstruction_loss_weight,
+                    logger=self.logger,
+                    **self.cfg.HVAE_schedule)
+                # DeepVAELoss contains schedules requiring callbacks to be
+                # called at the end of each epoch
+                self.plugins.append(deep_vae_loss)
+                loss.add(deep_vae_loss)
             else:
                 raise NotImplementedError("Unknown reconstruction loss type")
 
@@ -188,7 +198,7 @@ class Experiment(BaseExperiment):
             train_mb_size=cfg.batch_size,
             train_epochs=train_epochs,
             eval_mb_size=cfg.batch_size,
-            eval_every=-1,
+            eval_every=cfg.validate_every_n_epochs,
             plugins=[self, *self.plugins],
             evaluator=self.evaluator
         )

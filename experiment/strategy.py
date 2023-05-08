@@ -6,6 +6,7 @@ import torch
 from avalanche.training import Cumulative
 from avalanche.training.templates import SupervisedTemplate
 from torch import Tensor, nn
+import typing as t
 
 
 @dataclass
@@ -33,6 +34,9 @@ class ForwardOutput():
     """The output of the mean layer in a VAE"""
     log_var: Tensor = None
     """The output of the variance layer in a VAE"""
+    likelihood: t.Optional[t.List[Tensor]] = None
+    """The likelihood of the reconstruction given the latent code"""
+    kl_divergences: t.Optional[t.List[Tensor]] = None
 
 
 class Strategy(SupervisedTemplate):

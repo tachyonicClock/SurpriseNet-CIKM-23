@@ -452,7 +452,7 @@ class SurpriseNetAutoEncoder(InferTask, AutoEncoder, _PackNetParent):
     def __init__(self,
                  auto_encoder: AutoEncoder,
                  task_inference_strategy: TaskInferenceStrategy) -> None:
-        super().__init__(auto_encoder.encoder, auto_encoder.decoder, auto_encoder.classifier)
+        super().__init__(auto_encoder._encoder, auto_encoder._decoder, auto_encoder._classifier)
         wrap(auto_encoder)
         self.task_inference_strategy = task_inference_strategy
 
@@ -478,8 +478,8 @@ class SurpriseNetVariationalAutoEncoder(InferTask, VariationalAutoEncoder, _Pack
     def __init__(self,
                  auto_encoder: VariationalAutoEncoder,
                  task_inference_strategy: TaskInferenceStrategy) -> None:
-        super().__init__(auto_encoder.encoder, auto_encoder.bottleneck,
-                         auto_encoder.decoder, auto_encoder.classifier)
+        super().__init__(auto_encoder._encoder, auto_encoder.bottleneck,
+                         auto_encoder._decoder, auto_encoder._classifier)
         wrap(auto_encoder)
         self.task_inference_strategy = task_inference_strategy
 

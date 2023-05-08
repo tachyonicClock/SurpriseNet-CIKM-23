@@ -1,4 +1,5 @@
 import typing as t
+from network.deep_vae import FashionMNISTDeepVAE
 from config.config import ExpConfig
 from network.mlp import ClassifierHead, MLPDecoder, MLPEncoder, MLPDecoder, MLPEncoder, VAEBottleneck
 
@@ -16,6 +17,9 @@ def construct_network(cfg: ExpConfig):
     """
     Construct an auto encoder based on the configuration
     """
+    if cfg.network_style == "DeepVAE_FMNIST":
+        return FashionMNISTDeepVAE()
+
     encoder_constructor = _NETWORK_ARCHITECTURES[cfg.network_style][0]
     decoder_constructor = _NETWORK_ARCHITECTURES[cfg.network_style][1]
 
@@ -30,3 +34,4 @@ def construct_network(cfg: ExpConfig):
         classifier = ClassifierHead(cfg.latent_dims, cfg.n_classes)
         bottleneck = VAEBottleneck(cfg.latent_dims*2, cfg.latent_dims)
         return VariationalAutoEncoder(encoder, bottleneck, decoder, classifier)
+    assert False, "Unknown architecture"

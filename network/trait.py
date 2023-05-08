@@ -111,18 +111,18 @@ class AutoEncoder(Encoder, Decoder, Classifier, MultiOutputNetwork, nn.Module):
     ) -> None:
         super().__init__()
 
-        self.encoder = encoder
-        self.decoder = decoder
-        self.classifier = classifier
+        self._encoder = encoder
+        self._decoder = decoder
+        self._classifier = classifier
 
     def classify(self, embedding: Tensor) -> Tensor:
-        return self.classifier(embedding)
+        return self._classifier(embedding)
 
     def encode(self, observations: Tensor) -> Tensor:
-        return self.encoder.encode(observations)
+        return self._encoder.encode(observations)
 
     def decode(self, embedding: Tensor) -> Tensor:
-        return self.decoder.decode(embedding)
+        return self._decoder.decode(embedding)
 
     def multi_forward(self, observations: Tensor) -> ForwardOutput:
         out = ForwardOutput()
@@ -146,14 +146,14 @@ class VariationalAutoEncoder(AutoEncoder, Samplable):
         self.bottleneck = bottleneck
 
     def encode(self, x: Tensor) -> Tensor:
-        mu, std = self.bottleneck.encode(self.encoder.encode(x))
+        mu, std = self.bottleneck.encode(self._encoder.encode(x))
         return self.bottleneck.reparameterise(mu, std)
     
     def sample(self, n: int = 1) -> Tensor:
         return self.decode(self.bottleneck.sample(n).to(self.dummy_param.device))
 
     def decode(self, z: Tensor) -> Tensor:
-        return self.decoder.decode(z)
+        return self._decoder.decode(z)
 
     def classify(self, x: Tensor) -> Tensor:
         return self.multi_forward(x).y_hat
@@ -163,11 +163,11 @@ class VariationalAutoEncoder(AutoEncoder, Samplable):
 
     def multi_forward(self, x: Tensor) -> ForwardOutput:
         out = ForwardOutput()
-        z = self.encoder.encode(x)
+        z = self._encoder.encode(x)
         out.mu, out.log_var = self.bottleneck.forward(z)
         out.z_code = self.bottleneck.reparameterise(out.mu, out.log_var)
-        out.y_hat = self.classifier(out.z_code)
-        out.x_hat = self.decoder(out.z_code)
+        out.y_hat = self._classifier(out.z_code)
+        out.x_hat = self._decoder(out.z_code)
         out.x = x
         return out
 

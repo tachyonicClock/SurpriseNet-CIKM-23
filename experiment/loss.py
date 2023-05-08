@@ -4,7 +4,6 @@ from abc import ABC, abstractmethod
 import torch
 from torch import Tensor
 from torch.nn import functional as F
-
 from experiment.strategy import ForwardOutput
 
 
@@ -75,6 +74,7 @@ class ClassifierLoss(LossObjective):
     name = "Classifier"
 
     def update(self, out: ForwardOutput, target: Tensor = None):
+        assert out.y_hat is not None, "Expected y_hat to be provided"
         # I ran into an issue when using the GenerativeReplay plugin
         # where the wrong type is used
         target = target.type(torch.LongTensor).to(out.y_hat.device)

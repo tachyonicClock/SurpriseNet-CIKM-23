@@ -1,0 +1,3 @@
+[submodule "network/hvae"]
+	path = network/hvae
+	url = https://github.com/JakobHavtorn/hvae-oodd

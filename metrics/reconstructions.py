@@ -203,6 +203,9 @@ class GenerateSamples(PluginMetric):
         hide_axis(axes)
         axes.set_title(f"Prediction {gen_y}")
 
+    def after_training_epoch(self, strategy: "SupervisedTemplate") -> "MetricResult":
+        return self.after_eval(strategy)
+
     @torch.no_grad()
     def after_eval(self, strategy: 'BaseStrategy') -> 'MetricResult':
         assert isinstance(
@@ -223,8 +226,7 @@ class GenerateSamples(PluginMetric):
                     ax.set_ylabel(f"Subnet {task_id}")
                 self.add_image(ax, strategy.model)
 
-        metric = MetricValue(self, "Sample", figure_to_image(
-            fig), x_plot=strategy.clock.train_exp_counter)
+        metric = MetricValue(self, "Sample", figure_to_image(fig), x_plot=strategy.clock.total_iterations)
         plt.close(fig)
         plt.ion()
         return metric

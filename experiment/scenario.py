@@ -1,5 +1,5 @@
 import typing as t
-
+import torch
 import torchvision.transforms as T
 from avalanche.benchmarks import NCScenario
 from avalanche.benchmarks.classic import (SplitCIFAR10, SplitCIFAR100,
@@ -44,6 +44,8 @@ TRAIN_TRANSFORMS = {
     "FMNIST": T.Compose([
         T.Resize((32, 32)),
         T.ToTensor(),
+        # Dequantize
+        lambda x: (x*255 + torch.rand_like(x))/256,
     ]),
     "MNIST": T.Compose([
         T.Resize((32, 32)),

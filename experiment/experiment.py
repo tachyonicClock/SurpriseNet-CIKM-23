@@ -136,7 +136,7 @@ class BaseExperiment():
 
         if isinstance(self.network, Samplable) and is_images:
             rows_are_experiences = isinstance(self.network, ConditionedSample)
-            plugins.append(GenerateSamples(5, 4, rows_are_experiences))
+            plugins.append(GenerateSamples(5, 4, rows_are_experiences=rows_are_experiences))
 
         if isinstance(self.network, InferTask) and not self.cfg.task_free:
             plugins.append(ConditionalMetrics())
@@ -192,6 +192,9 @@ class BaseExperiment():
         print(f"Objectives:")
         for name, _ in self.objective:
             print(f" > Has the `{name}` objective")
+        print("Plugins:")
+        for plugin in self.strategy.plugins:
+            print(f" > {type(plugin).__name__}")
 
         print("-"*80)
         count_parameters(self.network)
