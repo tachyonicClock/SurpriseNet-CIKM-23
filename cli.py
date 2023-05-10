@@ -15,6 +15,7 @@ from config.config import ExpConfig
 from surprisenet.plugin import equal_capacity_prune_schedule
 from train import Experiment
 
+plt.ioff()
 plt.rcParams.update(
     {
         'font.family': 'Alegreya Sans',

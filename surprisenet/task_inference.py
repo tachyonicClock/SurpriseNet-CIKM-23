@@ -34,7 +34,7 @@ class UseTaskOracle(TaskInferenceStrategy):
         assert isinstance(
             model, PackNet), "Task inference only works on PackNet"
 
-        model.use_task_subset(task_id)
+        model.use_task_subset(min(task_id, model.subset_count() - 1))
         out: ForwardOutput = forward_func(x)
         out.pred_exp_id = (torch.ones((x.shape[0], 1)) * task_id).int()
         model.use_top_subset()
@@ -46,13 +46,29 @@ def _swap_fields(dest: ForwardOutput, src: ForwardOutput, swap_mask: Tensor):
     For each `ForwardOutput` field move elements in the Tensors using the swap_mask.
     Move not performed if either the dest or the src have an empty field
     """
-    for field in fields(ForwardOutput):
-        dest_tensor: Tensor = getattr(dest, field.name)
-        src_tensor: Tensor = getattr(src, field.name)
-        if dest_tensor == None or src_tensor == None:
-            continue
+    def _swap_tensor_elements(dest_tensor: Tensor, src_tensor: Tensor, swap_mask: Tensor):
+        assert dest_tensor.shape[0] == src_tensor.shape[0] == swap_mask.shape[0], \
+            f"dest_tensor, src_tensor and swap_mask must have the same first dim, "\
+            f"got {dest_tensor.shape}, {src_tensor.shape}, {swap_mask.shape}"
+
         dest_tensor[swap_mask] = src_tensor[swap_mask]
 
+    for field in fields(ForwardOutput):
+        dest_value: t.Any = getattr(dest, field.name)
+        src_value: t.Any = getattr(src, field.name)
+        if dest_value == None or src_value == None:
+            # Skip
+            continue
+        elif field.name == "kl_divergences":
+            # Swap each element of the field
+            for i in range(len(dest_value)):
+                _swap_tensor_elements(dest_value[i], src_value[i], swap_mask)
+        elif isinstance(dest_value, Tensor):
+            # Swap the whole tensor
+            _swap_tensor_elements(dest_value, src_value, swap_mask)
+        else:
+            raise NotImplementedError(
+                f"Unsupported type {type(dest_value)}")
 
 class TaskReconstruction(TaskInferenceStrategy):
     """
@@ -73,14 +89,14 @@ class TaskReconstruction(TaskInferenceStrategy):
 
         # Initialize the best output using the first subset. Subsequent subsets
         # will be compared to this one
-        model.use_subset(0)
+        model.use_task_subset(0)
         best_loss = torch.ones(x.shape[0]).to(x.device) * float('inf')
         best_loss, best_out = sample(forward_func, x)
         best_out.pred_exp_id = torch.zeros(x.shape[0]).int()
 
         # Iterate over all subsets and compare them to the best subset
         for i in range(1, model.subset_count()):
-            model.use_subset(i)
+            model.use_task_subset(i)
             new_loss, new_out = sample(forward_func, x)
 
             # Update best_out if the current subset is better

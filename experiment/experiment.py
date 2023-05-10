@@ -17,8 +17,9 @@ from metrics.metrics import (ConditionalMetrics, EpochClock,
                              ExperienceIdentificationCM, LossObjectiveMetric,
                              SubsetRecognition)
 from metrics.reconstructions import GenerateReconstruction, GenerateSamples
+from metrics.stdout_log import StdoutLog
 from network.trait import (NETWORK_TRAITS, AutoEncoder, Classifier,
-                           ConditionedSample, InferTask, Samplable)
+                           ConditionedSample, Decoder, Encoder, InferTask, Samplable)
 from setproctitle import setproctitle
 from torch import Tensor, nn
 from functools import partial
@@ -87,9 +88,9 @@ class BaseExperiment():
 
         self.scenario = self.make_scenario()
         self.objective = self.make_objective()
-        self.network = self.make_network()
+        self.network = self.make_network().to(self.cfg.device)
         self.evaluator = self.make_evaluator(
-            [self.logger], self.scenario.n_classes)
+            [self.logger, StdoutLog()], self.scenario.n_classes)
         self.optimizer = self.make_optimizer(self.network.parameters())
         self.strategy = self.make_strategy()
 
@@ -107,6 +108,7 @@ class BaseExperiment():
 
             if (i+1) % self.cfg.test_every == 0:
                 results.append(self.strategy.eval(test_subset))
+
 
         self.logger.writer.flush()
         self.post_flight(results)
@@ -131,18 +133,18 @@ class BaseExperiment():
 
         plugins = []
         is_images = self.cfg.is_image_data
-        if isinstance(self.network, AutoEncoder) and is_images:
+        if isinstance(self.network, Encoder) and isinstance(self.network, Decoder) and is_images:
             plugins.append(GenerateReconstruction(self.scenario, 2, 1))
 
         if isinstance(self.network, Samplable) and is_images:
             rows_are_experiences = isinstance(self.network, ConditionedSample)
             plugins.append(GenerateSamples(5, 4, rows_are_experiences=rows_are_experiences))
 
-        if isinstance(self.network, InferTask) and not self.cfg.task_free:
+        if isinstance(self.network, InferTask) and isinstance(self.network, Classifier):
             plugins.append(ConditionalMetrics())
-            plugins.append(ExperienceIdentificationCM(self.n_experiences))
 
         if isinstance(self.network, InferTask):
+            plugins.append(ExperienceIdentificationCM(self.n_experiences))
             plugins.append(SubsetRecognition(self.cfg.n_classes))
 
         if isinstance(self.network, Classifier):

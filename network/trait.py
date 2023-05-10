@@ -194,15 +194,11 @@ class PackNet(ABC):
         """
 
     @abstractmethod
-    def use_subset(self, task_id):
+    def use_task_subset(self, task_id):
         pass
 
     @abstractmethod
     def use_top_subset(self):
-        pass
-
-    @abstractmethod
-    def unfreeze_all(self):
         pass
 
     @abstractmethod

@@ -103,7 +103,7 @@ class ExpConfig():
         # TRAINING
         self.total_task_epochs: int
         """Total number of training epochs in a task"""
-        self.batch_size: int = 128
+        self.batch_size: int = 64
         """Batch size"""
         self.learning_rate: float = 0.0001
         """Learning rate"""
@@ -197,6 +197,8 @@ class ExpConfig():
         self.n_experiences = 5
         self.retrain_epochs = 5
         self.total_task_epochs = 20
+        self.batch_size = 128
+        # self.mask_classifier_loss = True
         return self
 
     def scenario_cifar10(self: 'ExpConfig') -> 'ExpConfig':
@@ -327,10 +329,11 @@ class ExpConfig():
         self.classifier_loss_weight = None
         self.HVAE_schedule = {
             "free_nat_start_value": 2.0,
-            "free_nats_epochs": 400,
-            "warmup_epochs": 200
+            "free_nats_epochs": 200,
+            "warmup_epochs": 100
         }
         self.total_task_epochs = 400
+        self.retrain_epochs = 100
 
         if self.dataset_name == "FMNIST":
             self.network_style = "DeepVAE_FMNIST"

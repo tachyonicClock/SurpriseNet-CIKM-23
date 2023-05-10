@@ -9,7 +9,7 @@ from avalanche.evaluation import PluginMetric
 from avalanche.evaluation.metric_definitions import MetricValue
 from experiment.strategy import ForwardOutput, Strategy
 from matplotlib.axes import Axes
-from network.trait import AutoEncoder, Classifier, Samplable
+from network.trait import AutoEncoder, Classifier, Decoder, Encoder, MultiOutputNetwork, Samplable
 from PIL import Image
 from torchvision.transforms.functional import to_pil_image
 
@@ -117,7 +117,7 @@ class GenerateReconstruction(PluginMetric):
     @torch.no_grad()
     def after_eval(self, strategy: Strategy) -> 'MetricResult':
         model = strategy.model
-        assert isinstance(model, AutoEncoder), "Network must be auto encoder"
+        assert isinstance(model, MultiOutputNetwork) 
 
         n_tasks = len(self.patterns)
         n_patterns_per_task = len(self.patterns[0])
@@ -203,16 +203,12 @@ class GenerateSamples(PluginMetric):
         hide_axis(axes)
         axes.set_title(f"Prediction {gen_y}")
 
-    def after_training_epoch(self, strategy: "SupervisedTemplate") -> "MetricResult":
-        return self.after_eval(strategy)
-
     @torch.no_grad()
     def after_eval(self, strategy: 'BaseStrategy') -> 'MetricResult':
         assert isinstance(
             strategy.model, Samplable), "Network must be `Samplable`"
 
         self.device = strategy.device
-        plt.ioff()
         fig, axes = plt.subplots(
             nrows=self.rows, ncols=self.cols,
             constrained_layout=True,
@@ -222,13 +218,13 @@ class GenerateSamples(PluginMetric):
         for task_id, rows in enumerate(axes):
             for ax in rows:
                 if self.rows_are_experiences:
-                    strategy.model.use_task_subset(task_id)
+                    t = min(strategy.model.subset_count()-1, task_id)
+                    strategy.model.use_task_subset(t)
                     ax.set_ylabel(f"Subnet {task_id}")
                 self.add_image(ax, strategy.model)
 
         metric = MetricValue(self, "Sample", figure_to_image(fig), x_plot=strategy.clock.total_iterations)
         plt.close(fig)
-        plt.ion()
         return metric
 
     def reset(self, **kwargs) -> None:

@@ -130,7 +130,8 @@ class SubsetRecognition(_MyMetric):
         true_ys = strategy.last_forward_output.y
 
         for subset, y in zip(subsets_used, true_ys):
-            self.cm[int(subset), int(y)] += 1
+            t = min(int(subset), self.cm.shape[0] - 1)
+            self.cm[t, int(y)] += 1
 
     def after_eval(self, strategy: Strategy):
         return MetricValue(self, f"SubsetRecognition", self.result(), strategy.clock.total_iterations)

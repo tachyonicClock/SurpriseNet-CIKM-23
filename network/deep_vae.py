@@ -1,7 +1,7 @@
 from avalanche.core import SupervisedPlugin
 from experiment.strategy import ForwardOutput
 from network.hvae.oodd.losses import ELBO
-from .trait import Encoder, Decoder, VariationalAutoEncoder, Samplable, MultiOutputNetwork
+from .trait import AutoEncoder, Encoder, Decoder, VariationalAutoEncoder, Samplable, MultiOutputNetwork
 from network.hvae.oodd.layers.stages import VaeStage, LvaeStage
 from network.hvae.oodd.models.dvae import DeepVAE
 from network.hvae.oodd.variational import DeterministicWarmup, FreeNatsCooldown
@@ -17,40 +17,40 @@ class FashionMNISTDeepVAE(Encoder, Decoder, Samplable, MultiOutputNetwork):
         super().__init__()
 
         stochastic_layers = [
-            {"block": "GaussianConv2d", "latent_features": 8, "weightnorm": True},
-            {"block": "GaussianDense", "latent_features": 16, "weightnorm": True},
-            {"block": "GaussianDense", "latent_features": 8, "weightnorm": True}
+            {"block": "GaussianConv2d", "latent_features": 8, "weightnorm": False},
+            {"block": "GaussianDense", "latent_features": 16, "weightnorm": False},
+            {"block": "GaussianDense", "latent_features": 8, "weightnorm": False}
         ]
 
         deterministic_layers = [
             [
                 {"block": "ResBlockConv2d", "out_channels": 64, "kernel_size": 5,
-                    "stride": 1, "weightnorm": True, "gated": False},
+                    "stride": 1, "weightnorm": False, "gated": False},
                 {"block": "ResBlockConv2d", "out_channels": 64, "kernel_size": 5,
-                    "stride": 1, "weightnorm": True, "gated": False},
+                    "stride": 1, "weightnorm": False, "gated": False},
                 {"block": "ResBlockConv2d", "out_channels": 64, "kernel_size": 5,
-                    "stride": 2, "weightnorm": True, "gated": False}
+                    "stride": 2, "weightnorm": False, "gated": False}
             ],
             [
                 {"block": "ResBlockConv2d", "out_channels": 64, "kernel_size": 3,
-                    "stride": 1, "weightnorm": True, "gated": False},
+                    "stride": 1, "weightnorm": False, "gated": False},
                 {"block": "ResBlockConv2d", "out_channels": 64, "kernel_size": 3,
-                    "stride": 1, "weightnorm": True, "gated": False},
+                    "stride": 1, "weightnorm": False, "gated": False},
                 {"block": "ResBlockConv2d", "out_channels": 64, "kernel_size": 3,
-                    "stride": 2, "weightnorm": True, "gated": False}
+                    "stride": 2, "weightnorm": False, "gated": False}
             ],
             [
                 {"block": "ResBlockConv2d", "out_channels": 64, "kernel_size": 3,
-                    "stride": 1, "weightnorm": True, "gated": False},
+                    "stride": 1, "weightnorm": False, "gated": False},
                 {"block": "ResBlockConv2d", "out_channels": 64, "kernel_size": 3,
-                    "stride": 1, "weightnorm": True, "gated": False},
+                    "stride": 1, "weightnorm": False, "gated": False},
                 {"block": "ResBlockConv2d", "out_channels": 64, "kernel_size": 3,
-                    "stride": 1, "weightnorm": True, "gated": False}
+                    "stride": 1, "weightnorm": False, "gated": False}
             ]
         ]
         self.dummy = nn.Parameter(torch.zeros(1))
         self.deep_vae = DeepVAE(
-            VaeStage,
+            Stage=VaeStage,
             input_shape=torch.Size([1, 32, 32]),
             likelihood_module='DiscretizedLogisticLikelihoodConv2d',
             config_deterministic=deterministic_layers,

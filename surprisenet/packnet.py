@@ -5,7 +5,9 @@ from enum import Enum
 import torch
 import torch.nn as nn
 from experiment.strategy import ForwardOutput
-from network.trait import (AutoEncoder, ConditionedSample, InferTask, PackNet,
+from network.deep_vae import FashionMNISTDeepVAE
+from network.hvae.oodd.layers.linear import NormedDense, NormedLinear
+from network.trait import (AutoEncoder, ConditionedSample, Decoder, Encoder, InferTask, MultiOutputNetwork, PackNet, Samplable,
                            VariationalAutoEncoder)
 from torch import Tensor
 from torch.nn import functional as F
@@ -147,7 +149,7 @@ class PackNetDecorator(PackNet, ModuleDecorator):
             weight[mask] = 0.0
         return weight
 
-    def use_subset(self, subset_id):
+    def use_task_subset(self, subset_id):
         """Setter to set the sub-set of the network to be used on forward pass"""
         assert subset_id >= 0 and subset_id <= self._z_top, \
             f"subset_id {subset_id} must be between 0 and {self._z_top}"
@@ -161,7 +163,7 @@ class PackNetDecorator(PackNet, ModuleDecorator):
 
     def use_top_subset(self):
         """Forward should use the top subset"""
-        self.use_subset(self._z_top)
+        self.use_task_subset(self._z_top)
 
     def initialize_top(self):
         """Re-initialize the top of the network"""
@@ -278,7 +280,7 @@ class _PnBatchNorm(PackNet, ModuleDecorator):
     def push_pruned(self) -> None:
         self._z_top += 1
 
-    def use_subset(self, task_id):
+    def use_task_subset(self, task_id):
         pass
 
     def use_top_subset(self):
@@ -292,7 +294,6 @@ class _PnBatchNorm(PackNet, ModuleDecorator):
         self.wrappee.weight.requires_grad = True
         self.wrappee.bias.requires_grad = True
         self.frozen = False
-
 
 class _PnLinear(PackNetDecorator):
 
@@ -330,6 +331,10 @@ class _PnConv2d(PackNetDecorator):
     @property
     def bias(self) -> Tensor:
         return self.wrappee.bias
+    
+    @property
+    def transposed(self) -> bool:
+        return self.wrappee.transposed
 
     def initialize_top(self):
         # He Weight Initialization
@@ -356,7 +361,11 @@ class _PnConvTransposed2d(PackNetDecorator):
     @property
     def bias(self) -> Tensor:
         return self.wrappee.bias
-
+    
+    @property
+    def transposed(self) -> bool:
+        return self.wrappee.transposed
+    
     def forward(self, input: Tensor, output_size: t.Optional[t.List[int]] = None) -> Tensor:
         w = self.wrappee
         if w.padding_mode != 'zeros':
@@ -375,6 +384,13 @@ class _PnConvTransposed2d(PackNetDecorator):
 
 
 def wrap(wrappee: nn.Module):
+    # Remove Weight Norm
+    if hasattr(wrappee, "weight_g") and hasattr(wrappee, "weight_v"):
+        torch.nn.utils.remove_weight_norm(wrappee)
+    if isinstance(wrappee, (NormedLinear, NormedDense)):
+        wrappee.weightnorm = False
+
+    # Recursive cases
     if isinstance(wrappee, nn.Linear):
         return _PnLinear(wrappee)
     elif isinstance(wrappee, nn.Conv2d):
@@ -391,12 +407,6 @@ def wrap(wrappee: nn.Module):
         for submodule_name, submodule in wrappee.named_children():
             setattr(wrappee, submodule_name, wrap(submodule))
     return wrappee
-
-
-def deffer_wrap(wrappee: t.Type[nn.Module]):
-    def _deffered(*args, **kwargs):
-        return wrap(wrappee(*args, **kwargs))
-    return _deffered
 
 
 class _PackNetParent(PackNet, nn.Module):
@@ -428,8 +438,8 @@ class _PackNetParent(PackNet, nn.Module):
     def push_pruned(self) -> None:
         self._pn_apply(lambda x: x.push_pruned())
 
-    def use_subset(self, task_id):
-        self._pn_apply(lambda x: x.use_subset(task_id))
+    def use_task_subset(self, task_id):
+        self._pn_apply(lambda x: x.use_task_subset(task_id))
 
     def use_top_subset(self):
         self._pn_apply(lambda x: x.use_top_subset())
@@ -496,5 +506,34 @@ class SurpriseNetVariationalAutoEncoder(InferTask, VariationalAutoEncoder, _Pack
         return self.multi_forward(x).y_hat
 
     def conditioned_sample(self, n: int = 1, given_task: int = 0) -> Tensor:
-        self.use_subset(given_task)
+        self.use_task_subset(given_task)
         return self.sample(n)
+
+class SurpriseNetDeepVAE(InferTask, Encoder, Decoder, Samplable, MultiOutputNetwork, _PackNetParent):
+    
+    def __init__(self, wrapped: FashionMNISTDeepVAE, task_inference_strategy: TaskInferenceStrategy) -> None:
+        super().__init__()
+        self.wrapped = wrapped
+        self.task_inference_strategy = task_inference_strategy
+        wrap(wrapped)
+
+    def forward(self, x: Tensor) -> Tensor:
+        return self.wrapped.forward(x)
+    
+    def sample(self, n: int = 1) -> Tensor:
+        return self.wrapped.sample(n)
+    
+    def decode(self, embedding: Tensor) -> Tensor:
+        return self.wrapped.decode(embedding)
+    
+    def encode(self, x: Tensor) -> Tensor:
+        return self.wrapped.encode(x)
+    
+    def multi_forward(self, x: Tensor) -> ForwardOutput:
+        if self.training:
+            return self.wrapped.multi_forward(x)
+        else:
+            """At eval time we need to try infer the task somehow?"""
+            return self.task_inference_strategy \
+                       .forward_with_task_inference(self.wrapped.multi_forward, x)
+

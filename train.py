@@ -94,6 +94,10 @@ class Experiment(BaseExperiment):
                 network,
                 self.make_task_inference_strategy()
             )
+        elif self.cfg.architecture == "DeepVAE":
+            network = pn.SurpriseNetDeepVAE(network, self.make_task_inference_strategy())
+        else:
+            raise ValueError("Unknown architecture")
 
         if self.cfg.task_free:
             self.plugins.append(
@@ -198,7 +202,7 @@ class Experiment(BaseExperiment):
             train_mb_size=cfg.batch_size,
             train_epochs=train_epochs,
             eval_mb_size=cfg.batch_size,
-            eval_every=cfg.validate_every_n_epochs,
+            eval_every=-1,
             plugins=[self, *self.plugins],
             evaluator=self.evaluator
         )
