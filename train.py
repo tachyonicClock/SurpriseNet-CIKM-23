@@ -19,15 +19,8 @@ from surprisenet.drift_detection import (ClockOracle, DriftDetector,
                                          DriftDetectorPlugin,
                                          SurpriseNetDriftHandler)
 from surprisenet.plugin import SurpriseNetPlugin
-from surprisenet.task_inference import (TaskInferenceStrategy,
+from surprisenet.task_inference import (HierarchicalVAEOOD, TaskInferenceStrategy,
                                         TaskReconstruction, UseTaskOracle)
-
-TASK_INFERENCE_STRATEGIES = {
-    "task_reconstruction_loss": TaskReconstruction,
-    "task_oracle": UseTaskOracle
-}
-
-
 class Experiment(BaseExperiment):
 
     def make_scenario(self) -> cl.benchmarks.NCScenario:
@@ -51,7 +44,12 @@ class Experiment(BaseExperiment):
                 self.cfg.normalize)
 
     def make_task_inference_strategy(self) -> TaskInferenceStrategy:
-        return TASK_INFERENCE_STRATEGIES[self.cfg.task_inference_strategy](self)
+        if self.cfg.task_inference_strategy == "task_reconstruction_loss":
+            return TaskReconstruction(self)
+        elif self.cfg.task_inference_strategy == "log_likelihood_ratio":
+            return HierarchicalVAEOOD(**self.cfg.task_inference_strategy_kwargs)
+        elif self.cfg.task_inference_strategy == "task_oracle":
+            return UseTaskOracle(self)
 
     def make_drift_detection_plugin(self) -> DriftDetectorPlugin:
 

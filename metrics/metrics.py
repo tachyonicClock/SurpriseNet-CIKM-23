@@ -58,40 +58,41 @@ class EpochClock(_MyMetric):
 
 class ExperienceIdentificationCM(_MyMetric):
 
-    cm: ConfusionMatrix
 
     def __init__(self, n_experiences: int) -> None:
         self.n_experiences = n_experiences
-        self.cm = ConfusionMatrix("multiclass", num_classes=n_experiences)
+        self.cm: Tensor = torch.zeros((n_experiences, n_experiences)).int()
         self.reset()
         print("ExperienceIdentificationCM")
 
-    def update(self, predictions: Tensor, target: int):
-        self.cm.update(predictions.cpu(), torch.ones(
-            (predictions.shape)).int() * target)
-
     def result(self):
-        cm = self.cm.compute()
         fig, ax = plt.subplots()
-        ax.imshow(cm)
+        ax.imshow(self.cm)
         ax.set_ylabel("True Experience")
         ax.set_xlabel("Predicted Experience")
         return figure_to_image(fig)
 
     def reset(self):
-        self.cm.reset()
+        self.cm.zero_()
 
     def before_eval(self, strategy):
         self.reset()
 
     def after_eval_iteration(self, strategy: Strategy) -> "MetricResult":
-        exp_id = strategy.experience.current_experience
+        exp_id = strategy.last_forward_output.exp_id
         pred_exp_id = strategy.last_forward_output.pred_exp_id
         assert pred_exp_id != None, "Strategy did not output pred_exp_id"
-        self.update(pred_exp_id, exp_id)
+        
+        # Update the confusion matrix
+        for i, j in zip(exp_id, pred_exp_id):
+            self.cm[i, j] += 1
 
     def after_eval(self, strategy: Strategy):
-        return MetricValue(self, f"ExperienceIdentificationCM", self.result(), strategy.clock.total_iterations)
+        task_id_accuracy = float(self.cm.diag().sum() / self.cm.sum())
+        return [
+            MetricValue(self, f"ExperienceIdentificationCM", self.result(), strategy.clock.total_iterations),
+            MetricValue(self, f"TaskIdAccuracy", task_id_accuracy, strategy.clock.total_iterations)
+        ]
 
 
 class SubsetRecognition(_MyMetric):

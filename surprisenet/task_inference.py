@@ -4,6 +4,7 @@ from dataclasses import fields
 import torch
 from experiment.experiment import BaseExperiment
 from experiment.strategy import ForwardOutput
+from network.deep_vae import HVAE
 from network.hvae.oodd.losses import ELBO
 from network.trait import PackNet
 from torch import Tensor
@@ -130,9 +131,16 @@ class HierarchicalVAEOOD(TaskInferenceStrategy):
     VAEs Know What They Don't Know.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, k: int = 1) -> None:
+        """_summary_
+
+        :param k: How many latent variables should be sampled randomly. k=1 the
+            lowest abstraction level in the hierarchy is randomly sampled. k=2
+            the bottom two levels are randomly sampled and so on.
+        """        
         super().__init__()
         self.model = None
+        self.k = k
         # TODO: Relying on model being set later by the client is spaghetti
         self.elbo_loss_func = ELBO()
 
@@ -177,8 +185,7 @@ class HierarchicalVAEOOD(TaskInferenceStrategy):
         )
 
         # L>k bound
-        latent_hierarchy_depth = self.model.wrapped.deep_vae.n_latents
-        decode_from_p = self._get_decode_from_p(latent_hierarchy_depth, k=1)
+        decode_from_p = self._get_decode_from_p(self.model.n_latents, k=self.k)
         likelihood_data, stage_data = self.model(x, decode_from_p=decode_from_p, use_mode=decode_from_p)
         _, elbo_k, _, _ = self.elbo_loss_func(
             likelihood_data.likelihood,
@@ -192,7 +199,7 @@ class HierarchicalVAEOOD(TaskInferenceStrategy):
 
         return elbo - elbo_k
     
-    def sample_score(self, model, forward_func, x):
+    def sample_score(self, forward_func, x):
         out: ForwardOutput = forward_func(x)
         score = self._novelty_score(x)
         return score, out
@@ -207,13 +214,13 @@ class HierarchicalVAEOOD(TaskInferenceStrategy):
         # will be compared to this one
         self.model.use_task_subset(0)
         best_score = torch.ones(x.shape[0]).to(x.device) * float('inf')
-        best_score, best_out = self.sample_score(self.model, forward_func, x)
+        best_score, best_out = self.sample_score(forward_func, x)
         best_out.pred_exp_id = torch.zeros(x.shape[0]).int()
 
         # Iterate over all subsets and compare them to the best subset
         for i in range(1, self.model.subset_count()):
             self.model.use_task_subset(i)
-            new_score, new_out = self.sample_score(self.model, forward_func, x)
+            new_score, new_out = self.sample_score(forward_func, x)
 
             # Update best_out if the current subset is better
             swap_mask = new_score < best_score

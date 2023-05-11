@@ -16,3 +16,8 @@ def tmp_log_dir():
     return log_dir
 
 ROOT_LOG_DIR = tmp_log_dir()
+
+print("=" * 80)
+print("ROOT_LOG_DIR:", ROOT_LOG_DIR)
+print("DATASETS:", os.environ["DATASETS"])
+print("=" * 80)

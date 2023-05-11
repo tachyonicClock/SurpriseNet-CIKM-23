@@ -34,9 +34,10 @@ class ForwardOutput():
     """The output of the mean layer in a VAE"""
     log_var: Tensor = None
     """The output of the variance layer in a VAE"""
-    likelihood: t.Optional[t.List[Tensor]] = None
+    likelihood: t.Optional[Tensor] = None
     """The likelihood of the reconstruction given the latent code"""
     kl_divergences: t.Optional[t.List[Tensor]] = None
+    """The kl divergences for each stage of the HVAE"""
 
 
 class Strategy(SupervisedTemplate):
@@ -68,6 +69,8 @@ class Strategy(SupervisedTemplate):
             self.mbatch[0])
         self.last_forward_output.x = self.mb_x
         self.last_forward_output.y = self.mb_y
+        self.last_forward_output.exp_id = torch.ones_like(self.mb_y) * \
+            self.experience.current_experience
 
         return self.last_forward_output.y_hat
 

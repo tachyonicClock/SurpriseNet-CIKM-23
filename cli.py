@@ -227,7 +227,7 @@ def surprise_net(
     removing the reliance on a task oracle. Additionally it can be pruned
     such that each task has the same number of parameters.
     """
-    cfg.strategy_ci_packnet()
+    cfg.strategy_surprisenet()
 
     assert not (equal_prune and chf), "Cannot use both equal pruning and CHF"
     assert not (equal_prune and prune_proportion is not None), \

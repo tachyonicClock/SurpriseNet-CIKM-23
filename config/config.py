@@ -117,8 +117,9 @@ class ExpConfig():
         """Proportion of the network to prune"""
         self.retrain_epochs: int
         """Number of epochs post-pruning to retrain the network"""
-        self.task_inference_strategy: t.Literal["TaskOracle", "SurpriseNet"]
+        self.task_inference_strategy: t.Literal["task_oracle", "task_reconstruction_loss", "log_likelihood_ratio"]
         """Type of task inference strategy to use"""
+        self.task_inference_strategy_kwargs: t.Optional[t.Dict[str, t.Any]] = None
 
         # OTHER STRATEGIES
         # Experience replay
@@ -345,10 +346,15 @@ class ExpConfig():
         self.task_inference_strategy = "task_oracle"
         return self
 
-    def strategy_ci_packnet(self: 'ExpConfig') -> 'ExpConfig':
+    def strategy_surprisenet(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to use CI-PackNet"""
         self.use_packnet = True
-        self.task_inference_strategy = "task_reconstruction_loss"
+
+        if self.architecture == "DeepVAE":
+            self.task_inference_strategy = "log_likelihood_ratio"
+            self.task_inference_strategy_kwargs = dict(k=1)
+        else:
+            self.task_inference_strategy = "task_reconstruction_loss"
         return self
 
     def strategy_not_cl(self: 'ExpConfig') -> 'ExpConfig':

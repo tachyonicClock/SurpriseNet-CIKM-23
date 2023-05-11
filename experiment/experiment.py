@@ -19,7 +19,7 @@ from metrics.metrics import (ConditionalMetrics, EpochClock,
 from metrics.reconstructions import GenerateReconstruction, GenerateSamples
 from metrics.stdout_log import StdoutLog
 from network.trait import (NETWORK_TRAITS, AutoEncoder, Classifier,
-                           ConditionedSample, Decoder, Encoder, InferTask, Samplable)
+                           ConditionedSample, Decoder, Encoder, InferTask, PackNet, Samplable)
 from setproctitle import setproctitle
 from torch import Tensor, nn
 from functools import partial
@@ -137,7 +137,7 @@ class BaseExperiment():
             plugins.append(GenerateReconstruction(self.scenario, 2, 1))
 
         if isinstance(self.network, Samplable) and is_images:
-            rows_are_experiences = isinstance(self.network, ConditionedSample)
+            rows_are_experiences = isinstance(self.network, PackNet)
             plugins.append(GenerateSamples(5, 4, rows_are_experiences=rows_are_experiences))
 
         if isinstance(self.network, InferTask) and isinstance(self.network, Classifier):

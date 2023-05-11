@@ -207,6 +207,7 @@ class GenerateSamples(PluginMetric):
     def after_eval(self, strategy: 'BaseStrategy') -> 'MetricResult':
         assert isinstance(
             strategy.model, Samplable), "Network must be `Samplable`"
+        
 
         self.device = strategy.device
         fig, axes = plt.subplots(
@@ -218,9 +219,9 @@ class GenerateSamples(PluginMetric):
         for task_id, rows in enumerate(axes):
             for ax in rows:
                 if self.rows_are_experiences:
-                    t = min(strategy.model.subset_count()-1, task_id)
-                    strategy.model.use_task_subset(t)
-                    ax.set_ylabel(f"Subnet {task_id}")
+                    t_available = min(strategy.model.subset_count(), task_id)
+                    strategy.model.use_task_subset(t_available)
+                    ax.set_ylabel(f"Subnet {t_available}")
                 self.add_image(ax, strategy.model)
 
         metric = MetricValue(self, "Sample", figure_to_image(fig), x_plot=strategy.clock.total_iterations)

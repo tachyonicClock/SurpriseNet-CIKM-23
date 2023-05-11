@@ -546,3 +546,6 @@ class SurpriseNetDeepVAE(InferTask, Encoder, Decoder, Samplable, MultiOutputNetw
             return self.task_inference_strategy \
                        .forward_with_task_inference(self.wrapped.multi_forward, x)
 
+    @property
+    def n_latents(self) -> int:
+        return self.wrapped.n_latents
