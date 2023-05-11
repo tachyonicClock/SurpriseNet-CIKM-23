@@ -1,5 +1,5 @@
 from avalanche.core import SupervisedPlugin
-from experiment.strategy import ForwardOutput
+from experiment.strategy import ForwardOutput, Strategy
 from network.hvae.oodd.losses import ELBO
 from .trait import AutoEncoder, Encoder, Decoder, VariationalAutoEncoder, Samplable, MultiOutputNetwork
 from network.hvae.oodd.layers.stages import VaeStage, LvaeStage
@@ -9,6 +9,8 @@ from torch import nn, Tensor
 import torch
 from experiment.loss import LossObjective
 import avalanche as av
+import typing as t
+import numpy as np
 
 
 class FashionMNISTDeepVAE(Encoder, Decoder, Samplable, MultiOutputNetwork):
@@ -62,8 +64,14 @@ class FashionMNISTDeepVAE(Encoder, Decoder, Samplable, MultiOutputNetwork):
             padded_shape=None
         )
 
-    def forward(self, x):
-        return self.deep_vae.forward(x, n_posterior_samples=1)
+    def forward(self, 
+            x: Tensor,
+            n_posterior_samples: int = 1,
+            use_mode: bool | t.List[bool] = False,
+            decode_from_p: bool | t.List[bool] = False,
+            **stage_kwargs: t.Any        
+        ):
+        return self.deep_vae(x, n_posterior_samples, use_mode, decode_from_p, **stage_kwargs)
 
     def classify(self, x: Tensor) -> Tensor:
         raise NotImplementedError("DeepVAE does not support classification")
@@ -97,6 +105,22 @@ class FashionMNISTDeepVAE(Encoder, Decoder, Samplable, MultiOutputNetwork):
 
         return forward_output
 
+class Average():
+    def __init__(self) -> None:
+        self.count = 0
+        self.sum = 0
+    
+    def update(self, value: float) -> None:
+        self.count += 1
+        self.sum += float(value)
+
+    def get(self) -> float:
+        return self.sum / self.count
+    
+    def reset(self) -> None:
+        self.count = 0
+        self.sum = 0
+
 
 class DeepVAELoss(LossObjective, SupervisedPlugin):
     name = "DeepVAE"
@@ -122,6 +146,7 @@ class DeepVAELoss(LossObjective, SupervisedPlugin):
         self.free_nats_epochs = free_nats_epochs
         self.warmup_epochs = warmup_epochs
         self.logger = logger.writer
+        self.bpd = Average()
         self.before_training_exp(None)
         self.before_training_epoch(None)
 
@@ -140,8 +165,19 @@ class DeepVAELoss(LossObjective, SupervisedPlugin):
         # Increment the simulated annealing
         self.beta = next(self.deterministic_warmup)
         self.free_nats = next(self.free_nats_cool_down)
-        self.logger.add_scalar("ELBO/beta", self.beta)
-        self.logger.add_scalar("ELBO/free_nats", self.free_nats)
+        self.logger.add_scalar("ELBO/beta", self.beta, strategy.clock.train_iterations)
+        self.logger.add_scalar("ELBO/free_nats", self.free_nats, strategy.clock.train_iterations)
+        self.bpd.reset()
+
+    def after_training_epoch(self, strategy: Strategy, *args, **kwargs):
+        self.logger.add_scalar(f"ELBO_train/bpd", self.bpd.get(), strategy.clock.train_iterations)
+
+    def before_eval(self, strategy, *args, **kwargs):
+        self.bpd.reset()
+        self.t = 0
+    def after_eval_exp(self, strategy: Strategy, *args, **kwargs):
+        self.logger.add_scalar(f"ELBO_eval/bpd/task={self.t}", self.bpd.get(), strategy.clock.total_iterations)
+        self.t += 1
 
     def update(self, out: ForwardOutput, target: Tensor = None):
         # Calculate the loss and store the likelihood and kl_divergences
@@ -157,3 +193,6 @@ class DeepVAELoss(LossObjective, SupervisedPlugin):
             batch_reduction=None
         )
         self.loss = loss.mean()
+
+        bpd: Tensor = - elbo.mean() / np.log(2.) / np.prod(out.x.shape[1:])
+        self.bpd.update(bpd.item())
