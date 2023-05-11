@@ -24,6 +24,9 @@ plt.rcParams.update(
     }
 )
 
+# Tensorboard complains too much about things that don't matter. e.g AVX2
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+
 
 def get_experiment_name(repo_hash, experiment, scenario, architecture, strategy):
     hostname = os.uname()[1]
