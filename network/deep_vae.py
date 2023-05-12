@@ -1,7 +1,8 @@
 from avalanche.core import SupervisedPlugin
 from experiment.strategy import ForwardOutput, Strategy
 from network.hvae.oodd.losses import ELBO
-from .trait import AutoEncoder, Encoder, Decoder, VariationalAutoEncoder, Samplable, MultiOutputNetwork
+from network.mlp import ClassifierHead
+from .trait import AutoEncoder, Classifier, Encoder, Decoder, VariationalAutoEncoder, Samplable, MultiOutputNetwork
 from network.hvae.oodd.layers.stages import VaeStage, LvaeStage
 from network.hvae.oodd.models.dvae import DeepVAE
 from network.hvae.oodd.variational import DeterministicWarmup, FreeNatsCooldown
@@ -13,17 +14,25 @@ import typing as t
 import numpy as np
 
 
-class HVAE(Encoder, Decoder, Samplable, MultiOutputNetwork):
+class HVAE(Classifier, Encoder, Decoder, Samplable, MultiOutputNetwork):
 
-    def __init__(self) -> None:
+    def __init__(self, n_classes: int) -> None:
         super().__init__()
         self.dummy = nn.Parameter(torch.zeros(1))
         self.hvae = self.make_hvae()
         """An underlying hierarchical variational autoencoder"""
-    
-    def make_hvae(self):
-        raise NotImplementedError("HVAE is not implemented")
 
+        final_latent_features = self.hvae.config_stochastic[-1]["latent_features"]
+        self.classifier = self.make_classifier(final_latent_features, n_classes)
+        """A classifier that takes the latent code as input"""
+        
+    
+    def make_hvae(self) -> DeepVAE:
+        raise NotImplementedError("HVAE is not implemented")
+    
+    def make_classifier(self, latent_features: int, n_classes: int) -> nn.Module:
+        raise NotImplementedError("HVAE is not implemented")
+        
     def forward(self, 
             x: Tensor,
             n_posterior_samples: int = 1,
@@ -34,7 +43,7 @@ class HVAE(Encoder, Decoder, Samplable, MultiOutputNetwork):
         return self.hvae(x, n_posterior_samples, use_mode, decode_from_p, **stage_kwargs)
 
     def classify(self, x: Tensor) -> Tensor:
-        raise NotImplementedError("DeepVAE does not support classification")
+        return self.multi_forward(x).y_hat
 
     def encode(self, x: Tensor) -> Tensor:
         raise NotImplementedError("DeepVAE does not support encoding")
@@ -58,7 +67,11 @@ class HVAE(Encoder, Decoder, Samplable, MultiOutputNetwork):
             sd.loss.kl_elementwise for sd in stage_data if sd.loss.kl_elementwise is not None
         ]
 
+        # Use the last stage's latent code as input to the classifier
+        y_hat  = self.classifier(stage_data[-1].q.z)
+        
         forward_output = ForwardOutput()
+        forward_output.y_hat = y_hat
         forward_output.x_hat = likelihood_data.samples
         forward_output.likelihood = likelihood_data.likelihood
         forward_output.kl_divergences = kl_divergences
@@ -116,7 +129,9 @@ class FashionMNISTDeepVAE(HVAE):
             skip_stochastic=True,
             padded_shape=None
         )
-
+    
+    def make_classifier(self, latent_features: int, n_classes: int) -> nn.Module:
+        return ClassifierHead(latent_features, n_classes)
 
 
 class Average():

@@ -40,36 +40,50 @@ EVAL_TRANSFORM = {
     ])
 }
 
+def dequantize(x: torch.Tensor) -> torch.Tensor:
+    """Dequantize a tensor originating from pixel values. We inject noise
+    to avoid the same pixel values to be always mapped to the same float
+    value. The values become, sort of, continuous.
+
+    :param x: An input tensor with float values in [0, 1]
+    :return: A dequantized tensor with float values in [0, 1]
+    """    
+    return (x*255 + torch.rand_like(x))/256
+
 TRAIN_TRANSFORMS = {
     "FMNIST": T.Compose([
         T.Resize((32, 32)),
         T.ToTensor(),
-        # Dequantize
-        lambda x: (x*255 + torch.rand_like(x))/256,
+        dequantize,
     ]),
     "MNIST": T.Compose([
         T.Resize((32, 32)),
         T.ToTensor(),
+        dequantize,
     ]),
     "CIFAR10": T.Compose([
         T.RandomCrop(32, padding=4),
         T.RandomHorizontalFlip(),
         T.ToTensor(),
+        dequantize,
     ]),
     "CIFAR100": T.Compose([
         T.RandomCrop(32, padding=4),
         T.RandomHorizontalFlip(),
         T.ToTensor(),
+        dequantize,
     ]),
     "CORe50_NC": T.Compose([
         T.RandomCrop(128, padding=16),
         T.RandomHorizontalFlip(),
         T.ToTensor(),
+        dequantize,
     ]),
     "M_CORe50_NC": T.Compose([
         T.RandomCrop(32, padding=4),
         T.RandomHorizontalFlip(),
         T.ToTensor(),
+        dequantize,
     ])
 }
 

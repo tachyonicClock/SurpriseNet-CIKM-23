@@ -18,7 +18,7 @@ def construct_network(cfg: ExpConfig):
     Construct an auto encoder based on the configuration
     """
     if cfg.network_style == "DeepVAE_FMNIST":
-        return FashionMNISTDeepVAE()
+        return FashionMNISTDeepVAE(cfg.n_classes)
 
     encoder_constructor = _NETWORK_ARCHITECTURES[cfg.network_style][0]
     decoder_constructor = _NETWORK_ARCHITECTURES[cfg.network_style][1]
