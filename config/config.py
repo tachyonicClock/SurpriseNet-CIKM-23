@@ -331,11 +331,11 @@ class ExpConfig():
         self.classifier_loss_weight = 1.0
         self.HVAE_schedule = {
             "free_nat_start_value": 2.0,
-            "free_nats_epochs": 150,
-            "warmup_epochs": 50
+            "free_nats_epochs": 200,
+            "warmup_epochs": 150
         }
         self.total_task_epochs = 200
-        self.retrain_epochs = 50
+        self.retrain_epochs = 100
 
         if self.dataset_name == "FMNIST":
             self.network_style = "DeepVAE_FMNIST"
