@@ -246,5 +246,3 @@ class GenerateSamples(PluginMetric):
         self.cols = cols
         self.img_size = img_size
         self.rows_are_experiences = rows_are_experiences
-
-        print(f"Diplay rows as experiences? {self.rows_are_experiences}")
