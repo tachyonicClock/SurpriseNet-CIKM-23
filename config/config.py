@@ -325,19 +325,23 @@ class ExpConfig():
     def arch_deep_vae(self: 'ExpConfig') -> 'ExpConfig':
         """Configure the experiment to use a deep VAE"""
         self.architecture = "DeepVAE"
-        self.lr = 0.001
         self.reconstruction_loss_type = "DeepVAE_ELBO"
         self.reconstruction_loss_weight = 1.0
         self.classifier_loss_weight = 1.0
         self.HVAE_schedule = {
-            "free_nat_start_value": 2.0,
-            "free_nats_epochs": 200,
-            "warmup_epochs": 150
+            "warmup_epochs": 100,
+            "enable_free_nats": False
         }
         self.total_task_epochs = 200
-        self.retrain_epochs = 100
+        self.retrain_epochs = 50
+        self.latent_dims = None
+
 
         if self.dataset_name == "FMNIST":
+            self.batch_size=256
+            self.total_task_epochs=180
+            self.retrain_epochs=45
+
             self.network_style = "DeepVAE_FMNIST"
         return self
 
