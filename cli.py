@@ -16,19 +16,6 @@ from config.config import ExpConfig
 from surprisenet.plugin import equal_capacity_prune_schedule
 from train import Experiment
 
-plt.ioff()
-matplotlib.use('Agg')
-plt.rcParams.update(
-    {
-        'font.family': 'Alegreya Sans',
-        'font.size': 12,
-        "image.cmap": "cividis"
-    }
-)
-
-# Tensorboard complains too much about things that don't matter. e.g AVX2
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
-
 
 def get_experiment_name(repo_hash, experiment, scenario, architecture, strategy):
     hostname = os.uname()[1]

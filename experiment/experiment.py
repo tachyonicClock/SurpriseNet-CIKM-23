@@ -27,6 +27,25 @@ from matplotlib import pyplot as plt
 
 from experiment.loss import MultipleObjectiveLoss
 from experiment.strategy import ForwardOutput, Strategy
+import matplotlib
+import matplotlib.pyplot as plt
+from tensorboard.summary import Writer as SummaryWriter
+from torch.utils.tensorboard.summary import hparams
+
+
+
+plt.ioff()
+matplotlib.use('Agg')
+plt.rcParams.update(
+    {
+        'font.family': 'Alegreya Sans',
+        'font.size': 12,
+        "image.cmap": "cividis"
+    }
+)
+
+# Tensorboard complains too much about things that don't matter. e.g AVX2
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
 
 def count_parameters(model, verbose=True):
@@ -50,6 +69,19 @@ def count_parameters(model, verbose=True):
         print("--> this network has {} parameters (~{} million)"
               .format(total_params, round(total_params / 1000000, 1)))
     return total_params, learnable_params, fixed_params
+
+
+def add_hparams(tb: SummaryWriter, hparam_dict, metric_dict):
+    torch._C._log_api_usage_once("tensorboard.logging.add_hparams")
+    if type(hparam_dict) is not dict or type(metric_dict) is not dict:
+        raise TypeError('hparam_dict and metric_dict should be dictionary.')
+    exp, ssi, sei = hparams(hparam_dict, metric_dict)
+    
+    tb.file_writer.add_summary(exp)
+    tb.file_writer.add_summary(ssi)
+    tb.file_writer.add_summary(sei)
+    for k, v in metric_dict.items():
+        tb.add_scalar(k, v)
 
 
 class BaseExperiment():
@@ -85,6 +117,9 @@ class BaseExperiment():
         # Create a new logger with sequential names
         self.logdir = self.cfg.tensorboard_dir+"/"+self.label
         self.logger = av.logging.TensorboardLogger(self.logdir)
+        # Override the add_hparams to avoid creating a new directory
+        self.logger.writer.add_hparams = partial(add_hparams, self.logger.writer)
+
 
         self.scenario = self.make_scenario()
         self.class_order = self._class_order()
