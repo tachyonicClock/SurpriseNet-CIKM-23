@@ -8,6 +8,7 @@ import typing as t
 import click
 import git
 import matplotlib.pyplot as plt
+import matplotlib
 import numpy as np
 import torch
 
@@ -16,6 +17,7 @@ from surprisenet.plugin import equal_capacity_prune_schedule
 from train import Experiment
 
 plt.ioff()
+matplotlib.use('Agg')
 plt.rcParams.update(
     {
         'font.family': 'Alegreya Sans',
@@ -116,6 +118,8 @@ class TrainCommand(click.Group):
               )
 @click.option("--no-reconstruction", is_flag=True, default=False,
               help="Set reconstruction loss to zero")
+@click.option("--batch-size", default=None, type=int,
+              help="The training and evaluation batch size.")
 @click.option("--log-directory", type=str, default=None)
 @click.argument("label", type=str)
 @click.argument("scenario", type=click.Choice(SCENARIOS.keys()), required=True)
@@ -132,6 +136,7 @@ def cli(ctx,
         log_mini_batches: bool,
         no_reconstruction: bool,
         log_directory: str,
+        batch_size: t.Optional[int],
         repeat: int,
         seed: t.Optional[int]):
     # Start building an experiment configuation
@@ -168,6 +173,9 @@ def cli(ctx,
         cfg.learning_rate = lr
     if no_reconstruction:
         cfg.reconstruction_loss_weight = None
+
+    if batch_size is not None:
+        cfg.batch_size = batch_size
 
     ctx.obj = cfg
 
