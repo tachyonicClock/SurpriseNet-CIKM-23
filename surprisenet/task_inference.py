@@ -209,18 +209,21 @@ class HierarchicalVAEOOD(TaskInferenceStrategy):
             self,
             forward_func: t.Callable[[Tensor], ForwardOutput],
             x: Tensor) -> ForwardOutput:
+        novelty_scores: t.Dict[int, Tensor] = {}
 
         # Initialize the best output using the first subset. Subsequent subsets
         # will be compared to this one
         self.model.use_task_subset(0)
-        best_score = torch.ones(x.shape[0]).to(x.device) * float('inf')
+        best_score = torch.ones(x.shape[0]).to(x.device) * float('inf') 
         best_score, best_out = self.sample_score(forward_func, x)
+        novelty_scores[0] = best_score.detach().cpu()
         best_out.pred_exp_id = torch.zeros(x.shape[0]).int()
 
         # Iterate over all subsets and compare them to the best subset
         for i in range(1, self.model.subset_count()):
             self.model.use_task_subset(i)
             new_score, new_out = self.sample_score(forward_func, x)
+            novelty_scores[i] = new_score.detach().cpu()
 
             # Update best_out if the current subset is better
             swap_mask = new_score < best_score
@@ -228,5 +231,7 @@ class HierarchicalVAEOOD(TaskInferenceStrategy):
             best_out.pred_exp_id[swap_mask] = i
             _swap_fields(best_out, new_out, swap_mask)
 
+
         self.model.use_top_subset()
+        best_out.novelty_scores = novelty_scores
         return best_out

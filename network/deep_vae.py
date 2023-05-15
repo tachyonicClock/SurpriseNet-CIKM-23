@@ -61,7 +61,7 @@ class HVAE(Classifier, Encoder, Decoder, Samplable, MultiOutputNetwork):
         return self.dummy.device
 
     def multi_forward(self, x: Tensor) -> ForwardOutput:
-        likelihood_data, stage_data = self.hvae.forward(
+        likelihood_data, stage_data = self.forward(
             x, n_posterior_samples=1)
         kl_divergences = [
             sd.loss.kl_elementwise for sd in stage_data if sd.loss.kl_elementwise is not None
@@ -156,10 +156,11 @@ class DeepVAELoss(LossObjective, SupervisedPlugin):
 
     def __init__(self, 
             weighting: float,
-            free_nat_start_value: float,
-            free_nats_epochs: float,
-            warmup_epochs: int,
-            logger:  av.logging.TensorboardLogger
+            logger:  av.logging.TensorboardLogger,
+            free_nat_start_value: float = None,
+            free_nats_epochs: float = None,
+            warmup_epochs: int = None,
+            enable_free_nats: bool = False
             ) -> None:
         """Wrapper for ELBO loss for use with DeepVAE
 
@@ -173,6 +174,7 @@ class DeepVAELoss(LossObjective, SupervisedPlugin):
         self.elbo = ELBO()
         self.free_nat_start_value = free_nat_start_value
         self.free_nats_epochs = free_nats_epochs
+        self.enable_free_nats = enable_free_nats
         self.warmup_epochs = warmup_epochs
         self.logger = logger.writer
 
@@ -189,17 +191,19 @@ class DeepVAELoss(LossObjective, SupervisedPlugin):
         print("DeepVAE Loss: Initializing warmup and free nats")
         # Reset the warmup and free nats
         self.deterministic_warmup = DeterministicWarmup(n=self.warmup_epochs)
-        self.free_nats_cool_down = FreeNatsCooldown(
-            constant_epochs=self.free_nats_epochs // 2,
-            cooldown_epochs=self.free_nats_epochs // 2,
-            start_val=self.free_nat_start_value,
-            end_val=0,
-        )
+        if self.enable_free_nats:
+            self.free_nats_cool_down = FreeNatsCooldown(
+                constant_epochs=self.free_nats_epochs // 2,
+                cooldown_epochs=self.free_nats_epochs // 2,
+                start_val=self.free_nat_start_value,
+                end_val=0,
+            )
 
     def before_training_epoch(self, strategy: 'Template', *args, **kwargs):
         # Increment the simulated annealing
         self.beta = next(self.deterministic_warmup)
-        self.free_nats = next(self.free_nats_cool_down)
+        if self.enable_free_nats:
+            self.free_nats = next(self.free_nats_cool_down)
         self.bpd.reset()
 
 
@@ -214,12 +218,13 @@ class DeepVAELoss(LossObjective, SupervisedPlugin):
 
     def after_training_epoch(self, strategy: Strategy, *args, **kwargs):
         self.logger.add_scalar("Train.hyperparameters/beta", self.beta, strategy.clock.train_iterations)
-        self.logger.add_scalar("Train.hyperparameters/free_nats", self.free_nats, strategy.clock.train_iterations)
         self.logger.add_scalar(f"Train.likelihoods/log p(x)", self.elbo_metric.get(), strategy.clock.train_iterations)
         self.logger.add_scalar(f"Train.likelihoods/loss", self.loss_metric.get(), strategy.clock.train_iterations)
         self.logger.add_scalar(f"Train.likelihoods/log p(x|z)", self.likelihood.get(), strategy.clock.train_iterations)
         self.logger.add_scalar(f"Train.likelihoods/bpd", self.bpd.get(), strategy.clock.train_iterations)
 
+        if self.enable_free_nats:
+            self.logger.add_scalar("Train.hyperparameters/free_nats", self.free_nats, strategy.clock.train_iterations)
         for i, kl in enumerate(self.kls):
             self.logger.add_scalar(f"Train.divergences/kl_z{i}", kl.get(), strategy.clock.train_iterations)
 
@@ -236,7 +241,7 @@ class DeepVAELoss(LossObjective, SupervisedPlugin):
         loss, elbo, likelihood, kl_divergences = self.elbo.forward(
             out.likelihood,
             out.kl_divergences,
-            free_nats=self.free_nats,
+            free_nats=self.free_nats if self.enable_free_nats else 0.,
             beta=self.beta,
             sample_reduction=torch.mean,
             batch_reduction=None

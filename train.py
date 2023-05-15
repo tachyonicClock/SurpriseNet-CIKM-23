@@ -1,5 +1,5 @@
-import avalanche as cl
-import avalanche.training.plugins as cl_plugins
+from avalanche.benchmarks import NCScenario
+from avalanche.training.plugins import ReplayPlugin, LwFPlugin, SynapticIntelligencePlugin
 import torch
 from torch import nn
 from network.deep_vae import DeepVAELoss
@@ -23,7 +23,7 @@ from surprisenet.task_inference import (HierarchicalVAEOOD, TaskInferenceStrateg
                                         TaskReconstruction, UseTaskOracle)
 class Experiment(BaseExperiment):
 
-    def make_scenario(self) -> cl.benchmarks.NCScenario:
+    def make_scenario(self) -> NCScenario:
         """Create a scenario from the config"""
 
         if self.cfg.task_free:
@@ -157,17 +157,17 @@ class Experiment(BaseExperiment):
         if cfg.si_lambda:
             print("! Using Synaptic Intelligence")
             self.plugins.append(
-                cl_plugins.SynapticIntelligencePlugin(cfg.si_lambda)
+                SynapticIntelligencePlugin(cfg.si_lambda)
             )
         if cfg.lwf_alpha:
             print("! Using Learning without Forgetting")
             self.plugins.append(
-                cl_plugins.LwFPlugin(cfg.lwf_alpha, temperature=2)
+                LwFPlugin(cfg.lwf_alpha, temperature=2)
             )
         if cfg.replay_buffer:
             print(
                 f"! Using Experience Replay. Buffer size={cfg.replay_buffer}")
-            self.plugins.append(cl_plugins.ReplayPlugin(cfg.replay_buffer))
+            self.plugins.append(ReplayPlugin(cfg.replay_buffer))
             # The replay buffer provides double the batch size. This
             # is because it provides a combined batch of old experiences and a
             # new experiences. To ensure that it fits on the GPU, we need to

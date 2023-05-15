@@ -13,6 +13,7 @@ from network.trait import AutoEncoder, Classifier, Decoder, Encoder, MultiOutput
 from PIL import Image
 from torchvision.transforms.functional import to_pil_image
 
+plt.ioff()
 
 def MRAE(x_hat: torch.Tensor, x: torch.Tensor, reduce_batch=True) -> torch.Tensor:
     """Relative absolute error"""

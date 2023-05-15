@@ -1,18 +1,21 @@
 import typing as t
+from matplotlib.patches import Patch
 
 import numpy as np
 import torch
 from avalanche.evaluation import PluginMetric
 from avalanche.evaluation.metric_results import MetricResult, MetricValue
+from avalanche.training.templates import SupervisedTemplate
 from experiment.loss import LossObjective
 from experiment.strategy import Strategy
 from matplotlib import pyplot as plt
 from network.trait import PackNet
 from torch import Tensor
 from torchmetrics import ConfusionMatrix
+import seaborn as sns
+
 
 from .reconstructions import figure_to_image
-
 
 class _MyMetric(PluginMetric[float]):
 
@@ -210,6 +213,86 @@ class ConditionalMetrics(_MyMetric):
 
     def result(self, **kwargs):
         return None
+    
+
+class NoveltyScoreKde(_MyMetric):
+
+    def __init__(self, scenario_composition: t.List[t.List[int]], n_classes: int):
+        super().__init__()
+        self.subset_novelty_score: t.Dict[int, t.Dict[t.List[float]]] = {}
+        self.subset_composition = scenario_composition
+        self.n_classes = n_classes
+
+    def reset(self):
+        self.subset_novelty_score = {}
+
+    def before_eval(self, strategy: Strategy) -> MetricResult:
+        self.reset()
+
+    def after_eval_iteration(self, strategy: Strategy) -> MetricResult:
+        new_novelty_scores = strategy.last_forward_output.novelty_scores
+
+        if new_novelty_scores is None:
+            return
+        
+        for subset, novelty_scores in new_novelty_scores.items():
+            for y, novelty in zip(strategy.last_forward_output.y, novelty_scores):
+                self.subset_novelty_score\
+                    .setdefault(subset, {})\
+                    .setdefault(int(y), []) \
+                    .append(float(novelty.item()))
+                
+    def after_eval(self, strategy: SupervisedTemplate) -> MetricResult:
+        subsets = sorted(self.subset_novelty_score.keys())
+        rows = len(subsets)
+
+        fig, axes = plt.subplots(rows, 1, figsize=(10, 2*rows), squeeze=False,
+                                 sharex=True, sharey=True)
+        fig.tight_layout(pad=0.0) # Remove padding between subplots
+        axes = axes.flatten()
+
+        for subset, class_novelty in self.subset_novelty_score.items():
+            for class_label, novelty in class_novelty.items():
+                in_task = class_label in self.subset_composition[subset]
+
+                # Plot Kernel Density Estimation of novelty scores
+                sns.kdeplot(
+                    novelty, 
+                    color=f"C{class_label}",
+                    fill=in_task,
+                    ax=axes[subset], 
+                )
+
+                if in_task:
+                    # Plot median of novelty scores if the class is in the task
+                    axes[subset].axvline(
+                        x=np.median(novelty), 
+                        color=f"C{class_label}", 
+                        linestyle="-"
+                    )
+                else:
+                    # Plot median of novelty scores if the class is not in the task
+                    axes[subset].axvline(
+                        x=np.median(novelty), 
+                        color=f"C{class_label}", 
+                        linestyle="--",
+                        alpha=0.5
+                    )
+
+            axes[subset].set_ylabel(f"Subset {subset+1} Density")
+
+        # Add basic legend
+        class_labels = list(range(self.n_classes))
+        patches = [Patch(color=f'C{y}') for y in class_labels]
+        axes[0].legend(
+            patches, class_labels, loc='upper center', ncol=5, 
+            bbox_to_anchor=(0.5, 1.4)
+        )
+
+        # Save figure to image and emit metric
+        img = figure_to_image(fig)
+        return MetricValue(self, "NoveltyScoreKde", img, strategy.clock.total_iterations)
+
 
 
 class LossObjectiveMetric(_MyMetric):

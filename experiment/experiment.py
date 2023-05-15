@@ -14,7 +14,7 @@ from avalanche.training.plugins import EvaluationPlugin
 from config.config import ExpConfig
 from metrics.metrics import (ConditionalMetrics, EpochClock,
                              EvalLossObjectiveMetric,
-                             ExperienceIdentificationCM, LossObjectiveMetric,
+                             ExperienceIdentificationCM, LossObjectiveMetric, NoveltyScoreKde,
                              SubsetRecognition)
 from metrics.reconstructions import GenerateReconstruction, GenerateSamples
 from metrics.stdout_log import StdoutLog
@@ -87,6 +87,7 @@ class BaseExperiment():
         self.logger = av.logging.TensorboardLogger(self.logdir)
 
         self.scenario = self.make_scenario()
+        self.class_order = self._class_order()
         self.objective = self.make_objective()
         self.network = self.make_network().to(self.cfg.device)
         self.evaluator = self.make_evaluator(
@@ -146,6 +147,7 @@ class BaseExperiment():
         if isinstance(self.network, InferTask):
             plugins.append(ExperienceIdentificationCM(self.n_experiences))
             plugins.append(SubsetRecognition(self.cfg.n_classes))
+            plugins.append(NoveltyScoreKde(self.class_order, self.cfg.n_classes))
 
         if isinstance(self.network, Classifier):
             plugins.append(accuracy_metrics(epoch=True, stream=True,
@@ -175,14 +177,17 @@ class BaseExperiment():
     def dump_config(self):
         pass
 
-    def _save_class_order(self):
+
+    def _class_order(self):
         class_order = []
         for task_classes in self.scenario.classes_in_experience["train"]:
             task_classes = list(set(map(int, task_classes)))
             class_order.append(task_classes)
+        return class_order
 
+    def _save_class_order(self):
         with open(self.logdir+"/class_order.txt", "w") as f:
-            for classes in class_order:
+            for classes in self.class_order:
                 f.write(",".join(map(str, classes))+"\n")
 
     def preflight(self):

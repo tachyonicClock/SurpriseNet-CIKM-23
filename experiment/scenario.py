@@ -52,37 +52,39 @@ def dequantize(x: torch.Tensor) -> torch.Tensor:
 
 TRAIN_TRANSFORMS = {
     "FMNIST": T.Compose([
-        T.Resize((32, 32)),
         T.ToTensor(),
+        T.Resize((32, 32), antialias=True),
+        T.RandomHorizontalFlip(),
+        T.RandomCrop(32, padding=4),
         dequantize,
     ]),
     "MNIST": T.Compose([
-        T.Resize((32, 32)),
         T.ToTensor(),
+        T.Resize((32, 32)),
         dequantize,
     ]),
     "CIFAR10": T.Compose([
+        T.ToTensor(),
         T.RandomCrop(32, padding=4),
         T.RandomHorizontalFlip(),
-        T.ToTensor(),
         dequantize,
     ]),
     "CIFAR100": T.Compose([
+        T.ToTensor(),
         T.RandomCrop(32, padding=4),
         T.RandomHorizontalFlip(),
-        T.ToTensor(),
         dequantize,
     ]),
     "CORe50_NC": T.Compose([
+        T.ToTensor(),
         T.RandomCrop(128, padding=16),
         T.RandomHorizontalFlip(),
-        T.ToTensor(),
         dequantize,
     ]),
     "M_CORe50_NC": T.Compose([
+        T.ToTensor(),
         T.RandomCrop(32, padding=4),
         T.RandomHorizontalFlip(),
-        T.ToTensor(),
         dequantize,
     ])
 }

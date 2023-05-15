@@ -7,6 +7,7 @@ from avalanche.training import Cumulative
 from avalanche.training.templates import SupervisedTemplate
 from torch import Tensor, nn
 import typing as t
+from os import cpu_count
 
 
 @dataclass
@@ -38,6 +39,8 @@ class ForwardOutput():
     """The likelihood of the reconstruction given the latent code"""
     kl_divergences: t.Optional[t.List[Tensor]] = None
     """The kl divergences for each stage of the HVAE"""
+    novelty_scores: t.Optional[t.Dict[int, Tensor]] = None
+    """Novelty scores for each task specific subset"""
 
 
 class Strategy(SupervisedTemplate):
@@ -71,7 +74,7 @@ class Strategy(SupervisedTemplate):
         self.last_forward_output.y = self.mb_y
         self.last_forward_output.exp_id = torch.ones_like(self.mb_y) * \
             self.experience.current_experience
-
+        
         return self.last_forward_output.y_hat
 
     @property
@@ -83,7 +86,11 @@ class Strategy(SupervisedTemplate):
         self.optimizer.state = defaultdict(dict)
 
     def make_train_dataloader(self, *args, **kwargs):
-        return super().make_train_dataloader(num_workers=4, *args, **kwargs)
+        return super().make_train_dataloader(
+            num_workers=cpu_count() - 1,
+            persistent_workers=True,
+            *args, 
+            **kwargs)
 
 
 class CumulativeTraining(Cumulative, Strategy):

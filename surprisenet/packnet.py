@@ -9,7 +9,7 @@ from network.deep_vae import FashionMNISTDeepVAE
 from network.hvae.oodd.layers.likelihoods import LikelihoodData
 from network.hvae.oodd.layers.linear import NormedDense, NormedLinear
 from network.hvae.oodd.layers.stages import StageData
-from network.trait import (AutoEncoder, ConditionedSample, Decoder, Encoder, InferTask, MultiOutputNetwork, PackNet, Samplable,
+from network.trait import (AutoEncoder, Classifier, ConditionedSample, Decoder, Encoder, InferTask, MultiOutputNetwork, PackNet, Samplable,
                            VariationalAutoEncoder)
 from torch import Tensor
 from torch.nn import functional as F
@@ -511,7 +511,7 @@ class SurpriseNetVariationalAutoEncoder(InferTask, VariationalAutoEncoder, _Pack
         self.use_task_subset(given_task)
         return self.sample(n)
 
-class SurpriseNetDeepVAE(InferTask, Encoder, Decoder, Samplable, MultiOutputNetwork, _PackNetParent):
+class SurpriseNetDeepVAE(Classifier, InferTask, Encoder, Decoder, Samplable, MultiOutputNetwork, _PackNetParent):
     
     def __init__(self, wrapped: FashionMNISTDeepVAE, task_inference_strategy: TaskInferenceStrategy) -> None:
         super().__init__()
@@ -537,6 +537,10 @@ class SurpriseNetDeepVAE(InferTask, Encoder, Decoder, Samplable, MultiOutputNetw
     
     def encode(self, x: Tensor) -> Tensor:
         return self.wrapped.encode(x)
+    
+    def classify(self, x: Tensor) -> Tensor:
+        out = self.multi_forward(x)
+        return out.y_hat
     
     def multi_forward(self, x: Tensor) -> ForwardOutput:
         if self.training:
