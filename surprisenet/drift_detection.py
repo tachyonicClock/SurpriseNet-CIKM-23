@@ -8,7 +8,6 @@ from network.trait import PackNet
 
 
 class DriftDetector(t.Protocol):
-
     @property
     def drift_detected(self) -> bool:
         pass
@@ -22,8 +21,9 @@ class DriftDetector(t.Protocol):
 
 
 class ClockOracle(DriftDetector):
-
-    def __init__(self, drift_period: int, drift_in_advance: int, warn_in_advance: int) -> None:
+    def __init__(
+        self, drift_period: int, drift_in_advance: int, warn_in_advance: int
+    ) -> None:
         """The `ChunkOracle` cheats by looking at the clock to determine if a
         drift should have occurred or not.
 
@@ -45,7 +45,10 @@ class ClockOracle(DriftDetector):
         # Ensure we are not triggered multiple times
         if self.task_counter == self.last_triggered:
             return False
-        if self.task_counter % self.drift_period == self.drift_period - self.drift_in_advance:
+        if (
+            self.task_counter % self.drift_period
+            == self.drift_period - self.drift_in_advance
+        ):
             self.last_triggered = self.task_counter
             return True
 
@@ -55,7 +58,10 @@ class ClockOracle(DriftDetector):
         if self.task_counter == self.last_triggered:
             return False
 
-        if self.task_counter % self.drift_period == self.drift_period - self.warn_in_advance:
+        if (
+            self.task_counter % self.drift_period
+            == self.drift_period - self.warn_in_advance
+        ):
             self.last_triggered = self.task_counter
             return True
 
@@ -64,18 +70,16 @@ class ClockOracle(DriftDetector):
 
 
 class DriftHandler(t.Protocol):
-
     def on_drift_warning(self, strategy):
-        print("- "*40)
+        print("- " * 40)
         secho(" ==> RECEIVED DRIFT WARNING", fg="yellow")
 
     def on_drift(self, strategy):
-        print("- "*40)
+        print("- " * 40)
         secho(" ==> RECEIVED DRIFT", fg="yellow")
 
 
 class SurpriseNetDriftHandler(DriftHandler):
-
     def __init__(self, prune_amount: float) -> None:
         super().__init__()
         self.prune_amount = prune_amount
@@ -87,7 +91,9 @@ class SurpriseNetDriftHandler(DriftHandler):
         network: PackNet = strategy.model
 
         secho(
-            f"Pruning {self.prune_amount*100:0.1f}% reclaiming {self.capacity*100:0.1f}% capacity", fg="green")
+            f"Pruning {self.prune_amount*100:0.1f}% reclaiming {self.capacity*100:0.1f}% capacity",
+            fg="green",
+        )
         network.prune(self.capacity)
         strategy.reset_optimizer()
 
@@ -100,8 +106,9 @@ class SurpriseNetDriftHandler(DriftHandler):
 
 
 class DriftDetectorPlugin(SupervisedPlugin):
-
-    def __init__(self, detector: DriftDetector, metric: LossObjective, on_drift: DriftHandler):
+    def __init__(
+        self, detector: DriftDetector, metric: LossObjective, on_drift: DriftHandler
+    ):
         super().__init__()
         self.detector = detector
         self.metric = metric

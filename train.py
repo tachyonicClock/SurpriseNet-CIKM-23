@@ -1,5 +1,9 @@
 from avalanche.benchmarks import NCScenario
-from avalanche.training.plugins import ReplayPlugin, LwFPlugin, SynapticIntelligencePlugin
+from avalanche.training.plugins import (
+    ReplayPlugin,
+    LwFPlugin,
+    SynapticIntelligencePlugin,
+)
 import torch
 from torch import nn
 from network.deep_vae import DeepVAELoss
@@ -7,22 +11,35 @@ from network.deep_vae import DeepVAELoss
 import surprisenet.packnet as pn
 from experiment.chf import CHF_SurpriseNet
 from experiment.experiment import BaseExperiment
-from experiment.loss import (BCEReconstructionLoss, ClassifierLoss,
-                             ClassifierLossMasked, LossObjective,
-                             MSEReconstructionLoss, MultipleObjectiveLoss,
-                             VAELoss)
+from experiment.loss import (
+    BCEReconstructionLoss,
+    ClassifierLoss,
+    ClassifierLossMasked,
+    LossObjective,
+    MSEReconstructionLoss,
+    MultipleObjectiveLoss,
+    VAELoss,
+)
 from experiment.scenario import gaussian_schedule_scenario, split_scenario
 from experiment.strategy import CumulativeTraining, Strategy
 from network.feature_extractor import r18_extractor
 from network.networks import construct_network
-from surprisenet.drift_detection import (ClockOracle, DriftDetector,
-                                         DriftDetectorPlugin,
-                                         SurpriseNetDriftHandler)
+from surprisenet.drift_detection import (
+    ClockOracle,
+    DriftDetector,
+    DriftDetectorPlugin,
+    SurpriseNetDriftHandler,
+)
 from surprisenet.plugin import SurpriseNetPlugin
-from surprisenet.task_inference import (HierarchicalVAEOOD, TaskInferenceStrategy,
-                                        TaskReconstruction, UseTaskOracle)
-class Experiment(BaseExperiment):
+from surprisenet.task_inference import (
+    HierarchicalVAEOOD,
+    TaskInferenceStrategy,
+    TaskReconstruction,
+    UseTaskOracle,
+)
 
+
+class Experiment(BaseExperiment):
     def make_scenario(self) -> NCScenario:
         """Create a scenario from the config"""
 
@@ -41,7 +58,8 @@ class Experiment(BaseExperiment):
                 self.cfg.dataset_root,
                 self.cfg.n_experiences,
                 self.cfg.fixed_class_order,
-                self.cfg.normalize)
+                self.cfg.normalize,
+            )
 
     def make_task_inference_strategy(self) -> TaskInferenceStrategy:
         if self.cfg.task_inference_strategy == "task_reconstruction_loss":
@@ -52,7 +70,6 @@ class Experiment(BaseExperiment):
             return UseTaskOracle(self)
 
     def make_drift_detection_plugin(self) -> DriftDetectorPlugin:
-
         # Get the metric used for reconstruction loss
         metric: LossObjective
         if self.cfg.reconstruction_loss_type == "mse":
@@ -68,9 +85,7 @@ class Experiment(BaseExperiment):
             raise ValueError("Unknown drift detector")
 
         # What todo when a drift is detected
-        drift_handler = SurpriseNetDriftHandler(
-            self.cfg.prune_proportion
-        )
+        drift_handler = SurpriseNetDriftHandler(self.cfg.prune_proportion)
 
         # Construct the plugin
         return DriftDetectorPlugin(detector, metric, drift_handler)
@@ -84,27 +99,24 @@ class Experiment(BaseExperiment):
         # Wrap network in packnet
         if self.cfg.architecture == "VAE":
             network = pn.SurpriseNetVariationalAutoEncoder(
-                network,
-                self.make_task_inference_strategy()
+                network, self.make_task_inference_strategy()
             )
         elif self.cfg.architecture == "AE":
             network = pn.SurpriseNetAutoEncoder(
-                network,
-                self.make_task_inference_strategy()
+                network, self.make_task_inference_strategy()
             )
         elif self.cfg.architecture == "DeepVAE":
-            network = pn.SurpriseNetDeepVAE(network, self.make_task_inference_strategy())
+            network = pn.SurpriseNetDeepVAE(
+                network, self.make_task_inference_strategy()
+            )
         else:
             raise ValueError("Unknown architecture")
 
         if self.cfg.task_free:
-            self.plugins.append(
-                self.make_drift_detection_plugin()
-            )
+            self.plugins.append(self.make_drift_detection_plugin())
         else:
             self.plugins.append(
-                SurpriseNetPlugin(self.cfg.prune_proportion,
-                                  self.cfg.retrain_epochs)
+                SurpriseNetPlugin(self.cfg.prune_proportion, self.cfg.retrain_epochs)
             )
         return network
 
@@ -122,16 +134,15 @@ class Experiment(BaseExperiment):
         if self.cfg.reconstruction_loss_weight:
             # Pick a type of reconstruction loss
             if self.cfg.reconstruction_loss_type == "mse":
-                loss.add(MSEReconstructionLoss(
-                    self.cfg.reconstruction_loss_weight))
+                loss.add(MSEReconstructionLoss(self.cfg.reconstruction_loss_weight))
             elif self.cfg.reconstruction_loss_type == "bce":
-                loss.add(BCEReconstructionLoss(
-                    self.cfg.reconstruction_loss_weight))
+                loss.add(BCEReconstructionLoss(self.cfg.reconstruction_loss_weight))
             elif self.cfg.reconstruction_loss_type == "DeepVAE_ELBO":
                 deep_vae_loss = DeepVAELoss(
                     self.cfg.reconstruction_loss_weight,
                     logger=self.logger,
-                    **self.cfg.HVAE_schedule)
+                    **self.cfg.HVAE_schedule,
+                )
                 # DeepVAELoss contains schedules requiring callbacks to be
                 # called at the end of each epoch
                 self.plugins.append(deep_vae_loss)
@@ -156,30 +167,27 @@ class Experiment(BaseExperiment):
         cfg = self.cfg
         if cfg.si_lambda:
             print("! Using Synaptic Intelligence")
-            self.plugins.append(
-                SynapticIntelligencePlugin(cfg.si_lambda)
-            )
+            self.plugins.append(SynapticIntelligencePlugin(cfg.si_lambda))
         if cfg.lwf_alpha:
             print("! Using Learning without Forgetting")
-            self.plugins.append(
-                LwFPlugin(cfg.lwf_alpha, temperature=2)
-            )
+            self.plugins.append(LwFPlugin(cfg.lwf_alpha, temperature=2))
         if cfg.replay_buffer:
-            print(
-                f"! Using Experience Replay. Buffer size={cfg.replay_buffer}")
+            print(f"! Using Experience Replay. Buffer size={cfg.replay_buffer}")
             self.plugins.append(ReplayPlugin(cfg.replay_buffer))
             # The replay buffer provides double the batch size. This
             # is because it provides a combined batch of old experiences and a
             # new experiences. To ensure that it fits on the GPU, we need to
             # halve the batch size.
-            cfg.batch_size = cfg.batch_size//2
+            cfg.batch_size = cfg.batch_size // 2
 
     def make_strategy(self) -> Strategy:
         cfg = self.cfg
 
         if cfg.continual_hyperparameter_framework:
             print("! Using CHF")
-            assert cfg.use_packnet, "Our CHF is only compatible with SurpriseNet/PackNet"
+            assert (
+                cfg.use_packnet
+            ), "Our CHF is only compatible with SurpriseNet/PackNet"
             self.strategy_type = CHF_SurpriseNet
         elif cfg.cumulative:
             print("! Using Cumulative")
@@ -187,8 +195,11 @@ class Experiment(BaseExperiment):
             self.strategy_type = CumulativeTraining
 
         # Ensure that total epochs takes the retrain_epochs into account
-        train_epochs = cfg.total_task_epochs - cfg.retrain_epochs \
-            if cfg.use_packnet else cfg.total_task_epochs
+        train_epochs = (
+            cfg.total_task_epochs - cfg.retrain_epochs
+            if cfg.use_packnet
+            else cfg.total_task_epochs
+        )
 
         self.add_strategy_plugins()
 
@@ -202,7 +213,7 @@ class Experiment(BaseExperiment):
             eval_mb_size=cfg.batch_size,
             eval_every=-1,
             plugins=[self, *self.plugins],
-            evaluator=self.evaluator
+            evaluator=self.evaluator,
         )
 
         # Set CHF parameters
@@ -211,7 +222,7 @@ class Experiment(BaseExperiment):
                 cfg.chf_validation_split_proportion,
                 cfg.chf_lr_grid,
                 cfg.chf_accuracy_drop_threshold,
-                cfg.chf_stability_decay
+                cfg.chf_stability_decay,
             )
 
         # Enable a feature extractor
@@ -226,5 +237,4 @@ class Experiment(BaseExperiment):
     def dump_config(self):
         with open(f"{self.logdir}/config.json", "w") as f:
             f.writelines(self.cfg.toJSON())
-        self.logger.writer.add_text(
-            "Config", f"<pre>{self.cfg.toJSON()}</pre>")
+        self.logger.writer.add_text("Config", f"<pre>{self.cfg.toJSON()}</pre>")

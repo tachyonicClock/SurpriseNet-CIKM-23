@@ -24,13 +24,13 @@ class LossObjective(ABC):
         self.weighting = weighting
 
 
-class MultipleObjectiveLoss():
+class MultipleObjectiveLoss:
     objectives: typing.Dict[str, LossObjective]
 
     def __init__(self):
         self.objectives = dict()
 
-    def add(self, objective: LossObjective) -> 'MultipleObjectiveLoss':
+    def add(self, objective: LossObjective) -> "MultipleObjectiveLoss":
         self.objectives[objective.name] = objective
         return self
 
@@ -46,7 +46,7 @@ class MultipleObjectiveLoss():
     def sum(self):
         sum = 0.0
         for _, objective in self:
-            sum += 1/(len(self.objectives)) * objective.weighted
+            sum += 1 / (len(self.objectives)) * objective.weighted
         return sum
 
 
@@ -104,5 +104,7 @@ class VAELoss(LossObjective):
     name = "VAE"
 
     def update(self, out: ForwardOutput, target: Tensor = None):
-        self.loss = torch.mean(-0.5 * torch.sum(1 + out.log_var -
-                               out.mu ** 2 - out.log_var.exp(), dim=1), dim=0)
+        self.loss = torch.mean(
+            -0.5 * torch.sum(1 + out.log_var - out.mu**2 - out.log_var.exp(), dim=1),
+            dim=0,
+        )

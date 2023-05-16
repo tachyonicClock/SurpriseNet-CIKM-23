@@ -7,18 +7,22 @@ from avalanche.benchmarks.generators import dataset_benchmark
 from torch.utils import data
 
 
-def _schedule(class_count: int, task_count: int, width: float) -> t.Tuple[t.List[t.List[float]], t.List[t.List[int]]]:
+def _schedule(
+    class_count: int, task_count: int, width: float
+) -> t.Tuple[t.List[t.List[float]], t.List[t.List[int]]]:
     """
 
     Based on the code from:
     https://github.com/deepmind/deepmind-research/tree/master/continual_learning
     """
+
     def _gaussian(peak: int, position: int):
         """What is the probability of a Gaussian with peak at `peak` and width `width`
         at position `position`?
         """
-        out = np.exp(- ((position/task_count - peak/task_count)
-                     ** 2 / (2 * (width)**2)))
+        out = np.exp(
+            -((position / task_count - peak / task_count) ** 2 / (2 * (width) ** 2))
+        )
         return out
 
     schedule_length = task_count
@@ -35,10 +39,10 @@ def _schedule(class_count: int, task_count: int, width: float) -> t.Tuple[t.List
 
     label_schedule = []
     probabilities: t.List[t.List[float]] = [
-        [0] * micro_task_count for _ in range(class_count)]
+        [0] * micro_task_count for _ in range(class_count)
+    ]
 
     for micro_task_i in range(0, micro_task_count):
-
         lbls = []
         # make sure lbls isn't empty
         while lbls == []:
@@ -73,14 +77,11 @@ def _gs_indices(
     class_indices: t.Dict[int, t.List[int]],
     microtask_count: int,
     width: float,
-    instances_in_task: int
+    instances_in_task: int,
 ) -> t.List[t.List[int]]:
     class_count = len(class_indices)
 
-    _, label_schedule = _schedule(
-        class_count,
-        microtask_count,
-        width)
+    _, label_schedule = _schedule(class_count, microtask_count, width)
 
     micro_tasks: t.List[t.List[int]] = []
     for class_composition in label_schedule:
@@ -99,7 +100,6 @@ def _gs_indices(
 
 
 def _print_stats(micro_task_indices: t.List[t.List[int]]):
-
     total_size = 0
     for micro_task in micro_task_indices:
         total_size += len(micro_task)
@@ -123,7 +123,7 @@ def gaussian_schedule_dataset(
     instances_in_task: int,
     train_transform: T.Compose = None,
     eval_transform: T.Compose = None,
-    verbose: bool = True
+    verbose: bool = True,
 ):
     """Create a dataset benchmark with a Gaussian schedule.
 
@@ -138,15 +138,17 @@ def gaussian_schedule_dataset(
     :param verbose: Whether to print statistics about the generated benchmark.
     :return: A dataset benchmark.
     """
-    assert len(train_dataset) == len(train_targets), \
-        "The labels `train_targets` are mapped to `train_dataset` and must be the same length"
+    assert len(train_dataset) == len(
+        train_targets
+    ), "The labels `train_targets` are mapped to `train_dataset` and must be the same length"
 
     class_indices = _get_indices(train_targets)
     micro_task_indices = _gs_indices(
         class_indices,
         microtask_count=microtask_count,
         width=width,
-        instances_in_task=instances_in_task)
+        instances_in_task=instances_in_task,
+    )
 
     if verbose:
         _print_stats(micro_task_indices)

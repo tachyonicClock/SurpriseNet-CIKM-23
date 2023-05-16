@@ -1,4 +1,3 @@
-
 from collections import defaultdict
 from dataclasses import dataclass
 
@@ -11,9 +10,9 @@ from os import cpu_count
 
 
 @dataclass
-class ForwardOutput():
+class ForwardOutput:
     """
-    Forward output is a big ugly class used to keep track of all the details 
+    Forward output is a big ugly class used to keep track of all the details
     that various objects might wish to use.
     """
 
@@ -69,12 +68,14 @@ class Strategy(SupervisedTemplate):
             self.mbatch[0] = self.batch_transform(self.mb_x)
 
         self.last_forward_output: ForwardOutput = self.model.multi_forward(
-            self.mbatch[0])
+            self.mbatch[0]
+        )
         self.last_forward_output.x = self.mb_x
         self.last_forward_output.y = self.mb_y
-        self.last_forward_output.exp_id = torch.ones_like(self.mb_y) * \
-            self.experience.current_experience
-        
+        self.last_forward_output.exp_id = (
+            torch.ones_like(self.mb_y) * self.experience.current_experience
+        )
+
         return self.last_forward_output.y_hat
 
     @property
@@ -87,9 +88,8 @@ class Strategy(SupervisedTemplate):
 
     def make_train_dataloader(self, *args, **kwargs):
         return super().make_train_dataloader(
-            num_workers=cpu_count() - 1,
-            *args, 
-            **kwargs)
+            num_workers=cpu_count() - 1, *args, **kwargs
+        )
 
 
 class CumulativeTraining(Cumulative, Strategy):

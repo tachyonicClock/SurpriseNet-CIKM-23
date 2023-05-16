@@ -16,13 +16,14 @@ def r18_extractor() -> nn.Module:
     mode before eval creating issues todo with the batch normalisation not
     dealing with class incremental evaluation well.
     """
+
     @torch.no_grad()
     def _forward(x: Tensor) -> Tensor:
-        x = F.interpolate(x, size=(224, 224), mode='bilinear', align_corners=False)
+        x = F.interpolate(x, size=(224, 224), mode="bilinear", align_corners=False)
         return model._forward_impl(x).detach()
+
     model.forward = _forward
     model.eval()
     for p in model.parameters():
         p.requires_grad = False
     return model
-    

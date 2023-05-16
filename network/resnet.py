@@ -20,11 +20,9 @@ class BlockA(nn.Module):
     def __init__(self, in_channels: int, out_channels: int):
         super().__init__()
 
-        self.conv1 = nn.Conv2d(in_channels, out_channels,
-                               kernel_size=3, padding=1)
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1)
         self.bn1 = nn.BatchNorm2d(out_channels)
-        self.conv2 = nn.Conv2d(out_channels, out_channels,
-                               kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1)
         self.bn2 = nn.BatchNorm2d(out_channels)
 
     def forward(self, x: Tensor) -> Tensor:
@@ -45,14 +43,13 @@ class BlockB(nn.Module):
     def __init__(self, in_channels: int, out_channels: int):
         super().__init__()
 
-        self.conv1 = nn.Conv2d(in_channels, out_channels,
-                               kernel_size=3, padding=1, stride=2)
+        self.conv1 = nn.Conv2d(
+            in_channels, out_channels, kernel_size=3, padding=1, stride=2
+        )
         self.bn1 = nn.BatchNorm2d(out_channels)
-        self.conv2 = nn.Conv2d(out_channels, out_channels,
-                               kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1)
         self.bn2 = nn.BatchNorm2d(out_channels)
-        self.conv3 = nn.Conv2d(in_channels, out_channels,
-                               kernel_size=1, stride=2)
+        self.conv3 = nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=2)
         self.bn3 = nn.BatchNorm2d(out_channels)
 
     def forward(self, x: Tensor) -> Tensor:
@@ -66,7 +63,7 @@ class BlockB(nn.Module):
 
 class BlockC(nn.Module):
     """
-    Block C is a residual block with a shortcut connection. It doubles size of 
+    Block C is a residual block with a shortcut connection. It doubles size of
     the input. It is used exclusively in the decoder
     """
 
@@ -74,11 +71,9 @@ class BlockC(nn.Module):
         super().__init__()
 
         self.up_sample = nn.Upsample(scale_factor=2, mode="nearest")
-        self.conv1 = nn.Conv2d(in_channels, out_channels,
-                               kernel_size=3, padding=1)
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1)
         self.bn1 = nn.BatchNorm2d(out_channels)
-        self.conv2 = nn.Conv2d(out_channels, out_channels,
-                               kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1)
         self.bn2 = nn.BatchNorm2d(out_channels)
         self.conv3 = nn.Conv2d(in_channels, out_channels, kernel_size=1)
         self.bn3 = nn.BatchNorm2d(out_channels)
@@ -95,7 +90,7 @@ class BlockC(nn.Module):
 
 class ResNet18Encoder(Encoder):
     """
-    The Encoder component of an Auto Encoder. It is based on ResNet18 
+    The Encoder component of an Auto Encoder. It is based on ResNet18
     architecture. It is used to encode the input image into a latent space.
     """
 
@@ -103,7 +98,8 @@ class ResNet18Encoder(Encoder):
         super().__init__()
 
         self.conv_00 = nn.Conv2d(
-            data_shape[0], 64, kernel_size=3, stride=2, padding=1, bias=False)
+            data_shape[0], 64, kernel_size=3, stride=2, padding=1, bias=False
+        )
         self.bn_00 = nn.BatchNorm2d(64)
         self.block_01 = BlockA(64, 64)
         self.block_02 = BlockA(64, 64)
@@ -138,7 +134,7 @@ class ResNet18Encoder(Encoder):
 
 class ResNet18Decoder(Decoder):
     """
-    The Decoder component of an Auto Encoder. It is based on ResNet18 
+    The Decoder component of an Auto Encoder. It is based on ResNet18
     architecture. It is used to decode the latent space into an image.
     """
 
@@ -158,7 +154,8 @@ class ResNet18Decoder(Decoder):
         self.block_08 = BlockA(64, 64)
 
         self.conv_09 = nn.Conv2d(
-            64, data_shape[0], kernel_size=3, padding=1, bias=False)
+            64, data_shape[0], kernel_size=3, padding=1, bias=False
+        )
         self.bn_09 = nn.BatchNorm2d(data_shape[0])
 
     def forward(self, x: Tensor) -> Tensor:

@@ -2,8 +2,12 @@ import typing as t
 import torch
 import torchvision.transforms as T
 from avalanche.benchmarks import NCScenario
-from avalanche.benchmarks.classic import (SplitCIFAR10, SplitCIFAR100,
-                                          SplitFMNIST, SplitMNIST)
+from avalanche.benchmarks.classic import (
+    SplitCIFAR10,
+    SplitCIFAR100,
+    SplitFMNIST,
+    SplitMNIST,
+)
 from avalanche.benchmarks.datasets import CORe50Dataset
 from torchvision.datasets import MNIST
 
@@ -18,27 +22,40 @@ MEAN_AND_STD = {
 }
 
 EVAL_TRANSFORM = {
-    "FMNIST": T.Compose([
-        T.Resize((32, 32)),
-        T.ToTensor(),
-    ]),
-    "MNIST": T.Compose([
-        T.Resize((32, 32)),
-        T.ToTensor(),
-    ]),
-    "CIFAR10": T.Compose([
-        T.ToTensor(),
-    ]),
-    "CIFAR100": T.Compose([
-        T.ToTensor(),
-    ]),
-    "CORe50_NC": T.Compose([
-        T.ToTensor(),
-    ]),
-    "M_CORe50_NC": T.Compose([
-        T.ToTensor(),
-    ])
+    "FMNIST": T.Compose(
+        [
+            T.Resize((32, 32)),
+            T.ToTensor(),
+        ]
+    ),
+    "MNIST": T.Compose(
+        [
+            T.Resize((32, 32)),
+            T.ToTensor(),
+        ]
+    ),
+    "CIFAR10": T.Compose(
+        [
+            T.ToTensor(),
+        ]
+    ),
+    "CIFAR100": T.Compose(
+        [
+            T.ToTensor(),
+        ]
+    ),
+    "CORe50_NC": T.Compose(
+        [
+            T.ToTensor(),
+        ]
+    ),
+    "M_CORe50_NC": T.Compose(
+        [
+            T.ToTensor(),
+        ]
+    ),
 }
+
 
 def dequantize(x: torch.Tensor) -> torch.Tensor:
     """Dequantize a tensor originating from pixel values. We inject noise
@@ -47,58 +64,72 @@ def dequantize(x: torch.Tensor) -> torch.Tensor:
 
     :param x: An input tensor with float values in [0, 1]
     :return: A dequantized tensor with float values in [0, 1]
-    """    
-    return (x*255 + torch.rand_like(x))/256
+    """
+    return (x * 255 + torch.rand_like(x)) / 256
+
 
 TRAIN_TRANSFORMS = {
-    "FMNIST": T.Compose([
-        T.ToTensor(),
-        T.Resize((32, 32), antialias=True),
-        T.RandomHorizontalFlip(),
-        T.RandomCrop(32, padding=4),
-        dequantize,
-    ]),
-    "MNIST": T.Compose([
-        T.ToTensor(),
-        T.Resize((32, 32)),
-        dequantize,
-    ]),
-    "CIFAR10": T.Compose([
-        T.ToTensor(),
-        T.RandomCrop(32, padding=4),
-        T.RandomHorizontalFlip(),
-        dequantize,
-    ]),
-    "CIFAR100": T.Compose([
-        T.ToTensor(),
-        T.RandomCrop(32, padding=4),
-        T.RandomHorizontalFlip(),
-        dequantize,
-    ]),
-    "CORe50_NC": T.Compose([
-        T.ToTensor(),
-        T.RandomCrop(128, padding=16),
-        T.RandomHorizontalFlip(),
-        dequantize,
-    ]),
-    "M_CORe50_NC": T.Compose([
-        T.ToTensor(),
-        T.RandomCrop(32, padding=4),
-        T.RandomHorizontalFlip(),
-        dequantize,
-    ])
+    "FMNIST": T.Compose(
+        [
+            T.ToTensor(),
+            T.Resize((32, 32), antialias=True),
+            T.RandomHorizontalFlip(),
+            T.RandomCrop(32, padding=4),
+            dequantize,
+        ]
+    ),
+    "MNIST": T.Compose(
+        [
+            T.ToTensor(),
+            T.Resize((32, 32)),
+            dequantize,
+        ]
+    ),
+    "CIFAR10": T.Compose(
+        [
+            T.ToTensor(),
+            T.RandomCrop(32, padding=4),
+            T.RandomHorizontalFlip(),
+            dequantize,
+        ]
+    ),
+    "CIFAR100": T.Compose(
+        [
+            T.ToTensor(),
+            T.RandomCrop(32, padding=4),
+            T.RandomHorizontalFlip(),
+            dequantize,
+        ]
+    ),
+    "CORe50_NC": T.Compose(
+        [
+            T.ToTensor(),
+            T.RandomCrop(128, padding=16),
+            T.RandomHorizontalFlip(),
+            dequantize,
+        ]
+    ),
+    "M_CORe50_NC": T.Compose(
+        [
+            T.ToTensor(),
+            T.RandomCrop(32, padding=4),
+            T.RandomHorizontalFlip(),
+            dequantize,
+        ]
+    ),
 }
 
 
 def split_scenario(
-    dataset: t.Literal["FMNIST", "CIFAR10", "CIFAR100", "M_CORe50_NC", "MNIST", "CORe50_NC"],
+    dataset: t.Literal[
+        "FMNIST", "CIFAR10", "CIFAR100", "M_CORe50_NC", "MNIST", "CORe50_NC"
+    ],
     dataset_root: str,
     n_experiences: int,
     supplied_class_order: t.List[int],
     normalize: bool,
 ) -> NCScenario:
-    """Generate a new scenario.
-    """
+    """Generate a new scenario."""
 
     eval_transform = EVAL_TRANSFORM[dataset]
     train_transform = TRAIN_TRANSFORMS[dataset]
@@ -114,7 +145,7 @@ def split_scenario(
             return_task_id=False,
             train_transform=train_transform,
             eval_transform=eval_transform,
-            dataset_root=dataset_root
+            dataset_root=dataset_root,
         )
     elif dataset == "FMNIST":
         return SplitFMNIST(
@@ -123,7 +154,7 @@ def split_scenario(
             return_task_id=False,
             train_transform=train_transform,
             eval_transform=eval_transform,
-            dataset_root=dataset_root
+            dataset_root=dataset_root,
         )
     elif dataset == "CIFAR100":
         return SplitCIFAR100(
@@ -132,7 +163,7 @@ def split_scenario(
             return_task_id=False,
             train_transform=train_transform,
             eval_transform=eval_transform,
-            dataset_root=dataset_root
+            dataset_root=dataset_root,
         )
     elif dataset == "CIFAR10":
         return SplitCIFAR10(
@@ -141,22 +172,24 @@ def split_scenario(
             return_task_id=False,
             train_transform=train_transform,
             eval_transform=eval_transform,
-            dataset_root=dataset_root
+            dataset_root=dataset_root,
         )
     elif dataset == "M_CORe50_NC" or dataset == "CORe50_NC":
         # Determine if we are using the mini version of CORe50
         core_mini = dataset == "M_CORe50_NC"
         train_set = CORe50Dataset(
-            root=dataset_root, train=True, transform=train_transform, mini=core_mini)
+            root=dataset_root, train=True, transform=train_transform, mini=core_mini
+        )
         test_set = CORe50Dataset(
-            root=dataset_root, train=False, transform=eval_transform, mini=core_mini)
+            root=dataset_root, train=False, transform=eval_transform, mini=core_mini
+        )
 
         return NCScenario(
             train_dataset=train_set,
             test_dataset=test_set,
             task_labels=False,
             n_experiences=n_experiences,
-            fixed_class_order=supplied_class_order
+            fixed_class_order=supplied_class_order,
         )
     else:
         raise NotImplementedError("Dataset not implemented")
@@ -170,7 +203,6 @@ def gaussian_schedule_scenario(
     microtask_count: int,
     normalize: bool,
 ):
-
     eval_transform = EVAL_TRANSFORM[dataset]
     train_transform = TRAIN_TRANSFORMS[dataset]
     if normalize:
@@ -188,7 +220,7 @@ def gaussian_schedule_scenario(
             microtask_count,
             instances_in_task,
             eval_transform,
-            train_transform
+            train_transform,
         )
         scenario.n_classes = 10
         return scenario

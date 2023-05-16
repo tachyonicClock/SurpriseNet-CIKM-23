@@ -27,8 +27,8 @@ class Classifier(ABC, nn.Module):
         :return: A class of predicted probabilities
         """
 
-class Encoder(ABC, nn.Module):
 
+class Encoder(ABC, nn.Module):
     @abstractmethod
     def encode(self, observations: Tensor) -> Tensor:
         """Encodes observations into an embedding
@@ -38,8 +38,8 @@ class Encoder(ABC, nn.Module):
         """
         return NotImplemented
 
-class Decoder(ABC, nn.Module):
 
+class Decoder(ABC, nn.Module):
     @abstractmethod
     def decode(self, embedding: Tensor) -> Tensor:
         """Decodes an embedding into a reconstruction
@@ -50,10 +50,11 @@ class Decoder(ABC, nn.Module):
         return NotImplemented
 
 
-class InferTask():
+class InferTask:
     """
     Does the classifier try to identify the experience of an observation
     """
+
 
 class Samplable(Generator, ABC):
     """Something that can generate instances"""
@@ -68,9 +69,10 @@ class Samplable(Generator, ABC):
 
     def generate(self, batch_size=None, condition=None):
         return self.sample(batch_size)
-    
+
     def get_features(self):
         raise NotImplemented("get features not implemented")
+
 
 class ConditionedSample(Samplable):
     """Something that can generate instances"""
@@ -82,9 +84,10 @@ class ConditionedSample(Samplable):
     def generate(self, batch_size=None, condition=None):
         return self.conditioned_sample(batch_size, condition)
 
+
 class Sampler(Samplable, nn.Module):
     """
-    Something that encodes something using a normal distribution as the 
+    Something that encodes something using a normal distribution as the
     latent space
     """
 
@@ -92,7 +95,7 @@ class Sampler(Samplable, nn.Module):
         # Do the "Reparameterization Trick" aka sample from the distribution
         std = torch.exp(0.5 * log_var)  # 0.5 square roots it
         eps = torch.randn_like(std)
-        z = mu + eps*std
+        z = mu + eps * std
         return z
 
     def sample(self, n: int = 1) -> Tensor:
@@ -103,11 +106,8 @@ class Sampler(Samplable, nn.Module):
 
 
 class AutoEncoder(Encoder, Decoder, Classifier, MultiOutputNetwork, nn.Module):
-
-    def __init__(self,
-        encoder: Encoder,
-        decoder: Decoder,
-        classifier: Classifier
+    def __init__(
+        self, encoder: Encoder, decoder: Decoder, classifier: Classifier
     ) -> None:
         super().__init__()
 
@@ -128,27 +128,29 @@ class AutoEncoder(Encoder, Decoder, Classifier, MultiOutputNetwork, nn.Module):
         out = ForwardOutput()
         out.z_code = self.encode(observations)
         out.y_hat = self.classify(out.z_code)
-        out.x_hat  = self.decode(out.z_code)
+        out.x_hat = self.decode(out.z_code)
         return out
 
     def forward(self, x: Tensor) -> Tensor:
         return self.multi_forward(x).y_hat
 
-class VariationalAutoEncoder(AutoEncoder, Samplable):
 
-    def __init__(self,
+class VariationalAutoEncoder(AutoEncoder, Samplable):
+    def __init__(
+        self,
         encoder: Encoder,
         bottleneck: Sampler,
         decoder: Decoder,
-        classifier: Classifier) -> None:
+        classifier: Classifier,
+    ) -> None:
         super().__init__(encoder, decoder, classifier)
-        self.dummy_param = nn.Parameter(torch.empty(0)) # Used to determine device
+        self.dummy_param = nn.Parameter(torch.empty(0))  # Used to determine device
         self.bottleneck = bottleneck
 
     def encode(self, x: Tensor) -> Tensor:
         mu, std = self.bottleneck.encode(self._encoder.encode(x))
         return self.bottleneck.reparameterise(mu, std)
-    
+
     def sample(self, n: int = 1) -> Tensor:
         return self.decode(self.bottleneck.sample(n).to(self.dummy_param.device))
 
@@ -171,16 +173,15 @@ class VariationalAutoEncoder(AutoEncoder, Samplable):
         out.x = x
         return out
 
-    def sample_x(self, n:int=1) -> Tensor:
+    def sample_x(self, n: int = 1) -> Tensor:
         return torch.randn(n, self.latent_dim)
 
 
 class PackNet(ABC):
-
     @abstractmethod
     def prune(self, to_prune_proportion: float) -> None:
-        """Prune a proportion of the prunable parameters (parameters on the 
-        top of the stack) using the absolute value of the weights as a 
+        """Prune a proportion of the prunable parameters (parameters on the
+        top of the stack) using the absolute value of the weights as a
         heuristic for importance (Han et al., 2017)
 
         :param to_prune_proportion: A proportion of the prunable parameters to prune
@@ -206,8 +207,6 @@ class PackNet(ABC):
         raise NotImplemented("subset_count not implemented")
 
 
-
-
 NETWORK_TRAITS = [
     Classifier,
     Samplable,
@@ -217,5 +216,5 @@ NETWORK_TRAITS = [
     AutoEncoder,
     ConditionedSample,
     VariationalAutoEncoder,
-    InferTask
+    InferTask,
 ]

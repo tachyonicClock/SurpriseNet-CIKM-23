@@ -9,11 +9,19 @@ from avalanche.evaluation import PluginMetric
 from avalanche.evaluation.metric_definitions import MetricValue
 from experiment.strategy import ForwardOutput, Strategy
 from matplotlib.axes import Axes
-from network.trait import AutoEncoder, Classifier, Decoder, Encoder, MultiOutputNetwork, Samplable
+from network.trait import (
+    AutoEncoder,
+    Classifier,
+    Decoder,
+    Encoder,
+    MultiOutputNetwork,
+    Samplable,
+)
 from PIL import Image
 from torchvision.transforms.functional import to_pil_image
 
 plt.ioff()
+
 
 def MRAE(x_hat: torch.Tensor, x: torch.Tensor, reduce_batch=True) -> torch.Tensor:
     """Relative absolute error"""
@@ -21,7 +29,7 @@ def MRAE(x_hat: torch.Tensor, x: torch.Tensor, reduce_batch=True) -> torch.Tenso
     x = x.flatten(start)
     x_mu = x.mean()
     x_hat = x_hat.flatten(start)
-    return (x_hat - x).abs().sum(dim=[start])/(x - x_mu).abs().sum()
+    return (x_hat - x).abs().sum(dim=[start]) / (x - x_mu).abs().sum()
 
 
 def figure_to_image(fig: plt.Figure) -> Image.Image:
@@ -49,16 +57,16 @@ class GenerateReconstruction(PluginMetric):
     examples_per_experience: int
     metric_name = "ExperienceReconstruction"
 
-    def sample_class_exemplars(self, experience: NCExperience) \
-            -> typing.Sequence[LabeledExample]:
+    def sample_class_exemplars(
+        self, experience: NCExperience
+    ) -> typing.Sequence[LabeledExample]:
         """Find an exemplar from each class in an experience"""
         n_patterns = len(experience.classes_in_this_experience)
         class_examples = {}
 
         while True:
             # Find each class in a monte carlo way
-            x, y, _ = experience.dataset[random.randint(
-                len(experience.dataset))]
+            x, y, _ = experience.dataset[random.randint(len(experience.dataset))]
             class_examples[y] = (x, y)
 
             # Exit when one of each class is found
@@ -68,14 +76,14 @@ class GenerateReconstruction(PluginMetric):
         return list(class_examples.values())
 
     def add_image(
-            self,
-            axes:   typing.Sequence[Axes],
-            input:  torch.Tensor,
-            output: torch.Tensor,
-            label:  int,
-            pred:   int,
-            pred_exp: int):
-
+        self,
+        axes: typing.Sequence[Axes],
+        input: torch.Tensor,
+        output: torch.Tensor,
+        label: int,
+        pred: int,
+        pred_exp: int,
+    ):
         axes[0].set_ylabel(f"Class={label}")
         axes[1].set_ylabel(f"{pred} using {pred_exp}")
         axes[0].set_title(f"Input")
@@ -90,8 +98,9 @@ class GenerateReconstruction(PluginMetric):
         axes[0].imshow(input)
         axes[1].imshow(output)
 
-    def get_examples(self, test_stream, n_exemplars=1) \
-            -> typing.Dict[int, typing.Sequence[LabeledExample]]:
+    def get_examples(
+        self, test_stream, n_exemplars=1
+    ) -> typing.Dict[int, typing.Sequence[LabeledExample]]:
         """Sample n_exemplars from each class.
 
         Args:
@@ -108,24 +117,27 @@ class GenerateReconstruction(PluginMetric):
         for i, experience in enumerate(test_stream):
             experience: NCExperience = experience
             # Sample n_expempars from each class
-            patterns[i] = [x
-                           for _ in range(n_exemplars)
-                           for x in self.sample_class_exemplars(experience)
-                           ]
+            patterns[i] = [
+                x
+                for _ in range(n_exemplars)
+                for x in self.sample_class_exemplars(experience)
+            ]
 
         return patterns
 
     @torch.no_grad()
-    def after_eval(self, strategy: Strategy) -> 'MetricResult':
+    def after_eval(self, strategy: Strategy) -> "MetricResult":
         model = strategy.model
-        assert isinstance(model, MultiOutputNetwork) 
+        assert isinstance(model, MultiOutputNetwork)
 
         n_tasks = len(self.patterns)
         n_patterns_per_task = len(self.patterns[0])
 
         scale = 2
-        fig, ax = plt.subplots(constrained_layout=False, figsize=(
-            scale*n_tasks*2, scale*n_patterns_per_task))
+        fig, ax = plt.subplots(
+            constrained_layout=False,
+            figsize=(scale * n_tasks * 2, scale * n_patterns_per_task),
+        )
         ax.set_axis_off()
         task_figs = fig.subfigures(1, self.n_experiences)
 
@@ -141,15 +153,13 @@ class GenerateReconstruction(PluginMetric):
             # are using
             strategy.experience.current_experience = task_id
 
-            task_plots = task_fig.subplots(
-                len(task_patterns), 2, squeeze=False)
+            task_plots = task_fig.subplots(len(task_patterns), 2, squeeze=False)
             for pattern, pattern_plot in zip(task_patterns, task_plots):
                 x, y = pattern
                 x: torch.Tensor = x.to(strategy.device)
 
                 # Pass data through auto-encoder
-                out: ForwardOutput = strategy.model.multi_forward(
-                    x.unsqueeze(0))
+                out: ForwardOutput = strategy.model.multi_forward(x.unsqueeze(0))
 
                 class_prediction = "NA"
                 if out.y_hat != None:
@@ -159,12 +169,17 @@ class GenerateReconstruction(PluginMetric):
                 if out.pred_exp_id != None:
                     experience_prediction = int(out.pred_exp_id)
 
-                self.add_image(pattern_plot, x, out.x_hat, y,
-                               class_prediction, experience_prediction)
+                self.add_image(
+                    pattern_plot,
+                    x,
+                    out.x_hat,
+                    y,
+                    class_prediction,
+                    experience_prediction,
+                )
 
         x_plot = strategy.clock.train_exp_counter
-        metric = MetricValue(self, "Reconstructions",
-                             figure_to_image(fig), x_plot)
+        metric = MetricValue(self, "Reconstructions", figure_to_image(fig), x_plot)
 
         plt.close("all")
         return metric
@@ -179,8 +194,7 @@ class GenerateReconstruction(PluginMetric):
         # A sample of images to use to generate reconstructions with
         state = random.get_state()
         random.seed(seed)
-        self.patterns = self.get_examples(
-            scenario.test_stream, examples_per_class)
+        self.patterns = self.get_examples(scenario.test_stream, examples_per_class)
         self.n_experiences = len(scenario.test_stream)
         random.set_state(state)
 
@@ -205,16 +219,16 @@ class GenerateSamples(PluginMetric):
         axes.set_title(f"Prediction {gen_y}")
 
     @torch.no_grad()
-    def after_eval(self, strategy: 'BaseStrategy') -> 'MetricResult':
-        assert isinstance(
-            strategy.model, Samplable), "Network must be `Samplable`"
-        
+    def after_eval(self, strategy: "BaseStrategy") -> "MetricResult":
+        assert isinstance(strategy.model, Samplable), "Network must be `Samplable`"
 
         self.device = strategy.device
         fig, axes = plt.subplots(
-            nrows=self.rows, ncols=self.cols,
+            nrows=self.rows,
+            ncols=self.cols,
             constrained_layout=True,
-            figsize=(self.cols*self.img_size, self.rows*self.img_size))
+            figsize=(self.cols * self.img_size, self.rows * self.img_size),
+        )
 
         # Add image by sampling for each row and column
         for task_id, rows in enumerate(axes):
@@ -225,7 +239,9 @@ class GenerateSamples(PluginMetric):
                     ax.set_ylabel(f"Subnet {t_available}")
                 self.add_image(ax, strategy.model)
 
-        metric = MetricValue(self, "Sample", figure_to_image(fig), x_plot=strategy.clock.total_iterations)
+        metric = MetricValue(
+            self, "Sample", figure_to_image(fig), x_plot=strategy.clock.total_iterations
+        )
         plt.close(fig)
         return metric
 

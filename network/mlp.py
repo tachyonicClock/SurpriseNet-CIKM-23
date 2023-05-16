@@ -6,9 +6,7 @@ from network.trait import Classifier, Decoder, Encoder, Sampler
 
 def _mlp_layer(in_features: int, out_features: int, dropout: float):
     return nn.Sequential(
-        nn.Linear(in_features, out_features),
-        nn.Dropout(dropout),
-        nn.ReLU()
+        nn.Linear(in_features, out_features), nn.Dropout(dropout), nn.ReLU()
     )
 
 
@@ -17,15 +15,17 @@ class MLPEncoder(Encoder):
     The encoder component of an Auto Encoder. Turns an image into a latent vector.
     """
 
-    def __init__(self, z_dim: int, data_shape: tuple, width: int = 512, dropout: float = 0.5):
+    def __init__(
+        self, z_dim: int, data_shape: tuple, width: int = 512, dropout: float = 0.5
+    ):
         super().__init__()
         total_features = math.prod(data_shape)
 
         self.layers = nn.Sequential(
             nn.Flatten(),
-            _mlp_layer(total_features, width*4, 0.0),
-            _mlp_layer(width*4, width*2, dropout),
-            _mlp_layer(width*2, width, dropout),
+            _mlp_layer(total_features, width * 4, 0.0),
+            _mlp_layer(width * 4, width * 2, dropout),
+            _mlp_layer(width * 2, width, dropout),
             nn.Linear(width, z_dim),
         )
 
@@ -41,15 +41,17 @@ class MLPDecoder(Decoder):
     A decoder component of an auto encoder. Turns a latent vector into an image.
     """
 
-    def __init__(self, z_dim: int, data_shape: tuple, width: int = 512, dropout: float = 0.5):
+    def __init__(
+        self, z_dim: int, data_shape: tuple, width: int = 512, dropout: float = 0.5
+    ):
         super().__init__()
         total_features = math.prod(data_shape)
 
         self.layers = nn.Sequential(
             _mlp_layer(z_dim, width, 0.0),
-            _mlp_layer(width, width*2, dropout),
-            _mlp_layer(width*2, width*4, dropout),
-            nn.Linear(width*4, total_features),
+            _mlp_layer(width, width * 2, dropout),
+            _mlp_layer(width * 2, width * 4, dropout),
+            nn.Linear(width * 4, total_features),
             nn.Unflatten(1, data_shape),
         )
 
@@ -68,10 +70,10 @@ class ClassifierHead(Classifier):
     def __init__(self, z_dim: int, n_classes: int) -> None:
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(z_dim, z_dim*4),
+            nn.Linear(z_dim, z_dim * 4),
             nn.ReLU(),
             nn.Dropout(0.5),
-            nn.Linear(z_dim*4, n_classes),
+            nn.Linear(z_dim * 4, n_classes),
         )
 
     def classify(self, embedding: Tensor) -> Tensor:

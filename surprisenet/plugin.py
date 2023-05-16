@@ -17,7 +17,7 @@ def equal_capacity_prune_schedule(n_experiences: int) -> t.List[float]:
     """
     schedule = []
     for i in range(n_experiences):
-        schedule.append((n_experiences-1-i)/(n_experiences-i))
+        schedule.append((n_experiences - 1 - i) / (n_experiences - i))
     return schedule
 
 
@@ -25,14 +25,13 @@ class SurpriseNetPlugin(SupervisedPlugin):
     """Plugin that calls SurpriseNet and PackNet functionality during training"""
 
     def __init__(
-            self,
-            prune_amount: t.Union[float, t.List[float]],
-            post_prune_epochs: int):
+        self, prune_amount: t.Union[float, t.List[float]], post_prune_epochs: int
+    ):
         """Create a plugin to add PackNet functionality to an experiment
 
         :param network: The network to prune
         :param experiment: The experiment to add the plugin to
-        :param prune_amount: The proportion of the network to prune. 
+        :param prune_amount: The proportion of the network to prune.
             If a list, the proportion to prune at each experience
         :param post_prune_epochs: The number of epochs to train after pruning
         """
@@ -58,7 +57,9 @@ class SurpriseNetPlugin(SupervisedPlugin):
         self.capacity *= prune_proportion
 
         secho(
-            f"Pruning {prune_proportion*100:0.1f}% reclaiming {self.capacity*100:0.1f}% capacity", fg="green")
+            f"Pruning {prune_proportion*100:0.1f}% reclaiming {self.capacity*100:0.1f}% capacity",
+            fg="green",
+        )
         network.prune(prune_proportion)
         # The network has changed, so the optimizer state is invalid
         strategy.reset_optimizer()

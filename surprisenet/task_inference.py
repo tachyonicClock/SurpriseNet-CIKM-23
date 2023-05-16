@@ -14,10 +14,10 @@ if t.TYPE_CHECKING:
     from surprisenet.packnet import SurpriseNetDeepVAE, StageData
 
 
-class TaskInferenceStrategy():
-    def forward_with_task_inference(self,
-                                    forward_func: t.Callable[[Tensor], ForwardOutput],
-                                    x: Tensor) -> ForwardOutput:
+class TaskInferenceStrategy:
+    def forward_with_task_inference(
+        self, forward_func: t.Callable[[Tensor], ForwardOutput], x: Tensor
+    ) -> ForwardOutput:
         raise NotImplementedError()
 
 
@@ -31,13 +31,11 @@ class UseTaskOracle(TaskInferenceStrategy):
         self.experiment = experiment
 
     def forward_with_task_inference(
-            self,
-            forward_func: t.Callable[[Tensor], ForwardOutput],
-            x: Tensor) -> ForwardOutput:
+        self, forward_func: t.Callable[[Tensor], ForwardOutput], x: Tensor
+    ) -> ForwardOutput:
         model = self.experiment.strategy.model
         task_id = self.experiment.strategy.experience.current_experience
-        assert isinstance(
-            model, PackNet), "Task inference only works on PackNet"
+        assert isinstance(model, PackNet), "Task inference only works on PackNet"
 
         model.use_task_subset(min(task_id, model.subset_count() - 1))
         out: ForwardOutput = forward_func(x)
@@ -51,10 +49,14 @@ def _swap_fields(dest: ForwardOutput, src: ForwardOutput, swap_mask: Tensor):
     For each `ForwardOutput` field move elements in the Tensors using the swap_mask.
     Move not performed if either the dest or the src have an empty field
     """
-    def _swap_tensor_elements(dest_tensor: Tensor, src_tensor: Tensor, swap_mask: Tensor):
-        assert dest_tensor.shape[0] == src_tensor.shape[0] == swap_mask.shape[0], \
-            f"dest_tensor, src_tensor and swap_mask must have the same first dim, "\
+
+    def _swap_tensor_elements(
+        dest_tensor: Tensor, src_tensor: Tensor, swap_mask: Tensor
+    ):
+        assert dest_tensor.shape[0] == src_tensor.shape[0] == swap_mask.shape[0], (
+            f"dest_tensor, src_tensor and swap_mask must have the same first dim, "
             f"got {dest_tensor.shape}, {src_tensor.shape}, {swap_mask.shape}"
+        )
 
         dest_tensor[swap_mask] = src_tensor[swap_mask]
 
@@ -72,8 +74,8 @@ def _swap_fields(dest: ForwardOutput, src: ForwardOutput, swap_mask: Tensor):
             # Swap the whole tensor
             _swap_tensor_elements(dest_value, src_value, swap_mask)
         else:
-            raise NotImplementedError(
-                f"Unsupported type {type(dest_value)}")
+            raise NotImplementedError(f"Unsupported type {type(dest_value)}")
+
 
 class TaskReconstruction(TaskInferenceStrategy):
     """
@@ -86,16 +88,15 @@ class TaskReconstruction(TaskInferenceStrategy):
         self.n_experiences = experiment.n_experiences
 
     def forward_with_task_inference(
-            self,
-            forward_func: t.Callable[[Tensor], ForwardOutput],
-            x: Tensor) -> ForwardOutput:
+        self, forward_func: t.Callable[[Tensor], ForwardOutput], x: Tensor
+    ) -> ForwardOutput:
         model = self.experiment.strategy.model
         assert isinstance(model, PackNet)
 
         # Initialize the best output using the first subset. Subsequent subsets
         # will be compared to this one
         model.use_task_subset(0)
-        best_loss = torch.ones(x.shape[0]).to(x.device) * float('inf')
+        best_loss = torch.ones(x.shape[0]).to(x.device) * float("inf")
         best_loss, best_out = sample(forward_func, x)
         best_out.pred_exp_id = torch.zeros(x.shape[0]).int()
 
@@ -115,11 +116,12 @@ class TaskReconstruction(TaskInferenceStrategy):
 
 
 @torch.no_grad()
-def sample(forward_func: t.Callable[[Tensor], ForwardOutput],
-           x: Tensor) -> t.Tuple[Tensor, ForwardOutput]:
+def sample(
+    forward_func: t.Callable[[Tensor], ForwardOutput], x: Tensor
+) -> t.Tuple[Tensor, ForwardOutput]:
     out: ForwardOutput = forward_func(x)
     # NOTE: The reduction is done manually to allow for per-instance losses
-    loss = F.mse_loss(out.x_hat, x, reduction='none').flatten(1).mean(1)
+    loss = F.mse_loss(out.x_hat, x, reduction="none").flatten(1).mean(1)
     assert loss.shape[0] == x.shape[0]
     return loss, out
 
@@ -137,7 +139,7 @@ class HierarchicalVAEOOD(TaskInferenceStrategy):
         :param k: How many latent variables should be sampled randomly. k=1 the
             lowest abstraction level in the hierarchy is randomly sampled. k=2
             the bottom two levels are randomly sampled and so on.
-        """        
+        """
         super().__init__()
         self.model = None
         self.k = k
@@ -159,15 +161,15 @@ class HierarchicalVAEOOD(TaskInferenceStrategy):
             return [True] * k + [False] * (n_latents - k)
 
         return [False] * (k + 1) + [True] * (n_latents - k - 1)
-    
+
     @staticmethod
-    def _kl_divergences_from_stage(stage_datas: t.List['StageData']):
+    def _kl_divergences_from_stage(stage_datas: t.List["StageData"]):
         return [
             stage_data.loss.kl_elementwise
             for stage_data in stage_datas
             if stage_data.loss.kl_elementwise is not None
         ]
-    
+
     @torch.no_grad()
     def _novelty_score(self, x: torch.Tensor) -> torch.Tensor:
         self.model.eval()
@@ -186,7 +188,9 @@ class HierarchicalVAEOOD(TaskInferenceStrategy):
 
         # L>k bound
         decode_from_p = self._get_decode_from_p(self.model.n_latents, k=self.k)
-        likelihood_data, stage_data = self.model(x, decode_from_p=decode_from_p, use_mode=decode_from_p)
+        likelihood_data, stage_data = self.model(
+            x, decode_from_p=decode_from_p, use_mode=decode_from_p
+        )
         _, elbo_k, _, _ = self.elbo_loss_func(
             likelihood_data.likelihood,
             self._kl_divergences_from_stage(stage_data),
@@ -198,23 +202,21 @@ class HierarchicalVAEOOD(TaskInferenceStrategy):
         )
 
         return elbo - elbo_k
-    
+
     def sample_score(self, forward_func, x):
         out: ForwardOutput = forward_func(x)
         score = self._novelty_score(x)
         return score, out
 
-
     def forward_with_task_inference(
-            self,
-            forward_func: t.Callable[[Tensor], ForwardOutput],
-            x: Tensor) -> ForwardOutput:
+        self, forward_func: t.Callable[[Tensor], ForwardOutput], x: Tensor
+    ) -> ForwardOutput:
         novelty_scores: t.Dict[int, Tensor] = {}
 
         # Initialize the best output using the first subset. Subsequent subsets
         # will be compared to this one
         self.model.use_task_subset(0)
-        best_score = torch.ones(x.shape[0]).to(x.device) * float('inf') 
+        best_score = torch.ones(x.shape[0]).to(x.device) * float("inf")
         best_score, best_out = self.sample_score(forward_func, x)
         novelty_scores[0] = best_score.detach().cpu()
         best_out.pred_exp_id = torch.zeros(x.shape[0]).int()
@@ -230,7 +232,6 @@ class HierarchicalVAEOOD(TaskInferenceStrategy):
             best_score[swap_mask] = new_score[swap_mask]
             best_out.pred_exp_id[swap_mask] = i
             _swap_fields(best_out, new_out, swap_mask)
-
 
         self.model.use_top_subset()
         best_out.novelty_scores = novelty_scores
