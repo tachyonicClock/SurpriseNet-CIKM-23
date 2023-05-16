@@ -88,7 +88,6 @@ class Strategy(SupervisedTemplate):
     def make_train_dataloader(self, *args, **kwargs):
         return super().make_train_dataloader(
             num_workers=cpu_count() - 1,
-            persistent_workers=True,
             *args, 
             **kwargs)
 

@@ -4,10 +4,8 @@ import os
 import typing as t
 
 
-class ExpConfig():
-
+class ExpConfig:
     def __init__(self) -> None:
-
         # EXPERIMENT METADATA
         self.label: str
         """Label of an experiment given by the user, probably shouldn't use '_'
@@ -55,9 +53,9 @@ class ExpConfig():
         # GAUSSIAN SCHEDULE
         self.task_free = False
         """Should a task-free scenario be used?"""
-        self.task_free_instances_in_task: int = None
+        self.task_free_instances_in_task: t.Optional[int] = None
         """In a task-free scenario, how many instances should be used per task"""
-        self.task_free_width: float = 1/20
+        self.task_free_width: float = 1 / 20
         """In a task-free scenario, how wide should the gaussian be"""
         self.test_every: int = 1
         """Limit how often the test set is evaluated. This is useful for 
@@ -90,10 +88,13 @@ class ExpConfig():
         """Number of latent dimensions of the VAE/AE"""
         self.architecture: t.Literal["AE", "VAE", "DeepVAE"]
         """Type of auto-encoder to use"""
-        self.network_style: t.Literal["vanilla_cnn", "residual", "mlp", "DeepVAE_FMNIST"]
+        self.network_style: t.Literal[
+            "vanilla_cnn", "residual", "mlp", "DeepVAE_FMNIST"
+        ]
         """Type of network to be used"""
-        self.embedding_module: t.Literal["None",
-                                         "ResNet50", "SmallResNet18", "ResNet18"] = "None"
+        self.embedding_module: t.Literal[
+            "None", "ResNet50", "SmallResNet18", "ResNet18"
+        ] = "None"
         """Optionally configure the experiment to embed the dataset"""
         self.network_cfg: t.Dict[str, t.Any] = {}
         """Other network configuration options"""
@@ -117,7 +118,9 @@ class ExpConfig():
         """Proportion of the network to prune"""
         self.retrain_epochs: int
         """Number of epochs post-pruning to retrain the network"""
-        self.task_inference_strategy: t.Literal["task_oracle", "task_reconstruction_loss", "log_likelihood_ratio"]
+        self.task_inference_strategy: t.Literal[
+            "task_oracle", "task_reconstruction_loss", "log_likelihood_ratio"
+        ]
         """Type of task inference strategy to use"""
         self.task_inference_strategy_kwargs: t.Optional[t.Dict[str, t.Any]] = None
 
@@ -156,7 +159,8 @@ class ExpConfig():
 
         if self.dataset_root is None:
             print(
-                "Please specify the dataset root using the DATASETS environment variable")
+                "Please specify the dataset root using the DATASETS environment variable"
+            )
             exit(1)
 
     def toJSON(self):
@@ -166,19 +170,19 @@ class ExpConfig():
     # Networks
     #
 
-    def _network_cnn(self: 'ExpConfig') -> 'ExpConfig':
+    def _network_cnn(self: "ExpConfig") -> "ExpConfig":
         """Configure the experiment to use a vanilla CNN"""
         self.network_style = "vanilla_cnn"
         self.network_cfg["base_channels"] = 128
         return self
 
-    def _network_mlp(self) -> 'ExpConfig':
+    def _network_mlp(self) -> "ExpConfig":
         """Configure the experiment to use a rectangular network"""
         self.network_style = "mlp"
         self.network_cfg["width"] = 512
         return self
 
-    def _network_resnet(self: 'ExpConfig') -> 'ExpConfig':
+    def _network_resnet(self: "ExpConfig") -> "ExpConfig":
         """Configure the experiment to use a ResNet CNN"""
         self.network_style = "residual"
         return self
@@ -187,7 +191,7 @@ class ExpConfig():
     # Scenarios
     #
 
-    def scenario_fmnist(self: 'ExpConfig') -> 'ExpConfig':
+    def scenario_fmnist(self: "ExpConfig") -> "ExpConfig":
         """Configure the experiment for the Fashion-MNIST dataset"""
         self._network_cnn()
         self.dataset_name = "FMNIST"
@@ -202,7 +206,7 @@ class ExpConfig():
         # self.mask_classifier_loss = True
         return self
 
-    def scenario_cifar10(self: 'ExpConfig') -> 'ExpConfig':
+    def scenario_cifar10(self: "ExpConfig") -> "ExpConfig":
         """Configure the experiment for the CIFAR10 dataset"""
         self._network_resnet()
         self.dataset_name = "CIFAR10"
@@ -215,7 +219,7 @@ class ExpConfig():
         self.total_task_epochs = 50
         return self
 
-    def scenario_cifar100(self) -> 'ExpConfig':
+    def scenario_cifar100(self) -> "ExpConfig":
         """Configure the experiment for the CIFAR100 dataset"""
         self._network_resnet()
         self.dataset_name = "CIFAR100"
@@ -228,7 +232,7 @@ class ExpConfig():
         self.total_task_epochs = 100
         return self
 
-    def scenario_core50(self: "ExpConfig") -> 'ExpConfig':
+    def scenario_core50(self: "ExpConfig") -> "ExpConfig":
         """Configure the experiment for the Core50 dataset"""
         self._network_resnet()
         self.dataset_name = "M_CORe50_NC"
@@ -241,7 +245,7 @@ class ExpConfig():
         self.total_task_epochs = 10
         return self
 
-    def scenario_embedded_cifar100(self: 'ExpConfig') -> 'ExpConfig':
+    def scenario_embedded_cifar100(self: "ExpConfig") -> "ExpConfig":
         """Configure the experiment to use the embedded CIFAR100 dataset"""
         self._network_mlp()
         self.dataset_name = "CIFAR100"
@@ -258,7 +262,7 @@ class ExpConfig():
         self.total_task_epochs = 100
         return self
 
-    def scenario_embedded_core50(self: 'ExpConfig') -> 'ExpConfig':
+    def scenario_embedded_core50(self: "ExpConfig") -> "ExpConfig":
         """Configure the experiment to use the embedded CIFAR100 dataset"""
         self._network_mlp()
         self.dataset_name = "CORe50_NC"
@@ -275,7 +279,7 @@ class ExpConfig():
         self.total_task_epochs = 10
         return self
 
-    def scenario_gaussian_schedule_mnist(self: 'ExpConfig') -> 'ExpConfig':
+    def scenario_gaussian_schedule_mnist(self: "ExpConfig") -> "ExpConfig":
         """Configure the experiment for the Fashion-MNIST dataset with a Gaussian schedule"""
         self._network_cnn()
         # self.learning_rate = 0.01
@@ -292,15 +296,15 @@ class ExpConfig():
         self.n_experiences = 200
         self.task_free = True
         self.task_free_instances_in_task = self.batch_size * 10
-        self.task_free_width = 1/20
+        self.task_free_width = 1 / 20
 
-        self.test_every = self.n_experiences/self.n_classes
+        self.test_every = self.n_experiences / self.n_classes
         self.retrain_epochs = 0
         self.total_task_epochs = 1
 
         self.task_free_drift_detector = "clock_oracle"
         self.task_free_drift_detector_kwargs = dict(
-            drift_period=self.n_experiences/self.n_classes,
+            drift_period=self.n_experiences / self.n_classes,
             warn_in_advance=5,
             drift_in_advance=1,
         )
@@ -308,50 +312,46 @@ class ExpConfig():
         self.optimizer = "Adam"
         return self
 
-    def arch_autoencoder(self: 'ExpConfig') -> 'ExpConfig':
+    def arch_autoencoder(self: "ExpConfig") -> "ExpConfig":
         """Configure the experiment to use an AutoEncoder"""
         self.architecture = "AE"
         self.reconstruction_loss_weight = 1.0
         self.use_vae_loss = False
         return self
 
-    def arch_variational_auto_encoder(self: 'ExpConfig') -> 'ExpConfig':
+    def arch_variational_auto_encoder(self: "ExpConfig") -> "ExpConfig":
         """Configure the experiment to use a variational AutoEncoder"""
         self.architecture = "VAE"
         self.reconstruction_loss_weight = 1.0
         self.vae_loss_weight = 0.001
         return self
 
-    def arch_deep_vae(self: 'ExpConfig') -> 'ExpConfig':
+    def arch_deep_vae(self: "ExpConfig") -> "ExpConfig":
         """Configure the experiment to use a deep VAE"""
         self.architecture = "DeepVAE"
         self.reconstruction_loss_type = "DeepVAE_ELBO"
         self.reconstruction_loss_weight = 1.0
         self.classifier_loss_weight = 1.0
-        self.HVAE_schedule = {
-            "warmup_epochs": 100,
-            "enable_free_nats": False
-        }
+        self.HVAE_schedule = {"warmup_epochs": 100, "enable_free_nats": False}
         self.total_task_epochs = 200
         self.retrain_epochs = 50
         self.latent_dims = None
 
-
         if self.dataset_name == "FMNIST":
-            self.batch_size=256
-            self.total_task_epochs=180
-            self.retrain_epochs=45
+            self.batch_size = 256
+            self.total_task_epochs = 180
+            self.retrain_epochs = 45
 
             self.network_style = "DeepVAE_FMNIST"
         return self
 
-    def strategy_packnet(self: 'ExpConfig') -> 'ExpConfig':
+    def strategy_packnet(self: "ExpConfig") -> "ExpConfig":
         """Configure the experiment to use PackNet"""
         self.use_packnet = True
         self.task_inference_strategy = "task_oracle"
         return self
 
-    def strategy_surprisenet(self: 'ExpConfig') -> 'ExpConfig':
+    def strategy_surprisenet(self: "ExpConfig") -> "ExpConfig":
         """Configure the experiment to use CI-PackNet"""
         self.use_packnet = True
 
@@ -362,16 +362,16 @@ class ExpConfig():
             self.task_inference_strategy = "task_reconstruction_loss"
         return self
 
-    def strategy_not_cl(self: 'ExpConfig') -> 'ExpConfig':
+    def strategy_not_cl(self: "ExpConfig") -> "ExpConfig":
         """Configure the experiment to not do any continual learning"""
         self.n_experiences = 1
         return self
 
-    def strategy_replay(self: 'ExpConfig') -> 'ExpConfig':
+    def strategy_replay(self: "ExpConfig") -> "ExpConfig":
         """Configure the experiment to use replay"""
         self.use_experience_replay = True
         return self
 
-    def copy(self: 'ExpConfig') -> 'ExpConfig':
+    def copy(self: "ExpConfig") -> "ExpConfig":
         """Create a copy of the experiment configuration"""
         return copy.deepcopy(self)

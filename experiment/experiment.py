@@ -6,20 +6,37 @@ import pickle
 import avalanche as av
 import torch
 from avalanche.core import BasePlugin, SupervisedPlugin
-from avalanche.evaluation.metrics import (accuracy_metrics,
-                                          confusion_matrix_metrics,
-                                          forgetting_metrics, loss_metrics)
+from avalanche.evaluation.metrics import (
+    accuracy_metrics,
+    confusion_matrix_metrics,
+    forgetting_metrics,
+    loss_metrics,
+)
 from avalanche.evaluation.metric_utils import default_cm_image_creator
 from avalanche.training.plugins import EvaluationPlugin
 from config.config import ExpConfig
-from metrics.metrics import (ConditionalMetrics, EpochClock,
-                             EvalLossObjectiveMetric,
-                             ExperienceIdentificationCM, LossObjectiveMetric, NoveltyScoreKde,
-                             SubsetRecognition)
+from metrics.metrics import (
+    ConditionalMetrics,
+    EpochClock,
+    EvalLossObjectiveMetric,
+    ExperienceIdentificationCM,
+    LossObjectiveMetric,
+    NoveltyScoreKde,
+    SubsetRecognition,
+)
 from metrics.reconstructions import GenerateReconstruction, GenerateSamples
 from metrics.stdout_log import StdoutLog
-from network.trait import (NETWORK_TRAITS, AutoEncoder, Classifier,
-                           ConditionedSample, Decoder, Encoder, InferTask, PackNet, Samplable)
+from network.trait import (
+    NETWORK_TRAITS,
+    AutoEncoder,
+    Classifier,
+    ConditionedSample,
+    Decoder,
+    Encoder,
+    InferTask,
+    PackNet,
+    Samplable,
+)
 from setproctitle import setproctitle
 from torch import Tensor, nn
 from functools import partial
@@ -33,32 +50,29 @@ from tensorboard.summary import Writer as SummaryWriter
 from torch.utils.tensorboard.summary import hparams
 
 
+torch.multiprocessing.set_sharing_strategy("file_system")
 
-plt.ioff()
-matplotlib.use('Agg')
+# plt.ioff()
+# matplotlib.use('Agg')
 plt.rcParams.update(
-    {
-        'font.family': 'Alegreya Sans',
-        'font.size': 12,
-        "image.cmap": "cividis"
-    }
+    {"font.family": "Alegreya Sans", "font.size": 12, "image.cmap": "cividis"}
 )
 
 # Tensorboard complains too much about things that don't matter. e.g AVX2
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 
 def count_parameters(model, verbose=True):
-    '''
+    """
     Count number of parameters, print to screen.
 
     This snippet is taken from https://github.com/GMvandeVen/brain-inspired-replay
-    '''
+    """
     total_params = learnable_params = fixed_params = 0
     for param in model.parameters():
         n_params = index_dims = 0
         for dim in param.size():
-            n_params = dim if index_dims == 0 else n_params*dim
+            n_params = dim if index_dims == 0 else n_params * dim
             index_dims += 1
         total_params += n_params
         if param.requires_grad:
@@ -66,17 +80,20 @@ def count_parameters(model, verbose=True):
         else:
             fixed_params += n_params
     if verbose:
-        print("--> this network has {} parameters (~{} million)"
-              .format(total_params, round(total_params / 1000000, 1)))
+        print(
+            "--> this network has {} parameters (~{} million)".format(
+                total_params, round(total_params / 1000000, 1)
+            )
+        )
     return total_params, learnable_params, fixed_params
 
 
 def add_hparams(tb: SummaryWriter, hparam_dict, metric_dict):
     torch._C._log_api_usage_once("tensorboard.logging.add_hparams")
     if type(hparam_dict) is not dict or type(metric_dict) is not dict:
-        raise TypeError('hparam_dict and metric_dict should be dictionary.')
+        raise TypeError("hparam_dict and metric_dict should be dictionary.")
     exp, ssi, sei = hparams(hparam_dict, metric_dict)
-    
+
     tb.file_writer.add_summary(exp)
     tb.file_writer.add_summary(ssi)
     tb.file_writer.add_summary(sei)
@@ -84,7 +101,7 @@ def add_hparams(tb: SummaryWriter, hparam_dict, metric_dict):
         tb.add_scalar(k, v)
 
 
-class BaseExperiment():
+class BaseExperiment:
     """
     Py-lightning inspired for continual learning with avalanche
     """
@@ -93,8 +110,8 @@ class BaseExperiment():
         super().__init__()
         self.plugins: t.List[BasePlugin] = []
         self.strategy: Strategy
-        self.network:  nn.Module
-        self.logger:   av.logging.TensorboardLogger
+        self.network: nn.Module
+        self.logger: av.logging.TensorboardLogger
         self.scenario: av.benchmarks.NCScenario
         self.optimizer: torch.optim.Optimizer
         self.evaluator: EvaluationPlugin
@@ -115,18 +132,18 @@ class BaseExperiment():
             pass
 
         # Create a new logger with sequential names
-        self.logdir = self.cfg.tensorboard_dir+"/"+self.label
+        self.logdir = self.cfg.tensorboard_dir + "/" + self.label
         self.logger = av.logging.TensorboardLogger(self.logdir)
         # Override the add_hparams to avoid creating a new directory
         self.logger.writer.add_hparams = partial(add_hparams, self.logger.writer)
-
 
         self.scenario = self.make_scenario()
         self.class_order = self._class_order()
         self.objective = self.make_objective()
         self.network = self.make_network().to(self.cfg.device)
         self.evaluator = self.make_evaluator(
-            [self.logger, StdoutLog()], self.scenario.n_classes)
+            [self.logger, StdoutLog()], self.scenario.n_classes
+        )
         self.optimizer = self.make_optimizer(self.network.parameters())
         self.strategy = self.make_strategy()
 
@@ -142,9 +159,8 @@ class BaseExperiment():
             self.strategy.train(exp)
             test_subset = self.scenario.test_stream
 
-            if (i+1) % self.cfg.test_every == 0:
+            if (i + 1) % self.cfg.test_every == 0:
                 results.append(self.strategy.eval(test_subset))
-
 
         self.logger.writer.flush()
         self.post_flight(results)
@@ -157,6 +173,7 @@ class BaseExperiment():
         def _loss_function(output: Tensor, target: Tensor) -> Tensor:
             self.objective.update(self.last_mb_output, target)
             return self.objective.sum
+
         return _loss_function
 
     def make_objective(self) -> MultipleObjectiveLoss:
@@ -164,17 +181,24 @@ class BaseExperiment():
 
     def make_evaluator(self, loggers, num_classes) -> EvaluationPlugin:
         """Overload to define the evaluation plugin"""
-        cm_image_creator = partial(default_cm_image_creator,
-                                   cmap=plt.rcParams['image.cmap'])
+        cm_image_creator = partial(
+            default_cm_image_creator, cmap=plt.rcParams["image.cmap"]
+        )
 
         plugins = []
         is_images = self.cfg.is_image_data
-        if isinstance(self.network, Encoder) and isinstance(self.network, Decoder) and is_images:
+        if (
+            isinstance(self.network, Encoder)
+            and isinstance(self.network, Decoder)
+            and is_images
+        ):
             plugins.append(GenerateReconstruction(self.scenario, 2, 1))
 
         if isinstance(self.network, Samplable) and is_images:
             rows_are_experiences = isinstance(self.network, PackNet)
-            plugins.append(GenerateSamples(5, 4, rows_are_experiences=rows_are_experiences))
+            plugins.append(
+                GenerateSamples(5, 4, rows_are_experiences=rows_are_experiences)
+            )
 
         if isinstance(self.network, InferTask) and isinstance(self.network, Classifier):
             plugins.append(ConditionalMetrics())
@@ -185,33 +209,44 @@ class BaseExperiment():
             plugins.append(NoveltyScoreKde(self.class_order, self.cfg.n_classes))
 
         if isinstance(self.network, Classifier):
-            plugins.append(accuracy_metrics(epoch=True, stream=True,
-                           experience=True, trained_experience=True))
-            plugins.append(confusion_matrix_metrics(
-                normalize='true',
-                image_creator=cm_image_creator,
-                stream=True,
-                num_classes=num_classes
-            ))
+            plugins.append(
+                accuracy_metrics(
+                    epoch=True, stream=True, experience=True, trained_experience=True
+                )
+            )
+            plugins.append(
+                confusion_matrix_metrics(
+                    normalize="true",
+                    image_creator=cm_image_creator,
+                    stream=True,
+                    num_classes=num_classes,
+                )
+            )
             plugins.append(forgetting_metrics(experience=True, stream=True))
 
         # Add metric for each objective
         for name, objective in self.objective:
-            plugins.append(LossObjectiveMetric(name, objective,
-                           on_iteration=self.cfg.log_mini_batch))
+            plugins.append(
+                LossObjectiveMetric(
+                    name, objective, on_iteration=self.cfg.log_mini_batch
+                )
+            )
             plugins.append(EvalLossObjectiveMetric(name, objective))
 
         return EvaluationPlugin(
-            loss_metrics(epoch=True, experience=True,
-                         stream=True, minibatch=self.cfg.log_mini_batch),
+            loss_metrics(
+                epoch=True,
+                experience=True,
+                stream=True,
+                minibatch=self.cfg.log_mini_batch,
+            ),
             EpochClock(),
             *plugins,
-            loggers=loggers
+            loggers=loggers,
         )
 
     def dump_config(self):
         pass
-
 
     def _class_order(self):
         class_order = []
@@ -221,9 +256,9 @@ class BaseExperiment():
         return class_order
 
     def _save_class_order(self):
-        with open(self.logdir+"/class_order.txt", "w") as f:
+        with open(self.logdir + "/class_order.txt", "w") as f:
             for classes in self.class_order:
-                f.write(",".join(map(str, classes))+"\n")
+                f.write(",".join(map(str, classes)) + "\n")
 
     def preflight(self):
         print(f"Network: {type(self.network)}")
@@ -238,9 +273,9 @@ class BaseExperiment():
         for plugin in self.strategy.plugins:
             print(f" > {type(plugin).__name__}")
 
-        print("-"*80)
+        print("-" * 80)
         count_parameters(self.network)
-        print("-"*80)
+        print("-" * 80)
 
         print()
         self._save_class_order()
@@ -257,13 +292,12 @@ class BaseExperiment():
                     filtered_results[i][key] = value
 
         # Save results to disk
-        with gzip.open(self.logdir+"/results.pkl.gz", "wb") as f:
+        with gzip.open(self.logdir + "/results.pkl.gz", "wb") as f:
             pickle.dump(filtered_results, f)
 
         # Save results to disk
-        with gzip.open(self.logdir+"/model.pt.gz", "wb") as f:
-           torch.save(self.network.state_dict(), f)
-
+        with gzip.open(self.logdir + "/model.pt.gz", "wb") as f:
+            torch.save(self.network.state_dict(), f)
 
     def make_network(self) -> nn.Module:
         raise NotImplemented
@@ -273,7 +307,7 @@ class BaseExperiment():
             "Accuracy_On_Trained_Experiences/eval_phase/test_stream/Task000": 0,
             "Loss_Exp/eval_phase/test_stream/Task000/Exp000": 0,
             "EvalLossPart/Experience_0/Classifier": 0,
-            "EvalLossPart/Experience_0/Reconstruction": 0
+            "EvalLossPart/Experience_0/Reconstruction": 0,
         }
 
     def make_optimizer(self, parameters) -> torch.optim.Optimizer:
@@ -285,7 +319,7 @@ class BaseExperiment():
     @property
     def lr(self) -> float:
         for param_group in self.optimizer.param_groups:
-            return param_group['lr']
+            return param_group["lr"]
 
     @property
     def n_experiences(self) -> int:

@@ -1,50 +1,61 @@
-
 import sys
 from config.halton import generate_search
+
 sys.path.append("network/hvae")
 
 from train import Experiment
 from config.config import ExpConfig
+import click
+import numpy as np
 
-cfg = ExpConfig()
-cfg.scenario_fmnist()
-cfg.arch_deep_vae()
-cfg.strategy_surprisenet()
-cfg.name = "LrHparamSearch"
 
-search_space = {
-    'learning_rate': {"min": 1e-6, "max": 0.002, "scaling": "linear"},
-    'beta_warmup':   {"min": 0,    "max": 400,   "scaling": "linear"},
-}
-search = generate_search(search_space, 100)
+@click.command()
+@click.option("--log-directory", type=click.Path(exists=True), required=True)
+@click.option("--num-trials", type=int, default=1)
+def main(log_directory: str, num_trials: int):
+    cfg = ExpConfig()
+    cfg.scenario_fmnist()
+    cfg.arch_deep_vae()
+    cfg.strategy_surprisenet()
+    cfg.name = "LrHparamSearch"
+    cfg.tensorboard_dir = log_directory
 
-for hyper_params in search:
-    run_cfg = cfg.copy()
+    learning_rate_search = np.random.uniform(1e-6, 0.005, num_trials).astype(float)
+    beta_warmup_search = np.random.uniform(0, 400, num_trials).astype(int)
 
-    print("=-"*40)
-    print(f"Running {run_cfg.name} with:")
-    for k, v in hyper_params._asdict().items():
-        print(f"  {k:20} {v}")
-    print("=-"*40)
+    for learning_rate, beta_warmup in zip(learning_rate_search, beta_warmup_search):
+        run_cfg = cfg.copy()
 
-    # Set hyper parameters
-    run_cfg.learning_rate = hyper_params[0]
-    run_cfg.HVAE_schedule["warmup_epochs"] = int(hyper_params[1])
+        print("=-" * 40)
+        print(f"Running {run_cfg.name} with:")
+        print(f"  Learning rate: {learning_rate}")
+        print(f"  Beta warmup: {beta_warmup}")
+        print("=-" * 40)
 
-    exp = Experiment(run_cfg)
-    exp.logger.writer.add_hparams({
-        'lr': run_cfg.learning_rate,
-        'beta_warmup': run_cfg.HVAE_schedule["warmup_epochs"],
-    },
-    {
-        'TaskIdAccuracy': -1.0,
-    })
+        # Set hyper parameters
+        run_cfg.learning_rate = float(learning_rate)
+        run_cfg.HVAE_schedule["warmup_epochs"] = int(beta_warmup)
 
-    try:
-        result = exp.train()
-    except Exception as e:
-        print()
-        print(f"{run_cfg.name} failed")
-        continue
+        exp = Experiment(run_cfg)
+        exp.logger.writer.add_hparams(
+            {
+                "lr": run_cfg.learning_rate,
+                "beta_warmup": run_cfg.HVAE_schedule["warmup_epochs"],
+            },
+            {
+                "TaskIdAccuracy": -1.0,
+            },
+        )
 
-exp = Experiment(cfg)
+        try:
+            exp.train()
+        except Exception:
+            print()
+            print(f"{run_cfg.name} failed")
+            continue
+
+    exp = Experiment(cfg)
+
+
+if __name__ == "__main__":
+    main()
