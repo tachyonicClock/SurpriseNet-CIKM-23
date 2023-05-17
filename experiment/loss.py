@@ -46,7 +46,7 @@ class MultipleObjectiveLoss:
     def sum(self):
         sum = 0.0
         for _, objective in self:
-            sum += 1 / (len(self.objectives)) * objective.weighted
+            sum += objective.weighted
         return sum
 
 

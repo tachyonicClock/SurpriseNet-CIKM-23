@@ -63,6 +63,7 @@ class SurpriseNetExperimenter(experimenters.Experimenter):
         search = problem.search_space.root
 
         # SEARCH SPACE --------------------------------------------------------
+        search.add_discrete_param("classifier_loss_weight", [0.0, 0.5, 1.0])
         search.add_float_param("learning_rate", 1e-6, 0.005)
         search.add_int_param("latent_dims", 8, 256)
 
