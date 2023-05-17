@@ -157,12 +157,6 @@ class ExpConfig:
 
         self.optimizer: t.Literal["Adam", "SGD"] = "Adam"
 
-        if self.dataset_root is None:
-            print(
-                "Please specify the dataset root using the DATASETS environment variable"
-            )
-            exit(1)
-
     def toJSON(self):
         return json.dumps(self.__dict__, indent=4)
 
@@ -375,3 +369,15 @@ class ExpConfig:
     def copy(self: "ExpConfig") -> "ExpConfig":
         """Create a copy of the experiment configuration"""
         return copy.deepcopy(self)
+
+    @staticmethod
+    def from_json(json_file: str) -> "ExpConfig":
+        """Create an experiment configuration from a JSON file"""
+        with open(json_file, "r") as f:
+            json_cfg = json.load(f)
+        cfg = ExpConfig()
+        # Move the keys from the dictionary to the config
+        for key, value in json_cfg.items():
+            setattr(cfg, key, value)
+
+        return cfg
