@@ -335,7 +335,7 @@ class ExpConfig:
         self.HVAE_schedule = {"warmup_epochs": 100, "enable_free_nats": False}
         self.total_task_epochs = 200
         self.retrain_epochs = 50
-        self.latent_dims = None
+        self.latent_dims = 8
 
         if self.dataset_name == "FMNIST":
             self.batch_size = 256

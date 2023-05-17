@@ -25,29 +25,30 @@ def construct_network(cfg: ExpConfig):
     """
     Construct an auto encoder based on the configuration
     """
+    latent_dims = int(cfg.latent_dims)
     if cfg.network_style == "DeepVAE_FMNIST":
-        return FashionMNISTDeepVAE(cfg.n_classes)
+        return FashionMNISTDeepVAE(cfg.n_classes, latent_dims)
 
     encoder_constructor = _NETWORK_ARCHITECTURES[cfg.network_style][0]
     decoder_constructor = _NETWORK_ARCHITECTURES[cfg.network_style][1]
 
     if cfg.architecture == "AE":
         encoder: Encoder = encoder_constructor(
-            cfg.latent_dims, cfg.input_shape, **cfg.network_cfg
+            latent_dims, cfg.input_shape, **cfg.network_cfg
         )
         decoder: Decoder = decoder_constructor(
-            cfg.latent_dims, cfg.input_shape, **cfg.network_cfg
+            latent_dims, cfg.input_shape, **cfg.network_cfg
         )
-        classifier = ClassifierHead(cfg.latent_dims, cfg.n_classes)
+        classifier = ClassifierHead(latent_dims, cfg.n_classes)
         return AutoEncoder(encoder, decoder, classifier)
     elif cfg.architecture == "VAE":
         encoder: Encoder = encoder_constructor(
-            cfg.latent_dims * 2, cfg.input_shape, **cfg.network_cfg
+            latent_dims * 2, cfg.input_shape, **cfg.network_cfg
         )
         decoder: Decoder = decoder_constructor(
-            cfg.latent_dims, cfg.input_shape, **cfg.network_cfg
+            latent_dims, cfg.input_shape, **cfg.network_cfg
         )
-        classifier = ClassifierHead(cfg.latent_dims, cfg.n_classes)
-        bottleneck = VAEBottleneck(cfg.latent_dims * 2, cfg.latent_dims)
+        classifier = ClassifierHead(latent_dims, cfg.n_classes)
+        bottleneck = VAEBottleneck(latent_dims * 2, latent_dims)
         return VariationalAutoEncoder(encoder, bottleneck, decoder, classifier)
     assert False, "Unknown architecture"

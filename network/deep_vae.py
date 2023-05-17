@@ -23,17 +23,21 @@ import numpy as np
 
 
 class HVAE(Classifier, Encoder, Decoder, Samplable, MultiOutputNetwork):
-    def __init__(self, n_classes: int) -> None:
+    def __init__(self, n_classes: int, latent_dims: int) -> None:
+        """A hierarchical variational autoencoder.
+
+        :param n_classes: The number of classes in the dataset
+        :param latent_dims: The number of innermost latent dimensions
+        """
         super().__init__()
         self.dummy = nn.Parameter(torch.zeros(1))
-        self.hvae = self.make_hvae()
+        self.hvae = self.make_hvae(latent_dims)
         """An underlying hierarchical variational autoencoder"""
 
-        final_latent_features = self.hvae.config_stochastic[-1]["latent_features"]
-        self.classifier = self.make_classifier(final_latent_features, n_classes)
+        self.classifier = self.make_classifier(latent_dims, n_classes)
         """A classifier that takes the latent code as input"""
 
-    def make_hvae(self) -> DeepVAE:
+    def make_hvae(self, latent_features: int) -> DeepVAE:
         raise NotImplementedError("HVAE is not implemented")
 
     def make_classifier(self, latent_features: int, n_classes: int) -> nn.Module:
@@ -93,11 +97,15 @@ class HVAE(Classifier, Encoder, Decoder, Samplable, MultiOutputNetwork):
 
 
 class FashionMNISTDeepVAE(HVAE):
-    def make_hvae(self):
+    def make_hvae(self, latent_dims: int):
         stochastic_layers = [
             {"block": "GaussianConv2d", "latent_features": 8, "weightnorm": False},
             {"block": "GaussianDense", "latent_features": 16, "weightnorm": False},
-            {"block": "GaussianDense", "latent_features": 8, "weightnorm": False},
+            {
+                "block": "GaussianDense",
+                "latent_features": latent_dims,
+                "weightnorm": False,
+            },
         ]
 
         deterministic_layers = [
@@ -285,22 +293,22 @@ class DeepVAELoss(LossObjective, SupervisedPlugin):
             "Train.hyperparameters/beta", self.beta, strategy.clock.train_iterations
         )
         self.logger.add_scalar(
-            f"Train.likelihoods/log p(x)",
+            "Train.likelihoods/log p(x)",
             self.elbo_metric.get(),
             strategy.clock.train_iterations,
         )
         self.logger.add_scalar(
-            f"Train.likelihoods/loss",
+            "Train.likelihoods/loss",
             self.loss_metric.get(),
             strategy.clock.train_iterations,
         )
         self.logger.add_scalar(
-            f"Train.likelihoods/log p(x|z)",
+            "Train.likelihoods/log p(x|z)",
             self.likelihood.get(),
             strategy.clock.train_iterations,
         )
         self.logger.add_scalar(
-            f"Train.likelihoods/bpd", self.bpd.get(), strategy.clock.train_iterations
+            "Train.likelihoods/bpd", self.bpd.get(), strategy.clock.train_iterations
         )
 
         if self.enable_free_nats:
