@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from network.trait import SurpriseNet
+from network.trait import SurpriseNet, ParameterMask
 
 
 class ModuleDecorator(nn.Module):
@@ -23,7 +23,7 @@ class StateError(Exception):
     pass
 
 
-class SurpriseNetDecorator(SurpriseNet, ModuleDecorator):
+class WeightMask(ParameterMask, ModuleDecorator):
     """
     PackNetDecorator implement PackNet functionality for a supplied weight buffer.
     You can think about a PackNet as a Stack of networks overlaid on top of each other
@@ -155,29 +155,14 @@ class SurpriseNetDecorator(SurpriseNet, ModuleDecorator):
             self._is_subset_id_valid(subset_id)
             self.visiblity_mask = self.visiblity_mask | self.task_index.eq(subset_id)
 
-    def use_task_subset(self, subset_id):
-        """Setter to set the sub-set of the network to be used on forward pass"""
-        assert (
-            subset_id >= 0 and subset_id <= self._subset_count
-        ), f"subset_id {subset_id} must be between 0 and {self._subset_count}"
-
-        self.visiblity_mask = self.task_index.less_equal(subset_id)
-        if self._subset_count == subset_id:
-            self.mutable_activate_subsets(list(range(subset_id)))
-        else:
-            self.activate_subsets(list(range(subset_id + 1)))
-
-    def use_top_subset(self):
-        self.use_task_subset(self._subset_count)
-
     def push_pruned(self):
-        self._state_guard([self.State.PRUNED_TOP], self.State.MUTABLE_TOP)
+        self._state_guard([self.State.PRUNED_TOP], self.State.IMMUTABLE)
         # The top is now one higher up
         self._subset_count += 1
         # Move pruned weights to the top
         self.task_index[self.pruned_mask] = self._subset_count.item()
         # Change the active z_index
-        self.use_top_subset()
+        self.mutability_mask.zero_()
 
         if self.bias is not None:
             self.bias.requires_grad = False

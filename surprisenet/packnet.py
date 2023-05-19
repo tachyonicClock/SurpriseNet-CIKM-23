@@ -14,17 +14,18 @@ from network.trait import (
     Encoder,
     InferTask,
     MultiOutputNetwork,
+    ParameterMask,
     SurpriseNet,
     Samplable,
     VariationalAutoEncoder,
 )
-from surprisenet.surprisenet_core import ModuleDecorator, SurpriseNetDecorator
+from surprisenet.mask import ModuleDecorator, WeightMask
 from surprisenet.task_inference import TaskInferenceStrategy
 from torch import Tensor
 from torch.nn import functional as F
 
 
-class _PnBatchNorm(SurpriseNet, ModuleDecorator):
+class _PnBatchNorm(ParameterMask, ModuleDecorator):
     """BatchNorm is insanely annoying"""
 
     def __init__(self, wrappee: nn.Module) -> None:
@@ -60,15 +61,17 @@ class _PnBatchNorm(SurpriseNet, ModuleDecorator):
     def push_pruned(self) -> None:
         self._z_top += 1
 
-    def use_task_subset(self, task_id):
+    def activate_subsets(self, subset_ids: t.List[int]):
         pass
 
-    def use_top_subset(self):
+    def activate_task_id(self, task_id: int):
+        pass
+
+    def mutable_activate_subsets(self, subset_ids: t.List[int]):
         pass
 
     def subset_count(self) -> int:
         assert False
-        return int(self._z_top.item())
 
     def unfreeze_all(self):
         self.wrappee.weight.requires_grad = True
@@ -76,7 +79,7 @@ class _PnBatchNorm(SurpriseNet, ModuleDecorator):
         self.frozen = False
 
 
-class _PnLinear(SurpriseNetDecorator):
+class _PnLinear(WeightMask):
     def __init__(self, wrappee: nn.Linear) -> None:
         self.wrappee: nn.Linear
         super().__init__(wrappee)
@@ -97,7 +100,7 @@ class _PnLinear(SurpriseNetDecorator):
         return F.linear(input, self.available_weights(), self.bias)
 
 
-class _PnConv2d(SurpriseNetDecorator):
+class _PnConv2d(WeightMask):
     def __init__(self, wrappee: nn.Conv2d) -> None:
         wrappee: nn.Conv2d
         super().__init__(wrappee)
@@ -118,7 +121,7 @@ class _PnConv2d(SurpriseNetDecorator):
         return self.wrappee._conv_forward(input, self.available_weights(), self.bias)
 
 
-class _PnConvTransposed2d(SurpriseNetDecorator):
+class _PnConvTransposed2d(WeightMask):
     def __init__(self, wrappee: nn.ConvTranspose2d) -> None:
         wrappee: nn.ConvTranspose2d
         super().__init__(wrappee)
@@ -189,7 +192,7 @@ def wrap(wrappee: nn.Module):
     return wrappee
 
 
-class _PackNetParent(SurpriseNet, nn.Module):
+class _TaskMaskParent(SurpriseNet, nn.Module):
     """
     _PackNetParent is used to apply PackNet methods to all of the child modules
     that implement PackNet
@@ -200,6 +203,7 @@ class _PackNetParent(SurpriseNet, nn.Module):
 
     def __init__(self) -> None:
         super().__init__()
+        self._subset_count = 0
 
     def _pn_apply(self, func: t.Callable[["SurpriseNet"], None]):
         @torch.no_grad()
@@ -207,35 +211,52 @@ class _PackNetParent(SurpriseNet, nn.Module):
             # Apply function to all child packnets but not other parents.
             # If we were to apply to other parents we would duplicate
             # applications to their children
-            if isinstance(module, SurpriseNet) and not isinstance(
-                module, _PackNetParent
+            if isinstance(module, ParameterMask) and not isinstance(
+                module, _TaskMaskParent
             ):
                 func(module)
 
         self.apply(__pn_apply)
 
     def prune(self, to_prune_proportion: float) -> None:
+        """
+        Prunes the layer by removing the smallest weights and freezing them.
+        Biases are frozen as a side-effect.
+        """
         self._pn_apply(lambda x: x.prune(to_prune_proportion))
 
     def push_pruned(self) -> None:
+        """
+        Pushes the pruned weights to the next layer.
+        """
         self._pn_apply(lambda x: x.push_pruned())
+        self._subset_count += 1
 
-    def use_task_subset(self, task_id):
-        self._pn_apply(lambda x: x.use_task_subset(task_id))
+    def mutable_activate_subsets(self, visible_subsets: t.List[int]):
+        """
+        Activates the subsets given subsets making them visible. The remaining
+        capacity is mutable.
+        """
+        self._pn_apply(lambda x: x.mutable_activate_subsets(visible_subsets))
 
-    def use_top_subset(self):
-        self._pn_apply(lambda x: x.use_top_subset())
+    def activate_subsets(self, subset_ids: t.List[int]):
+        """
+        Activates the given subsets in the layer making them visible. The
+        remaining capacity is mutable.
+        """
+        self._pn_apply(lambda x: x.activate_subsets(subset_ids))
 
-    def unfreeze_all(self):
-        self._pn_apply(lambda x: x.unfreeze_all())
+    def activate_task_id(self, task_id: int):
+        if task_id == self.subset_count():
+            self.mutable_activate_subsets(list(range(task_id)))
+        else:
+            return self.activate_subsets(list(range(task_id + 1)))
 
     def subset_count(self) -> int:
-        for p in self.modules():
-            if isinstance(p, SurpriseNet) and not isinstance(p, _PackNetParent):
-                return p.subset_count()
+        return self._subset_count
 
 
-class SurpriseNetAutoEncoder(InferTask, AutoEncoder, _PackNetParent):
+class SurpriseNetAutoEncoder(InferTask, AutoEncoder, _TaskMaskParent):
     """
     A wrapper for AutoEncoder adding the InferTask trait and PackNet
     functionality
@@ -264,7 +285,7 @@ class SurpriseNetAutoEncoder(InferTask, AutoEncoder, _PackNetParent):
 
 
 class SurpriseNetVariationalAutoEncoder(
-    InferTask, VariationalAutoEncoder, _PackNetParent, ConditionedSample
+    InferTask, VariationalAutoEncoder, _TaskMaskParent, ConditionedSample
 ):
     """
     A wrapper for VariationalAutoEncoder adding the InferTask trait and PackNet
@@ -309,7 +330,7 @@ class SurpriseNetDeepVAE(
     Decoder,
     Samplable,
     MultiOutputNetwork,
-    _PackNetParent,
+    _TaskMaskParent,
 ):
     def __init__(
         self,

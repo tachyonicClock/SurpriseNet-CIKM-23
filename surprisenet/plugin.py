@@ -5,6 +5,8 @@ from avalanche.core import SupervisedPlugin
 from click import secho
 from torch import nn
 
+from network.trait import SurpriseNet
+
 
 def equal_capacity_prune_schedule(n_experiences: int) -> t.List[float]:
     """Returns a pruning schedule that results in equal capacity for each experience.
@@ -40,6 +42,10 @@ class SurpriseNetPlugin(SupervisedPlugin):
         self.enabled = True
         self.capacity: float = 1.0
         """How much of the network is still trainable"""
+
+    def before_training_exp(self, strategy, **kwargs):
+        network: SurpriseNet = strategy.model
+        network.activate_task_id(network.subset_count())
 
     def after_training_exp(self, strategy, **kwargs):
         """Perform pruning"""

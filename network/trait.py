@@ -176,7 +176,7 @@ class VariationalAutoEncoder(AutoEncoder, Samplable):
         return torch.randn(n, self.latent_dim)
 
 
-class SurpriseNet(ABC):
+class ParameterMask(ABC):
     @abstractmethod
     def prune(self, to_prune_proportion: float) -> None:
         """Prune a proportion of the prunable parameters (parameters on the
@@ -194,16 +194,22 @@ class SurpriseNet(ABC):
         """
 
     @abstractmethod
-    def use_task_subset(self, task_id):
+    def mutable_activate_subsets(self, subset_ids: t.List[int]):
         pass
 
     @abstractmethod
-    def use_top_subset(self):
+    def activate_subsets(self, subset_ids: t.List[int]):
         pass
 
     @abstractmethod
     def subset_count(self) -> int:
         raise NotImplementedError("subset_count not implemented")
+
+
+class SurpriseNet(ParameterMask, ABC):
+    @abstractmethod
+    def activate_task_id(self, task_id: int):
+        pass
 
 
 NETWORK_TRAITS = [

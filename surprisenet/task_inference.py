@@ -36,10 +36,9 @@ class UseTaskOracle(TaskInferenceStrategy):
         task_id = self.experiment.strategy.experience.current_experience
         assert isinstance(model, SurpriseNet), "Task inference only works on PackNet"
 
-        model.use_task_subset(min(task_id, model.subset_count() - 1))
+        model.activate_task_id(min(task_id, model.subset_count()))
         out: ForwardOutput = forward_func(x)
         out.pred_exp_id = (torch.ones((x.shape[0], 1)) * task_id).long()
-        model.use_top_subset()
         return out
 
 
