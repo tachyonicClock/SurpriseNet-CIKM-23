@@ -5,7 +5,7 @@ import torch
 from experiment.experiment import BaseExperiment
 from experiment.strategy import ForwardOutput
 from hvae.hvaeoodd.oodd.losses import ELBO
-from network.trait import PackNet
+from network.trait import SurpriseNet
 from torch import Tensor
 from torch.nn import functional as F
 
@@ -34,11 +34,11 @@ class UseTaskOracle(TaskInferenceStrategy):
     ) -> ForwardOutput:
         model = self.experiment.strategy.model
         task_id = self.experiment.strategy.experience.current_experience
-        assert isinstance(model, PackNet), "Task inference only works on PackNet"
+        assert isinstance(model, SurpriseNet), "Task inference only works on PackNet"
 
         model.use_task_subset(min(task_id, model.subset_count() - 1))
         out: ForwardOutput = forward_func(x)
-        out.pred_exp_id = (torch.ones((x.shape[0], 1)) * task_id).int()
+        out.pred_exp_id = (torch.ones((x.shape[0], 1)) * task_id).long()
         model.use_top_subset()
         return out
 
@@ -90,7 +90,7 @@ class TaskReconstruction(TaskInferenceStrategy):
         self, forward_func: t.Callable[[Tensor], ForwardOutput], x: Tensor
     ) -> ForwardOutput:
         model = self.experiment.strategy.model
-        assert isinstance(model, PackNet)
+        assert isinstance(model, SurpriseNet)
 
         # Initialize the best output using the first subset. Subsequent subsets
         # will be compared to this one

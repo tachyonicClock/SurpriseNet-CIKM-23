@@ -34,7 +34,7 @@ from network.trait import (
     Decoder,
     Encoder,
     InferTask,
-    PackNet,
+    SurpriseNet,
     Samplable,
 )
 from setproctitle import setproctitle
@@ -195,7 +195,7 @@ class BaseExperiment:
             plugins.append(GenerateReconstruction(self.scenario, 2, 1))
 
         if isinstance(self.network, Samplable) and is_images:
-            rows_are_experiences = isinstance(self.network, PackNet)
+            rows_are_experiences = isinstance(self.network, SurpriseNet)
             plugins.append(
                 GenerateSamples(5, 4, rows_are_experiences=rows_are_experiences)
             )

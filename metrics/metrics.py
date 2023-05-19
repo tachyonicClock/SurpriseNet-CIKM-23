@@ -9,7 +9,7 @@ from avalanche.training.templates import SupervisedTemplate
 from experiment.loss import LossObjective
 from experiment.strategy import Strategy
 from matplotlib import pyplot as plt
-from network.trait import PackNet
+from network.trait import SurpriseNet
 from torch import Tensor
 import seaborn as sns
 
@@ -139,7 +139,7 @@ class SubsetRecognition(_MyMetric):
         pass
 
     def before_eval(self, strategy) -> "MetricResult":
-        model: PackNet = strategy.model
+        model: SurpriseNet = strategy.model
         self.cm = np.zeros((model.subset_count(), self.n_classes))
 
     def after_eval_iteration(self, strategy: Strategy) -> "MetricResult":

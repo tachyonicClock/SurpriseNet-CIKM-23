@@ -132,6 +132,13 @@ class TrainCommand(click.Group):
     type=int,
     help="The training and evaluation batch size.",
 )
+@click.option(
+    "--std-order",
+    type=bool,
+    default=False,
+    is_flag=True,
+    help="Use the standard order for task composition e.g class [0, 1], [2, 3], etc",
+)
 @click.option("--log-directory", type=str, default=None)
 @click.argument("label", type=str)
 @click.argument("scenario", type=click.Choice(SCENARIOS.keys()), required=True)
@@ -150,6 +157,7 @@ def cli(
     no_reconstruction: bool,
     log_directory: str,
     batch_size: t.Optional[int],
+    std_order: bool,
     repeat: int,
     seed: t.Optional[int],
 ):
@@ -177,6 +185,9 @@ def cli(
     cfg.label = label
     cfg.tensorboard_dir = log_directory or cfg.tensorboard_dir
 
+    # Override the default order if given
+    if std_order:
+        cfg.fixed_class_order = list(range(cfg.n_classes))
     # Override the default latent dimension if given
     if latent_dim is not None:
         cfg.latent_dims = latent_dim
@@ -209,8 +220,20 @@ def cli(
     default=False,
     help="Prune such that each task has the same number of parameters",
 )
+@click.option(
+    "--retrain-epochs",
+    type=int,
+    default=None,
+    help="Override the default number of epochs to retrain the"
+    + "network after pruning",
+)
 @click.pass_obj
-def packNet(cfg: ExpConfig, prune_proportion: float, equal_prune: bool):
+def packNet(
+    cfg: ExpConfig,
+    prune_proportion: float,
+    equal_prune: bool,
+    retrain_epochs: t.Optional[int],
+):
     """Use task incremental PackNet
 
     Mallya, A., & Lazebnik, S. (2018). PackNet: Adding Multiple Tasks to a
@@ -219,7 +242,6 @@ def packNet(cfg: ExpConfig, prune_proportion: float, equal_prune: bool):
     https://doi.org/10.1109/CVPR.2018.00810
     """
     cfg.strategy_packnet()
-
     # Setup pruning scheme
     if not equal_prune:
         cfg.prune_proportion = prune_proportion if prune_proportion != None else 0.5
@@ -231,6 +253,7 @@ def packNet(cfg: ExpConfig, prune_proportion: float, equal_prune: bool):
             )
         cfg.prune_proportion = equal_capacity_prune_schedule(cfg.n_experiences)
 
+    cfg.retrain_epochs = retrain_epochs or cfg.retrain_epochs
     cfg.name = get_experiment_name(
         cfg.repo_hash, cfg.label, cfg.scenario_name, cfg.architecture, "taskOracle"
     )

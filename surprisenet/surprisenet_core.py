@@ -1,4 +1,3 @@
-import math
 import typing as t
 from enum import Enum
 
@@ -6,7 +5,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from network.trait import PackNet
+from network.trait import SurpriseNet
 
 
 class ModuleDecorator(nn.Module):
@@ -24,7 +23,7 @@ class StateError(Exception):
     pass
 
 
-class PackNetDecorator(PackNet, ModuleDecorator):
+class SurpriseNetDecorator(SurpriseNet, ModuleDecorator):
     """
     PackNetDecorator implement PackNet functionality for a supplied weight buffer.
     You can think about a PackNet as a Stack of networks overlaid on top of each other
@@ -71,19 +70,14 @@ class PackNetDecorator(PackNet, ModuleDecorator):
         if self.state not in previous:
             raise StateError(
                 f"Function only valid for {previous} instead PackNet was "
-                + "in the {self.state} state"
+                + f"in the {self.state} state"
             )
         self.state = next
 
     @property
-    def top_mask(self) -> Tensor:
-        """Return a mask of weights at the top of the `stack`"""
-        return self.task_index.eq(self._z_top)
-
-    @property
     def pruned_mask(self) -> Tensor:
         """Return a mask of weights that have been pruned"""
-        return self.task_index.eq(self._Z_PRUNED)
+        return self.task_index.eq(self.PRUNED_CODE)
 
     @property
     def weight(self) -> Tensor:
@@ -93,6 +87,14 @@ class PackNetDecorator(PackNet, ModuleDecorator):
     def bias(self) -> Tensor:
         return NotImplemented
 
+    @property
+    def state(self) -> State:
+        return self.State(self._state.item())
+
+    @state.setter
+    def state(self, state: State):
+        self._state.fill_(state.value)
+
     def _remove_gradient_hook(self, grad: Tensor) -> Tensor:
         """
         Only the top layer should be trained. Todo so all other gradients
@@ -100,9 +102,7 @@ class PackNetDecorator(PackNet, ModuleDecorator):
         used, since they can cause parameters to be modified even when no
         gradient exists
         """
-        grad = grad.clone()
-        grad[~self.top_mask] = 0.0
-        return grad
+        return grad * self.mutability_mask
 
     def _rank_prunable(self) -> Tensor:
         """
@@ -112,92 +112,78 @@ class PackNetDecorator(PackNet, ModuleDecorator):
         # "We use the simple heuristic to quantify the importance of the
         # weights using their absolute value." (Han et al., 2017)
         importance = self.weight.abs()
-
-        # All weights that are not on top of the stack are un_prunable
-        un_prunable = ~self.top_mask
+        un_prunable = ~self.mutability_mask
         # Mark un-prunable weights using -1.0 so they can be cutout after sort
         importance[un_prunable] = -1.0
-
         # Rank the importance
         rank = torch.argsort(importance.flatten())
         # Cut out un-prunable weights
         return rank[un_prunable.count_nonzero() :]
 
     def _prune_weights(self, indices: Tensor):
-        self.task_index.flatten()[indices] = self._Z_PRUNED.item()
-
-        # "Weight initialization plays a big role in deep learning (Mishkin &
-        # Matas (2015)). Conventional training has only one chance of
-        # initialization. DSD gives the optimization a second (or more) chance
-        # during the training process to re-initialize from more robust sparse
-        # training solution. We re-dense the network from the sparse solution
-        # which can be seen as a zero initialization for pruned weights. Other
-        # initialization methods are also worth trying." (Han et al., 2017)
-        with torch.no_grad():
-            self.weight.flatten()[indices] = 0.0
+        self.task_index.flatten()[indices] = self.PRUNED_CODE.item()
+        self.visiblity_mask.flatten()[indices] = False
 
     def prune(self, to_prune_proportion: float):
         self._state_guard([self.State.MUTABLE_TOP], self.State.PRUNED_TOP)
         ranked = self._rank_prunable()
         prune_count = int(len(ranked) * to_prune_proportion)
         self._prune_weights(ranked[:prune_count])
+        self.mutability_mask = self.task_index.eq(self._subset_count)
 
     def available_weights(self) -> Tensor:
-        if self.state == self.state.MUTABLE_TOP:
-            return self.weight
-        weight = self.weight.clone()
-        # Mask of the weights that are above the supplied z_index. Used to zero
-        # them
-        mask = self.task_index.greater(self._z_active)
-        with torch.no_grad():
-            weight[mask] = 0.0
-        return self.visible_mask * self.weight
+        return self.visiblity_mask * self.weight
+
+    def _is_subset_id_valid(self, subset_id: t.List[int]):
+        assert (
+            0 <= subset_id < self._subset_count
+        ), f"Given Subset ID {subset_id} must be between 0 and {self._subset_count}"
+
+    def mutable_activate_subsets(self, visible_subsets: t.List[int]):
+        self.activate_subsets(visible_subsets)
+        self._state_guard([self.State.IMMUTABLE], self.State.MUTABLE_TOP)
+
+        self.mutability_mask = self.task_index.eq(self._subset_count)
+        self.visiblity_mask = self.visiblity_mask | self.mutability_mask
+
+    def activate_subsets(self, visible_subsets: t.List[int]):
+        self._state_guard(
+            [self.State.IMMUTABLE, self.State.MUTABLE_TOP], self.State.IMMUTABLE
+        )
+        self.visiblity_mask.zero_()
+        for subset_id in visible_subsets:
+            self._is_subset_id_valid(subset_id)
+            self.visiblity_mask = self.visiblity_mask | self.task_index.eq(subset_id)
 
     def use_task_subset(self, subset_id):
         """Setter to set the sub-set of the network to be used on forward pass"""
         assert (
-            subset_id >= 0 and subset_id <= self._z_top
-        ), f"subset_id {subset_id} must be between 0 and {self._z_top}"
+            subset_id >= 0 and subset_id <= self._subset_count
+        ), f"subset_id {subset_id} must be between 0 and {self._subset_count}"
 
-        next_state = (
-            self.State.MUTABLE_TOP if self._z_top == subset_id else self.State.IMMUTABLE
-        )
-        self._state_guard([self.State.MUTABLE_TOP, self.State.IMMUTABLE], next_state)
-
-        subset_id = min(max(subset_id, 0), self._z_top)
-        self._z_active.fill_(subset_id)
-
-        # self.visible_mask = self.task_index.less(self._z_active)
+        self.visiblity_mask = self.task_index.less_equal(subset_id)
+        if self._subset_count == subset_id:
+            self.mutable_activate_subsets(list(range(subset_id)))
+        else:
+            self.activate_subsets(list(range(subset_id + 1)))
 
     def use_top_subset(self):
-        """Forward should use the top subset"""
-        self.use_task_subset(self._z_top)
-
-    def initialize_top(self):
-        """Re-initialize the top of the network"""
-        # He Weight Initialization
-        stddev = math.sqrt(2 / self.top_mask.count_nonzero())
-        dist = torch.distributions.Normal(0, stddev)
-        with torch.no_grad():
-            self.weight[self.top_mask] = dist.sample(
-                (self.top_mask.count_nonzero(),)
-            ).to(self.device)
+        self.use_task_subset(self._subset_count)
 
     def push_pruned(self):
         self._state_guard([self.State.PRUNED_TOP], self.State.MUTABLE_TOP)
         # The top is now one higher up
-        self._z_top += 1
+        self._subset_count += 1
         # Move pruned weights to the top
-        self.task_index[self.pruned_mask] = self._z_top.item()
+        self.task_index[self.pruned_mask] = self._subset_count.item()
         # Change the active z_index
         self.use_top_subset()
-        self.initialize_top()
 
         if self.bias is not None:
             self.bias.requires_grad = False
 
     def subset_count(self) -> int:
-        return int(self._z_top.item())
+        return int(self._subset_count.item())
 
     @property
     def device(self) -> torch.device:
@@ -205,47 +191,34 @@ class PackNetDecorator(PackNet, ModuleDecorator):
 
     def __init__(self, wrappee: nn.Module) -> None:
         super().__init__(wrappee)
-
-        self._z_top: torch.Tensor
+        self._subset_count: torch.Tensor
         """Index top of the 'stack'. Should only increase"""
-        self._z_active: torch.Tensor
-        """
-        Index defining which subset is used for a forward pass
-        """
-        self._Z_PRUNED: torch.Tensor
-        """Index tracking if a weight has been pruned"""
+        self.PRUNED_CODE: torch.Tensor
+        """Scalar denoting the code for pruned weights"""
         self.task_index: torch.Tensor
-        """
-        Z mask is a depth index of weights in an imaginary "stack" that makes up the
-        PackNet. The masks values corresponds to each task.
-        """
-
-        self.visible_mask: torch.Tensor
-        self.gradient_mask: torch.Tensor
+        """Index of the task each weight belongs to"""
+        self.visiblity_mask: torch.Tensor
+        """Mask of weights that are presently visible"""
+        self.mutability_mask: torch.Tensor
+        """Mask of weights that are mutable"""
 
         # Register buffers. Buffers are tensors that are not parameters, but
         # should be saved with the model.
-        self.register_buffer("_z_top", torch.tensor(0, dtype=torch.int))
-        self.register_buffer("_z_active", torch.tensor(0, dtype=torch.int))
-        self.register_buffer("_Z_PRUNED", torch.tensor(255, dtype=torch.int))
-        self.register_buffer(
-            "task_index", torch.ones(self.weight.shape).byte() * self._z_top
-        )
+        self.register_buffer("_subset_count", torch.tensor(0, dtype=torch.int))
+        self.register_buffer("PRUNED_CODE", torch.tensor(255, dtype=torch.int))
         self.register_buffer(
             "_state", torch.tensor(self.State.MUTABLE_TOP.value, dtype=torch.int)
         )
-        """The state of the PackNet used to avoid getting into invalid states"""
-
-        self.visible_mask = torch.ones_like(self.weight, dtype=torch.bool)
+        self.register_buffer(
+            "task_index", torch.ones(self.weight.shape).byte() * self._subset_count
+        )
+        self.register_buffer(
+            "visiblity_mask", torch.ones_like(self.weight, dtype=torch.bool)
+        )
+        self.register_buffer(
+            "mutability_mask", torch.ones_like(self.weight, dtype=torch.bool)
+        )
 
         assert self.weight != NotImplemented
         assert self.bias != NotImplemented
         self.weight.register_hook(self._remove_gradient_hook)
-
-    @property
-    def state(self) -> State:
-        return self.State(self._state.item())
-
-    @state.setter
-    def state(self, state: State):
-        self._state.fill_(state.value)

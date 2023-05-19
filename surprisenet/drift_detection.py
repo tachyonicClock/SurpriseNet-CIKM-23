@@ -4,7 +4,7 @@ import typing as t
 from avalanche.core import SupervisedPlugin
 from click import secho
 from experiment.loss import LossObjective
-from network.trait import PackNet
+from network.trait import SurpriseNet
 
 
 class DriftDetector(t.Protocol):
@@ -88,7 +88,7 @@ class SurpriseNetDriftHandler(DriftHandler):
     def on_drift_warning(self, strategy):
         super().on_drift_warning(strategy)
         self.capacity *= self.prune_amount
-        network: PackNet = strategy.model
+        network: SurpriseNet = strategy.model
 
         secho(
             f"Pruning {self.prune_amount*100:0.1f}% reclaiming {self.capacity*100:0.1f}% capacity",
@@ -100,7 +100,7 @@ class SurpriseNetDriftHandler(DriftHandler):
     def on_drift(self, strategy):
         super().on_drift(strategy)
         secho("Freezing Task-Specific Subset", fg="green")
-        network: PackNet = strategy.model
+        network: SurpriseNet = strategy.model
         network.push_pruned()
         strategy.reset_optimizer()
 

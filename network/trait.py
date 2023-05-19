@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
-from turtle import forward
 import typing as t
-from torch import Tensor, TensorType, nn
+from torch import Tensor, nn
 import torch
 from avalanche.models.generator import Generator
 
@@ -71,7 +70,7 @@ class Samplable(Generator, ABC):
         return self.sample(batch_size)
 
     def get_features(self):
-        raise NotImplemented("get features not implemented")
+        raise NotImplementedError("get features not implemented")
 
 
 class ConditionedSample(Samplable):
@@ -177,7 +176,7 @@ class VariationalAutoEncoder(AutoEncoder, Samplable):
         return torch.randn(n, self.latent_dim)
 
 
-class PackNet(ABC):
+class SurpriseNet(ABC):
     @abstractmethod
     def prune(self, to_prune_proportion: float) -> None:
         """Prune a proportion of the prunable parameters (parameters on the
@@ -204,7 +203,7 @@ class PackNet(ABC):
 
     @abstractmethod
     def subset_count(self) -> int:
-        raise NotImplemented("subset_count not implemented")
+        raise NotImplementedError("subset_count not implemented")
 
 
 NETWORK_TRAITS = [
@@ -212,7 +211,7 @@ NETWORK_TRAITS = [
     Samplable,
     Encoder,
     Decoder,
-    PackNet,
+    SurpriseNet,
     AutoEncoder,
     ConditionedSample,
     VariationalAutoEncoder,
