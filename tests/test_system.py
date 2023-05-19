@@ -1,7 +1,6 @@
 from conftest import ROOT_LOG_DIR
 from cli import cli
 import pytest
-import sys
 
 
 def test_VAE_surprise_net():

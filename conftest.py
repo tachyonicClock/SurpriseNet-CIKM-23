@@ -1,10 +1,13 @@
 import os
-
 import atexit
 import shutil
 import tempfile
+import dotenv
 
-collect_ignore = ["network/hvae"]
+dotenv.load_dotenv(dotenv.find_dotenv())
+
+
+collect_ignore = ["hvae"]
 os.environ.setdefault("DATASETS", "/local/scratch/antonlee/datasets")
 
 

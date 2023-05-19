@@ -1,19 +1,20 @@
+from hvae.hvaeoodd.oodd.layers.stages import VaeStage
+from hvae.hvaeoodd.oodd.losses import ELBO
+from hvae.hvaeoodd.oodd.models.dvae import DeepVAE
+from hvae.hvaeoodd.oodd.variational.deterministic_warmup import (
+    DeterministicWarmup,
+)
+from hvae.hvaeoodd.oodd.variational.free_nats import FreeNatsCooldown
 from avalanche.core import SupervisedPlugin
 from experiment.strategy import ForwardOutput, Strategy
-from network.hvae.oodd.losses import ELBO
 from network.mlp import ClassifierHead
-from .trait import (
-    AutoEncoder,
+from network.trait import (
     Classifier,
     Encoder,
     Decoder,
-    VariationalAutoEncoder,
     Samplable,
     MultiOutputNetwork,
 )
-from network.hvae.oodd.layers.stages import VaeStage, LvaeStage
-from network.hvae.oodd.models.dvae import DeepVAE
-from network.hvae.oodd.variational import DeterministicWarmup, FreeNatsCooldown
 from torch import nn, Tensor
 import torch
 from experiment.loss import LossObjective
@@ -223,6 +224,49 @@ class Average:
         self.sum = 0
 
 
+class CyclicBeta(t.Iterable):
+    def __init__(
+        self,
+        total_epochs: int,
+        ratio: float = 0.5,
+        cycles: int = 4,
+    ) -> None:
+        """
+        Cyclic Annealing Schedule: A Simple Approach to Mitigating KL Vanishing
+
+
+        Fu, H., Li, C., Liu, X., Gao, J., Celikyilmaz, A., & Carin, L. (2019).
+        Cyclical Annealing Schedule: A Simple Approach to Mitigating KL
+        Vanishing (arXiv:1903.10145). arXiv. http://arxiv.org/abs/1903.10145
+
+        :param total_steps: The total number of times annealing will be applied
+        :param ratio: What proportion of eahch cycle has beta maxed out, defaults to 0.5
+        :param cycles: The number of cycles which occur, defaults to 4
+        """
+        self.total_steps = total_epochs
+        self.ratio = ratio
+        self.cycles = cycles
+
+    @property
+    def is_done(self):
+        return self.epoch_counter >= self.total_steps
+
+    def __iter__(self):
+        for epoch in range(self.total_steps):
+            yield self._beta_value(self.ratio, self.cycles, epoch, self.total_steps)
+
+    @staticmethod
+    def _beta_value(ratio: float, cycles: int, epoch: int, total_epochs: int) -> float:
+        # The proportion of the schedule that has elapsed
+        schedule_prop = epoch / total_epochs
+        # The proportion of the current cycle that has elapsed
+        cycle_prop = schedule_prop * cycles - int(schedule_prop * cycles)
+        if cycle_prop > ratio:
+            return 1.0
+        else:
+            return cycle_prop / ratio
+
+
 class DeepVAELoss(LossObjective, SupervisedPlugin):
     name = "DeepVAE"
 
@@ -260,10 +304,11 @@ class DeepVAELoss(LossObjective, SupervisedPlugin):
         self.before_training_exp(None)
         self.before_training_epoch(None)
 
-    def before_training_exp(self, strategy: "Template", *args, **kwargs):
+    def before_training_exp(self, strategy: Strategy, *_, **kwargs):
         print("DeepVAE Loss: Initializing warmup and free nats")
         # Reset the warmup and free nats
-        self.deterministic_warmup = DeterministicWarmup(n=self.warmup_epochs)
+        self.beta_schedule = DeterministicWarmup(n=self.warmup_epochs)
+
         if self.enable_free_nats:
             self.free_nats_cool_down = FreeNatsCooldown(
                 constant_epochs=self.free_nats_epochs // 2,
@@ -272,7 +317,7 @@ class DeepVAELoss(LossObjective, SupervisedPlugin):
                 end_val=0,
             )
 
-    def before_training_epoch(self, strategy: "Template", *args, **kwargs):
+    def before_training_epoch(self, strategy, *args, **kwargs):
         # Increment the simulated annealing
         self.beta = next(self.deterministic_warmup)
         if self.enable_free_nats:

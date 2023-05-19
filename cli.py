@@ -1,15 +1,9 @@
-import sys
-
-sys.path.append("network/hvae")
-
 import os
 import random
 import typing as t
 
 import click
 import git
-import matplotlib.pyplot as plt
-import matplotlib
 import numpy as np
 import torch
 

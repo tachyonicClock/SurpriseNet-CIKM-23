@@ -1,3 +1,3 @@
-[submodule "hvae"]
-	path = hvae
-	url = https://github.com/JakobHavtorn/hvae-oodd
+[submodule "hvae-oodd"]
+	path = hvae/hvaeoodd
+	url = git@github.com:JakobHavtorn/hvae-oodd.git

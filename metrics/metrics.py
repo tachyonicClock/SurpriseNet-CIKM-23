@@ -11,7 +11,6 @@ from experiment.strategy import Strategy
 from matplotlib import pyplot as plt
 from network.trait import PackNet
 from torch import Tensor
-from torchmetrics import ConfusionMatrix
 import seaborn as sns
 
 
@@ -83,7 +82,7 @@ class ExperienceIdentificationCM(_MyMetric):
     def after_eval_iteration(self, strategy: Strategy) -> "MetricResult":
         exp_id = strategy.last_forward_output.exp_id
         pred_exp_id = strategy.last_forward_output.pred_exp_id
-        assert pred_exp_id != None, "Strategy did not output pred_exp_id"
+        assert pred_exp_id is not None, "Strategy did not output pred_exp_id"
 
         # Update the confusion matrix
         for i, j in zip(exp_id, pred_exp_id):
@@ -94,13 +93,13 @@ class ExperienceIdentificationCM(_MyMetric):
         return [
             MetricValue(
                 self,
-                f"ExperienceIdentificationCM",
+                "ExperienceIdentificationCM",
                 self.result(),
                 strategy.clock.total_iterations,
             ),
             MetricValue(
                 self,
-                f"TaskIdAccuracy",
+                "TaskIdAccuracy",
                 task_id_accuracy,
                 strategy.clock.total_iterations,
             ),
@@ -153,7 +152,7 @@ class SubsetRecognition(_MyMetric):
 
     def after_eval(self, strategy: Strategy):
         return MetricValue(
-            self, f"SubsetRecognition", self.result(), strategy.clock.total_iterations
+            self, "SubsetRecognition", self.result(), strategy.clock.total_iterations
         )
 
 
@@ -216,18 +215,18 @@ class ConditionalMetrics(_MyMetric):
         return [
             MetricValue(
                 self,
-                f"Conditional/P(correct|correct_task_id)",
+                "Conditional/P(correct|correct_task_id)",
                 self.correct_given_correct_task_id,
                 step,
             ),
             MetricValue(
                 self,
-                f"Conditional/P(correct|!correct_task_id)",
+                "Conditional/P(correct|!correct_task_id)",
                 self.correct_given_wrong_task_id,
                 step,
             ),
             MetricValue(
-                self, f"Conditional/P(correct_task_id)", self.task_id_accuracy, step
+                self, "Conditional/P(correct_task_id)", self.task_id_accuracy, step
             ),
         ]
 
@@ -269,6 +268,9 @@ class NoveltyScoreKde(_MyMetric):
     def after_eval(self, strategy: SupervisedTemplate) -> MetricResult:
         subsets = sorted(self.subset_novelty_score.keys())
         rows = len(subsets)
+
+        if rows == 0:
+            return
 
         fig, axes = plt.subplots(
             rows, 1, figsize=(10, 2 * rows), squeeze=False, sharex=True, sharey=True

@@ -63,9 +63,11 @@ class SurpriseNetExperimenter(experimenters.Experimenter):
         search = problem.search_space.root
 
         # SEARCH SPACE --------------------------------------------------------
-        search.add_discrete_param("classifier_loss_weight", [0.0, 0.5, 1.0])
-        search.add_float_param("learning_rate", 1e-6, 0.005)
-        search.add_int_param("latent_dims", 8, 256)
+        search.add_discrete_param("classifier_loss_weight", [0.0])
+        search.add_discrete_param("latent_dims", [8])
+        search.add_float_param("learning_rate", 1e-6, 0.003)
+        search.add_int_param("total_task_epochs", 180, 500)
+        search.add_int_param("retrain_epochs", 50, 100)
 
         # OBJECTIVES ----------------------------------------------------------
         problem.metric_information.append(

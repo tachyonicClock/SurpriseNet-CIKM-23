@@ -209,7 +209,7 @@ class Experiment(BaseExperiment):
             criterion=self.make_criterion(),
             device=cfg.device,
             train_mb_size=cfg.batch_size,
-            train_epochs=train_epochs,
+            train_epochs=int(train_epochs),
             eval_mb_size=cfg.batch_size,
             eval_every=-1,
             plugins=[self, *self.plugins],

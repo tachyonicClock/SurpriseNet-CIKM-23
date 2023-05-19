@@ -274,7 +274,8 @@ class ExpConfig:
         return self
 
     def scenario_gaussian_schedule_mnist(self: "ExpConfig") -> "ExpConfig":
-        """Configure the experiment for the Fashion-MNIST dataset with a Gaussian schedule"""
+        """Configure the experiment for the Fashion-MNIST dataset with a
+        Gaussian schedule"""
         self._network_cnn()
         # self.learning_rate = 0.01
         self.dataset_name = "MNIST"

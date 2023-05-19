@@ -6,9 +6,7 @@ import torch
 import torch.nn as nn
 from experiment.strategy import ForwardOutput
 from network.deep_vae import FashionMNISTDeepVAE
-from network.hvae.oodd.layers.likelihoods import LikelihoodData
-from network.hvae.oodd.layers.linear import NormedDense, NormedLinear
-from network.hvae.oodd.layers.stages import StageData
+from hvae.hvaeoodd.oodd.layers.linear import NormedDense, NormedLinear
 from network.trait import (
     AutoEncoder,
     Classifier,
@@ -73,7 +71,8 @@ class PackNetDecorator(PackNet, ModuleDecorator):
         PRUNED_TOP = 1
         """Post prune training"""
         IMMUTABLE = 2
-        """Use a non-top layer of the network. In this state training cannot be conducted"""
+        """Use a non-top layer of the network. In this state training cannot be
+          conducted"""
 
     class StateError(Exception):
         pass
@@ -81,7 +80,8 @@ class PackNetDecorator(PackNet, ModuleDecorator):
     def next_state(self, previous: t.Sequence[State], next: State):
         if self.state not in previous:
             raise self.StateError(
-                f"Function only valid for {previous} instead PackNet was in the {self.state} state"
+                f"Function only valid for {previous} instead PackNet was "
+                + "in the {self.state} state"
             )
         self.state = next
 

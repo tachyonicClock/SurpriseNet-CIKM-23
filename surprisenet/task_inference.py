@@ -4,14 +4,13 @@ from dataclasses import fields
 import torch
 from experiment.experiment import BaseExperiment
 from experiment.strategy import ForwardOutput
-from network.deep_vae import HVAE
-from network.hvae.oodd.losses import ELBO
+from hvae.hvaeoodd.oodd.losses import ELBO
 from network.trait import PackNet
 from torch import Tensor
 from torch.nn import functional as F
 
 if t.TYPE_CHECKING:
-    from surprisenet.packnet import SurpriseNetDeepVAE, StageData
+    from surprisenet.packnet import StageData
 
 
 class TaskInferenceStrategy:
@@ -171,10 +170,8 @@ class HierarchicalVAEOOD(TaskInferenceStrategy):
         ]
 
     @torch.no_grad()
-    def _novelty_score(self, x: torch.Tensor) -> torch.Tensor:
+    def _regular_elbo(self, x: torch.Tensor) -> torch.Tensor:
         self.model.eval()
-
-        # Regular ELBO
         likelihood_data, stage_data = self.model(x)
         _, elbo, _, _ = self.elbo_loss_func(
             likelihood_data.likelihood,
@@ -185,8 +182,10 @@ class HierarchicalVAEOOD(TaskInferenceStrategy):
             sample_reduction=None,
             batch_reduction=None,
         )
+        return elbo
 
-        # L>k bound
+    @torch.no_grad()
+    def _abstract_elbo(self, x: torch.Tensor) -> torch.Tensor:
         decode_from_p = self._get_decode_from_p(self.model.n_latents, k=self.k)
         likelihood_data, stage_data = self.model(
             x, decode_from_p=decode_from_p, use_mode=decode_from_p
@@ -201,6 +200,13 @@ class HierarchicalVAEOOD(TaskInferenceStrategy):
             batch_reduction=None,
         )
 
+        return elbo_k
+
+    def _novelty_score(self, x: torch.Tensor) -> torch.Tensor:
+        # Regular ELBO
+        elbo = self._regular_elbo(x)
+        # L>k bound
+        elbo_k = self._abstract_elbo(x)
         return elbo - elbo_k
 
     def sample_score(self, forward_func, x):

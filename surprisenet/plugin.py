@@ -36,7 +36,7 @@ class SurpriseNetPlugin(SupervisedPlugin):
         :param post_prune_epochs: The number of epochs to train after pruning
         """
         self.prune_amount = prune_amount
-        self.post_prune_epochs = post_prune_epochs
+        self.post_prune_epochs = int(post_prune_epochs)
         self.enabled = True
         self.capacity: float = 1.0
         """How much of the network is still trainable"""

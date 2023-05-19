@@ -7,13 +7,20 @@ from study import vizier_client_via_ssh, vz
 from config.config import ExpConfig
 import click
 import os
+import torch
 
 
 @click.command()
 @click.option("--log-directory", type=click.Path(exists=True), required=True)
 @click.option("--num-trials", type=int, default=1)
-def main(log_directory: str, num_trials: int):
-    name = "LrLatentSearch"
+@click.option("--test", is_flag=True)
+def main(log_directory: str, num_trials: int, test: bool):
+    name = "LrEpochSearch" + ("Test" if test else "")
+
+    # Check if cuda is available and not busy
+    if not torch.cuda.is_available():
+        print("No GPU available")
+        sys.exit(1)
 
     cfg = ExpConfig()
     cfg.name = name
@@ -21,6 +28,11 @@ def main(log_directory: str, num_trials: int):
     cfg.arch_deep_vae()
     cfg.strategy_surprisenet()
     cfg.fixed_class_order = list(range(10))
+    cfg.tensorboard_dir = log_directory
+
+    if test:
+        cfg.retrain_epochs = 1
+        cfg.total_task_epochs = 2
 
     experimenter = SurpriseNetExperimenter(cfg)
     problem = experimenter.problem_statement()

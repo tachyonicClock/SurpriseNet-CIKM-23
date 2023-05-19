@@ -87,9 +87,10 @@ class CHF_SurpriseNet(Strategy):
         assert (
             self.pack_net_plugin is not None
         ), "PackNetPlugin is required for SurpriseNetWithCHF"
-        assert isinstance(
-            self.pack_net_plugin.prune_amount, float
-        ), "SurpriseNetWithCHF only works with PackNetPlugin with prune_amount as a float"
+        assert isinstance(self.pack_net_plugin.prune_amount, float), (
+            "SurpriseNetWithCHF only works with PackNetPlugin with prune_amount "
+            + "as a float"
+        )
         self.plugins.append(self.metric)
 
     def set_chf_params(
@@ -164,11 +165,12 @@ class CHF_SurpriseNet(Strategy):
         reference_accuracy: float,
         **kwargs,
     ) -> float:
-        print(f"Starting Stability Decay Search")
+        print("Starting Stability Decay Search")
         prune = self.pack_net_plugin.prune_amount
 
         def in_threshold() -> bool:
-            """Returns true if the accuracy is within the margin of the reference accuracy"""
+            """Returns true if the accuracy is within the margin of the
+            reference accuracy"""
             return (
                 self.metric.result()
                 > (1 - self.chf_accuracy_drop_threshold) * reference_accuracy
@@ -200,7 +202,8 @@ class CHF_SurpriseNet(Strategy):
                 break
             else:
                 print(
-                    f"  Prune Proportion: {prune:.2f} -> {prune*self.chf_stability_decay:.2f}"
+                    f"  Prune Proportion: {prune:.2f} -> "
+                    + f"{prune*self.chf_stability_decay:.2f}"
                 )
                 prune *= self.chf_stability_decay
 
