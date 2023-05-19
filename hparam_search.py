@@ -34,13 +34,13 @@ def main(log_directory: str, num_trials: int):
 
         # Set hyper parameters
         run_cfg.learning_rate = float(learning_rate)
-        run_cfg.HVAE_schedule["warmup_epochs"] = int(beta_warmup)
+        run_cfg.hvae_loss_kwargs["warmup_epochs"] = int(beta_warmup)
 
         exp = Experiment(run_cfg)
         exp.logger.writer.add_hparams(
             {
                 "lr": run_cfg.learning_rate,
-                "beta_warmup": run_cfg.HVAE_schedule["warmup_epochs"],
+                "beta_warmup": run_cfg.hvae_loss_kwargs["warmup_epochs"],
             },
             {
                 "TaskIdAccuracy": -1.0,

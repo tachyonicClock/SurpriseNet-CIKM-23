@@ -272,28 +272,16 @@ class DeepVAELoss(LossObjective, SupervisedPlugin):
 
     def __init__(
         self,
-        weighting: float,
         logger: av.logging.TensorboardLogger,
-        free_nat_start_value: float = None,
-        free_nats_epochs: float = None,
-        warmup_epochs: int = None,
-        enable_free_nats: bool = False,
+        total_task_epochs: int,
     ) -> None:
-        """Wrapper for ELBO loss for use with DeepVAE
+        """Wrapper for ELBO loss for use with DeepVAE"""
 
-        :param weighting: How important is this loss compared to others
-        :param free_nat_start_value: Initial nats considered free in the KL term
-        :param free_nats_epochs: Epochs to warm up the KL term
-        :param warmup_epochs: Epochs to warm up the KL term
-        """
-
-        super().__init__(weighting)
+        super().__init__(1.0)
         self.elbo = ELBO()
-        self.free_nat_start_value = free_nat_start_value
-        self.free_nats_epochs = free_nats_epochs
-        self.enable_free_nats = enable_free_nats
-        self.warmup_epochs = warmup_epochs
         self.logger = logger.writer
+        self.beta_schedule = CyclicBeta(total_task_epochs)
+        self.beta_iterator: t.Optional[t.Iterator[float]] = None
 
         self.bpd = Average()
         self.elbo_metric = Average()
@@ -307,21 +295,14 @@ class DeepVAELoss(LossObjective, SupervisedPlugin):
     def before_training_exp(self, strategy: Strategy, *_, **kwargs):
         print("DeepVAE Loss: Initializing warmup and free nats")
         # Reset the warmup and free nats
-        self.beta_schedule = DeterministicWarmup(n=self.warmup_epochs)
-
-        if self.enable_free_nats:
-            self.free_nats_cool_down = FreeNatsCooldown(
-                constant_epochs=self.free_nats_epochs // 2,
-                cooldown_epochs=self.free_nats_epochs // 2,
-                start_val=self.free_nat_start_value,
-                end_val=0,
-            )
+        self.beta_iterator = iter(self.beta_schedule)
 
     def before_training_epoch(self, strategy, *args, **kwargs):
         # Increment the simulated annealing
-        self.beta = next(self.deterministic_warmup)
-        if self.enable_free_nats:
-            self.free_nats = next(self.free_nats_cool_down)
+        assert (
+            self.beta_iterator is not None
+        ), "Beta iterator not initialized in `before_training_exp`"
+        self.beta = next(self.beta_iterator)
         self.bpd.reset()
 
     def before_eval(self, strategy, *args, **kwargs):
@@ -355,13 +336,6 @@ class DeepVAELoss(LossObjective, SupervisedPlugin):
         self.logger.add_scalar(
             "Train.likelihoods/bpd", self.bpd.get(), strategy.clock.train_iterations
         )
-
-        if self.enable_free_nats:
-            self.logger.add_scalar(
-                "Train.hyperparameters/free_nats",
-                self.free_nats,
-                strategy.clock.train_iterations,
-            )
         for i, kl in enumerate(self.kls):
             self.logger.add_scalar(
                 f"Train.divergences/kl_z{i}", kl.get(), strategy.clock.train_iterations
@@ -378,10 +352,10 @@ class DeepVAELoss(LossObjective, SupervisedPlugin):
         assert out.likelihood is not None, "Expected likelihood to be provided"
         assert out.kl_divergences is not None, "Expected kl_divergences to be provided"
 
-        loss, elbo, likelihood, kl_divergences = self.elbo.forward(
+        loss, elbo, likelihood, _ = self.elbo.forward(
             out.likelihood,
             out.kl_divergences,
-            free_nats=self.free_nats if self.enable_free_nats else 0.0,
+            free_nats=0.0,
             beta=self.beta,
             sample_reduction=torch.mean,
             batch_reduction=None,
@@ -390,9 +364,9 @@ class DeepVAELoss(LossObjective, SupervisedPlugin):
 
         bpd: Tensor = -elbo.mean() / np.log(2.0) / np.prod(out.x.shape[1:])
         self.bpd.update(bpd.item())
-        self.elbo_metric.update(elbo.mean().item())
+        self.elbo_metric.update(-elbo.mean().item())
         self.loss_metric.update(loss.mean().item())
-        self.likelihood.update(likelihood.mean().item())
+        self.likelihood.update(-likelihood.mean().item())
 
         for i, kl in enumerate(out.kl_divergences):
             if len(self.kls) <= i:
