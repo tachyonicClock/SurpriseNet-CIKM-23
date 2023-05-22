@@ -2,6 +2,7 @@ import copy
 import json
 import os
 import typing as t
+from operator import getitem, setitem
 
 
 class ExpConfig:
@@ -382,3 +383,30 @@ class ExpConfig:
             setattr(cfg, key, value)
 
         return cfg
+
+    def set_dotpath(self, dotpath: str, value: t.Any) -> "ExpConfig":
+        """Set a value using a dotpath"""
+        dotpath = dotpath.split(".")
+        obj = self
+        for key in dotpath[:-1]:
+            if hasattr(obj, "__getitem__"):
+                obj = getitem(obj, key)
+            else:
+                obj = getattr(obj, key)
+
+        if hasattr(obj, "__setitem__"):
+            setitem(obj, dotpath[-1], value)
+        else:
+            setattr(obj, dotpath[-1], value)
+        return self
+
+    def get_dotpath(self, dotpath: str) -> t.Any:
+        """Get a value using a dotpath"""
+        dotpath = dotpath.split(".")
+        obj = self
+        for key in dotpath:
+            if hasattr(obj, "__getitem__"):
+                obj = getitem(obj, key)
+            else:
+                obj = getattr(obj, key)
+        return obj

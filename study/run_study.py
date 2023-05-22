@@ -15,12 +15,7 @@ import torch
 @click.option("--num-trials", type=int, default=1)
 @click.option("--test", is_flag=True)
 def main(log_directory: str, num_trials: int, test: bool):
-    name = "LrEpochSearch" + ("Test" if test else "")
-
-    # Check if cuda is available and not busy
-    if not torch.cuda.is_available():
-        print("No GPU available")
-        sys.exit(1)
+    name = "ScheduleSearch" + ("Test" if test else "")
 
     cfg = ExpConfig()
     cfg.name = name

@@ -235,7 +235,7 @@ class GenerateSamples(PluginMetric):
             for ax in rows:
                 if self.rows_are_experiences:
                     t_available = min(strategy.model.subset_count(), task_id)
-                    strategy.model.use_task_subset(t_available)
+                    strategy.model.activate_task_id(t_available)
                     ax.set_ylabel(f"Subnet {t_available}")
                 self.add_image(ax, strategy.model)
 

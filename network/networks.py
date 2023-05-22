@@ -27,7 +27,7 @@ def construct_network(cfg: ExpConfig):
     """
     latent_dims = int(cfg.latent_dims)
     if cfg.network_style == "DeepVAE_FMNIST":
-        return FashionMNISTDeepVAE(cfg.n_classes, latent_dims)
+        return FashionMNISTDeepVAE(cfg.n_classes, latent_dims, **cfg.network_cfg)
 
     encoder_constructor = _NETWORK_ARCHITECTURES[cfg.network_style][0]
     decoder_constructor = _NETWORK_ARCHITECTURES[cfg.network_style][1]

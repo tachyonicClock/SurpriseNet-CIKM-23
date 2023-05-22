@@ -140,7 +140,6 @@ class Experiment(BaseExperiment):
             elif self.cfg.reconstruction_loss_type == "DeepVAE_ELBO":
                 deep_vae_loss = DeepVAELoss(
                     logger=self.logger,
-                    total_task_epochs=self.cfg.total_task_epochs,
                     **self.cfg.hvae_loss_kwargs,
                 )
                 # DeepVAELoss contains schedules requiring callbacks to be

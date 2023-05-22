@@ -1,5 +1,7 @@
+import time
 import typing as t
 
+import git
 from config.config import ExpConfig
 from train import Experiment
 
@@ -19,13 +21,25 @@ class SurpriseNetExperimenter(experimenters.Experimenter):
         """Evaluates a single Trial."""
         # Log the hyperparameters
         print("=-" * 40)
-        for k, v in suggestion.parameters.items():
-            print(f"  {k}: {v}")
+        for dotpath, value in suggestion.parameters.items():
+            print(f"  {dotpath}: {value}")
         print("=-" * 40)
 
+        repo = git.Repo(search_parent_directories=True)
+        metadata = vz.Metadata(
+            {
+                "GitCommit": repo.head.object.hexsha,
+                "GitCommitMessage": repo.head.object.message,
+                "GitCommitAuthor": repo.head.object.author.name,
+                "GitCommitDate": str(repo.head.object.authored_datetime.isoformat()),
+                "GitIsDirty": str(repo.is_dirty()),
+            }
+        )
+        suggestion.update_metadata(metadata)
+
         # Create an experiment incorporating the suggested hyperparameters
-        for k, v in suggestion.parameters.items():
-            setattr(cfg, k, v)
+        for dotpath, value in suggestion.parameters.items():
+            cfg.set_dotpath(dotpath, value)
         exp = Experiment(cfg)
 
         # Add the hyperparameters to TensorBoard
@@ -37,17 +51,20 @@ class SurpriseNetExperimenter(experimenters.Experimenter):
         )
         final_measurement = vz.Measurement({ACC_TID: 0.0})
 
+        start_time = time.time()
         try:
             result = exp.train()
         except Exception:
             print()
             print(f"{cfg.name} failed")
 
+            final_measurement.elapsed_secs = time.time() - start_time
             suggestion.complete(
                 final_measurement, infeasible_reason="Error during training"
             )
             return
 
+        final_measurement.elapsed_secs = time.time() - start_time
         final_measurement.metrics[ACC_TID] = result[-1][ACC_TID]
         suggestion.complete(final_measurement)
 
@@ -64,13 +81,15 @@ class SurpriseNetExperimenter(experimenters.Experimenter):
 
         # SEARCH SPACE --------------------------------------------------------
         search.add_discrete_param("classifier_loss_weight", [0.0])
-        search.add_discrete_param("latent_dims", [8])
-        search.add_float_param("learning_rate", 1e-6, 0.003)
-        search.add_int_param("total_task_epochs", 180, 500)
-        search.add_int_param("retrain_epochs", 50, 100)
+        # search.add_discrete_param("total_task_epochs", [200, 400, 800])
+        search.add_float_param("learning_rate", 1e-6, 0.002)
+        search.add_int_param("hvae_loss_kwargs.beta_warmup", 0, 200)
+        search.add_int_param("hvae_loss_kwargs.free_nat_constant_epochs", 0, 100)
+        search.add_int_param("hvae_loss_kwargs.free_nat_cooldown_epochs", 0, 100)
 
         # OBJECTIVES ----------------------------------------------------------
         problem.metric_information.append(
             vz.MetricInformation(name=ACC_TID, goal=vz.ObjectiveMetricGoal.MAXIMIZE)
         )
+
         return problem

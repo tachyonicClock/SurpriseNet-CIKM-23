@@ -21,10 +21,11 @@ from experiment.loss import LossObjective
 import avalanche as av
 import typing as t
 import numpy as np
+import copy
 
 
 class HVAE(Classifier, Encoder, Decoder, Samplable, MultiOutputNetwork):
-    def __init__(self, n_classes: int, latent_dims: int) -> None:
+    def __init__(self, n_classes: int, latent_dims: int, base_channels: int) -> None:
         """A hierarchical variational autoencoder.
 
         :param n_classes: The number of classes in the dataset
@@ -32,9 +33,8 @@ class HVAE(Classifier, Encoder, Decoder, Samplable, MultiOutputNetwork):
         """
         super().__init__()
         self.dummy = nn.Parameter(torch.zeros(1))
-        self.hvae = self.make_hvae(latent_dims)
+        self.hvae = self.make_hvae(latent_dims, base_channels)
         """An underlying hierarchical variational autoencoder"""
-
         self.classifier = self.make_classifier(latent_dims, n_classes)
         """A classifier that takes the latent code as input"""
 
@@ -98,7 +98,7 @@ class HVAE(Classifier, Encoder, Decoder, Samplable, MultiOutputNetwork):
 
 
 class FashionMNISTDeepVAE(HVAE):
-    def make_hvae(self, latent_dims: int):
+    def make_hvae(self, latent_dims: int = 8, base_channels=64):
         stochastic_layers = [
             {"block": "GaussianConv2d", "latent_features": 8, "weightnorm": False},
             {"block": "GaussianDense", "latent_features": 16, "weightnorm": False},
@@ -113,7 +113,7 @@ class FashionMNISTDeepVAE(HVAE):
             [
                 {
                     "block": "ResBlockConv2d",
-                    "out_channels": 64,
+                    "out_channels": base_channels,
                     "kernel_size": 5,
                     "stride": 1,
                     "weightnorm": False,
@@ -121,7 +121,7 @@ class FashionMNISTDeepVAE(HVAE):
                 },
                 {
                     "block": "ResBlockConv2d",
-                    "out_channels": 64,
+                    "out_channels": base_channels,
                     "kernel_size": 5,
                     "stride": 1,
                     "weightnorm": False,
@@ -129,7 +129,7 @@ class FashionMNISTDeepVAE(HVAE):
                 },
                 {
                     "block": "ResBlockConv2d",
-                    "out_channels": 64,
+                    "out_channels": base_channels,
                     "kernel_size": 5,
                     "stride": 2,
                     "weightnorm": False,
@@ -139,7 +139,7 @@ class FashionMNISTDeepVAE(HVAE):
             [
                 {
                     "block": "ResBlockConv2d",
-                    "out_channels": 64,
+                    "out_channels": base_channels,
                     "kernel_size": 3,
                     "stride": 1,
                     "weightnorm": False,
@@ -147,7 +147,7 @@ class FashionMNISTDeepVAE(HVAE):
                 },
                 {
                     "block": "ResBlockConv2d",
-                    "out_channels": 64,
+                    "out_channels": base_channels,
                     "kernel_size": 3,
                     "stride": 1,
                     "weightnorm": False,
@@ -155,7 +155,7 @@ class FashionMNISTDeepVAE(HVAE):
                 },
                 {
                     "block": "ResBlockConv2d",
-                    "out_channels": 64,
+                    "out_channels": base_channels,
                     "kernel_size": 3,
                     "stride": 2,
                     "weightnorm": False,
@@ -165,7 +165,7 @@ class FashionMNISTDeepVAE(HVAE):
             [
                 {
                     "block": "ResBlockConv2d",
-                    "out_channels": 64,
+                    "out_channels": base_channels,
                     "kernel_size": 3,
                     "stride": 1,
                     "weightnorm": False,
@@ -173,7 +173,7 @@ class FashionMNISTDeepVAE(HVAE):
                 },
                 {
                     "block": "ResBlockConv2d",
-                    "out_channels": 64,
+                    "out_channels": base_channels,
                     "kernel_size": 3,
                     "stride": 1,
                     "weightnorm": False,
@@ -181,7 +181,7 @@ class FashionMNISTDeepVAE(HVAE):
                 },
                 {
                     "block": "ResBlockConv2d",
-                    "out_channels": 64,
+                    "out_channels": base_channels,
                     "kernel_size": 3,
                     "stride": 1,
                     "weightnorm": False,
@@ -243,17 +243,17 @@ class CyclicBeta(t.Iterable):
         :param ratio: What proportion of eahch cycle has beta maxed out, defaults to 0.5
         :param cycles: The number of cycles which occur, defaults to 4
         """
-        self.total_steps = total_epochs
+        self.total_epochs = int(total_epochs)
         self.ratio = ratio
         self.cycles = cycles
 
     @property
     def is_done(self):
-        return self.epoch_counter >= self.total_steps
+        return self.epoch_counter >= self.total_epochs
 
     def __iter__(self):
-        for epoch in range(self.total_steps):
-            yield self._beta_value(self.ratio, self.cycles, epoch, self.total_steps)
+        for epoch in range(self.total_epochs):
+            yield self._beta_value(self.ratio, self.cycles, epoch, self.total_epochs)
 
     @staticmethod
     def _beta_value(ratio: float, cycles: int, epoch: int, total_epochs: int) -> float:
@@ -273,15 +273,27 @@ class DeepVAELoss(LossObjective, SupervisedPlugin):
     def __init__(
         self,
         logger: av.logging.TensorboardLogger,
-        total_task_epochs: int,
+        beta_warmup: int,
+        free_nat_constant_epochs: int,
+        free_nat_cooldown_epochs: int,
     ) -> None:
         """Wrapper for ELBO loss for use with DeepVAE"""
-
         super().__init__(1.0)
         self.elbo = ELBO()
         self.logger = logger.writer
-        self.beta_schedule = CyclicBeta(total_task_epochs)
-        self.beta_iterator: t.Optional[t.Iterator[float]] = None
+
+        # Beta Schedule
+        self.beta_schedule = DeterministicWarmup(n=beta_warmup)
+        self.beta_iterator: t.Optional[DeterministicWarmup] = None
+        self.beta: float = 0.0
+
+        # Fee Nat Schedule
+        self.free_nat_schedule = FreeNatsCooldown(
+            constant_epochs=free_nat_constant_epochs,
+            cooldown_epochs=free_nat_cooldown_epochs,
+        )
+        self.free_nat_iterator: t.Optional[FreeNatsCooldown] = None
+        self.free_nats: float = 0.0
 
         self.bpd = Average()
         self.elbo_metric = Average()
@@ -293,16 +305,14 @@ class DeepVAELoss(LossObjective, SupervisedPlugin):
         self.before_training_epoch(None)
 
     def before_training_exp(self, strategy: Strategy, *_, **kwargs):
-        print("DeepVAE Loss: Initializing warmup and free nats")
         # Reset the warmup and free nats
-        self.beta_iterator = iter(self.beta_schedule)
+        self.beta_iterator = copy.deepcopy(self.beta_schedule)
+        self.free_nat_iterator = copy.deepcopy(self.free_nat_schedule)
 
     def before_training_epoch(self, strategy, *args, **kwargs):
         # Increment the simulated annealing
-        assert (
-            self.beta_iterator is not None
-        ), "Beta iterator not initialized in `before_training_exp`"
         self.beta = next(self.beta_iterator)
+        self.free_nats = next(self.free_nat_iterator)
         self.bpd.reset()
 
     def before_eval(self, strategy, *args, **kwargs):
@@ -317,6 +327,11 @@ class DeepVAELoss(LossObjective, SupervisedPlugin):
     def after_training_epoch(self, strategy: Strategy, *args, **kwargs):
         self.logger.add_scalar(
             "Train.hyperparameters/beta", self.beta, strategy.clock.train_iterations
+        )
+        self.logger.add_scalar(
+            "Train.hyperparameters/free_nats",
+            self.free_nats,
+            strategy.clock.train_iterations,
         )
         self.logger.add_scalar(
             "Train.likelihoods/log p(x)",
@@ -355,7 +370,7 @@ class DeepVAELoss(LossObjective, SupervisedPlugin):
         loss, elbo, likelihood, _ = self.elbo.forward(
             out.likelihood,
             out.kl_divergences,
-            free_nats=0.0,
+            free_nats=self.free_nats,
             beta=self.beta,
             sample_reduction=torch.mean,
             batch_reduction=None,
