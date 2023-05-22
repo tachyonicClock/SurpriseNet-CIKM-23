@@ -33,7 +33,7 @@ class HVAE(Classifier, Encoder, Decoder, Samplable, MultiOutputNetwork):
         """
         super().__init__()
         self.dummy = nn.Parameter(torch.zeros(1))
-        self.hvae = self.make_hvae(latent_dims, base_channels)
+        self.hvae = self.make_hvae(latent_dims, int(base_channels))
         """An underlying hierarchical variational autoencoder"""
         self.classifier = self.make_classifier(latent_dims, n_classes)
         """A classifier that takes the latent code as input"""
@@ -283,14 +283,14 @@ class DeepVAELoss(LossObjective, SupervisedPlugin):
         self.logger = logger.writer
 
         # Beta Schedule
-        self.beta_schedule = DeterministicWarmup(n=beta_warmup)
+        self.beta_schedule = DeterministicWarmup(n=int(beta_warmup))
         self.beta_iterator: t.Optional[DeterministicWarmup] = None
         self.beta: float = 0.0
 
         # Fee Nat Schedule
         self.free_nat_schedule = FreeNatsCooldown(
-            constant_epochs=free_nat_constant_epochs,
-            cooldown_epochs=free_nat_cooldown_epochs,
+            constant_epochs=int(free_nat_constant_epochs),
+            cooldown_epochs=int(free_nat_cooldown_epochs),
         )
         self.free_nat_iterator: t.Optional[FreeNatsCooldown] = None
         self.free_nats: float = 0.0

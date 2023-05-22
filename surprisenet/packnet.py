@@ -319,7 +319,7 @@ class SurpriseNetVariationalAutoEncoder(
         return self.multi_forward(x).y_hat
 
     def conditioned_sample(self, n: int = 1, given_task: int = 0) -> Tensor:
-        self.use_task_subset(given_task)
+        self.activate_task_id(given_task)
         return self.sample(n)
 
 

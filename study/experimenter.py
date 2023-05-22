@@ -54,9 +54,10 @@ class SurpriseNetExperimenter(experimenters.Experimenter):
         start_time = time.time()
         try:
             result = exp.train()
-        except Exception:
+        except Exception as e:
             print()
             print(f"{cfg.name} failed")
+            print(e)
 
             final_measurement.elapsed_secs = time.time() - start_time
             suggestion.complete(
@@ -81,11 +82,12 @@ class SurpriseNetExperimenter(experimenters.Experimenter):
 
         # SEARCH SPACE --------------------------------------------------------
         search.add_discrete_param("classifier_loss_weight", [0.0])
-        # search.add_discrete_param("total_task_epochs", [200, 400, 800])
+        search.add_discrete_param("total_task_epochs", [200, 400])
         search.add_float_param("learning_rate", 1e-6, 0.002)
         search.add_int_param("hvae_loss_kwargs.beta_warmup", 0, 200)
         search.add_int_param("hvae_loss_kwargs.free_nat_constant_epochs", 0, 100)
         search.add_int_param("hvae_loss_kwargs.free_nat_cooldown_epochs", 0, 100)
+        search.add_int_param("base_channels", 32, 128)
 
         # OBJECTIVES ----------------------------------------------------------
         problem.metric_information.append(

@@ -93,14 +93,14 @@ class TaskReconstruction(TaskInferenceStrategy):
 
         # Initialize the best output using the first subset. Subsequent subsets
         # will be compared to this one
-        model.use_task_subset(0)
+        model.activate_task_id(0)
         best_loss = torch.ones(x.shape[0]).to(x.device) * float("inf")
         best_loss, best_out = sample(forward_func, x)
         best_out.pred_exp_id = torch.zeros(x.shape[0]).int()
 
         # Iterate over all subsets and compare them to the best subset
         for i in range(1, model.subset_count()):
-            model.use_task_subset(i)
+            model.activate_task_id(i)
             new_loss, new_out = sample(forward_func, x)
 
             # Update best_out if the current subset is better
@@ -109,7 +109,7 @@ class TaskReconstruction(TaskInferenceStrategy):
             best_out.pred_exp_id[swap_mask] = i
             _swap_fields(best_out, new_out, swap_mask)
 
-        model.use_top_subset()
+        model.activate_task_id(model.subset_count())
         return best_out
 
 
@@ -220,7 +220,7 @@ class HierarchicalVAEOOD(TaskInferenceStrategy):
 
         # Initialize the best output using the first subset. Subsequent subsets
         # will be compared to this one
-        self.model.use_task_subset(0)
+        self.model.activate_task_id(0)
         best_score = torch.ones(x.shape[0]).to(x.device) * float("inf")
         best_score, best_out = self.sample_score(forward_func, x)
         novelty_scores[0] = best_score.detach().cpu()
@@ -228,7 +228,7 @@ class HierarchicalVAEOOD(TaskInferenceStrategy):
 
         # Iterate over all subsets and compare them to the best subset
         for i in range(1, self.model.subset_count()):
-            self.model.use_task_subset(i)
+            self.model.activate_task_id(i)
             new_score, new_out = self.sample_score(forward_func, x)
             novelty_scores[i] = new_score.detach().cpu()
 
@@ -238,6 +238,6 @@ class HierarchicalVAEOOD(TaskInferenceStrategy):
             best_out.pred_exp_id[swap_mask] = i
             _swap_fields(best_out, new_out, swap_mask)
 
-        self.model.use_top_subset()
+        self.model.activate_task_id(self.model.subset_count())
         best_out.novelty_scores = novelty_scores
         return best_out
