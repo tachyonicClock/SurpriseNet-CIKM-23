@@ -1,9 +1,15 @@
+from io import BytesIO
 import typing as t
 from abc import ABC, abstractmethod
 
 from click import secho
+import graphviz
 from torch import Tensor
 import torch
+from PIL import Image
+from torch.utils.tensorboard import SummaryWriter
+from torchvision.transforms.functional import to_tensor
+
 
 from experiment.strategy import Strategy
 from network.trait import MultiOutputNetwork, SurpriseNet
@@ -30,8 +36,9 @@ class NaiveSurpriseNetActivation(ActivationStrategy):
 
 
 class SurpriseNetTreeActivation(ActivationStrategy):
-    def __init__(self):
+    def __init__(self, writer: SummaryWriter):
         self.tree: TreeType = {0: None}
+        self.writer = writer
 
     def get_subset_path(self, node: int) -> t.List[int]:
         path = []
@@ -82,6 +89,18 @@ class SurpriseNetTreeActivation(ActivationStrategy):
         # Return the best parent subset by finding the minimum novelty score
         return min(aggregate_novelty_score, key=aggregate_novelty_score.get)
 
+    @staticmethod
+    def plot_graph(tree: TreeType) -> Tensor:
+        graph = graphviz.Digraph()
+        for node, parent in tree.items():
+            graph.node(str(node))
+            if parent is not None:
+                graph.edge(str(parent), str(node))
+
+        # Rasterize the graph
+        img = Image.open(BytesIO(graph.pipe(format="png")))
+        return to_tensor(img)
+
     def before_training_exp(self, strategy: Strategy):
         """Before training a new task, we need to determine the best subsets
         to inherit from.
@@ -94,3 +113,5 @@ class SurpriseNetTreeActivation(ActivationStrategy):
         self.tree[task_id] = parent
         subsets = self.get_subset_path(task_id)
         secho(f"Building {task_id} from {subsets}", fg="green")
+
+        self.writer.add_image("InheritanceTree", self.plot_graph(self.tree), task_id)

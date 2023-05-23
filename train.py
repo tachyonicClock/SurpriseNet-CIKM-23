@@ -75,7 +75,7 @@ class Experiment(BaseExperiment):
 
     def make_activation_strategy(self) -> ActivationStrategy:
         if self.cfg.activation_strategy == "SurpriseNetTreeActivation":
-            return SurpriseNetTreeActivation()
+            return SurpriseNetTreeActivation(self.logger.writer)
         elif self.cfg.activation_strategy == "NaiveSurpriseNetActivation":
             return NaiveSurpriseNetActivation()
         else:
