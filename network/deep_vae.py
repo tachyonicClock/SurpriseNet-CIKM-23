@@ -223,6 +223,127 @@ class FashionMNISTDeepVAE(HVAE):
         return ClassifierHead(latent_features, n_classes)
 
 
+class CIFARDeepHVAE(HVAE):
+    def make_hvae(
+        self,
+        latent_dims: int,
+        base_channels: int,
+        dropout: float = 0.0,
+        stage_type: t.Literal["BivaStage", "VaeStage"] = "VaeStage",
+    ) -> DeepVAE:
+        stochastic_layers = [
+            {"block": "GaussianConv2d", "latent_features": 128, "weightnorm": False},
+            {"block": "GaussianConv2d", "latent_features": 64, "weightnorm": False},
+            {
+                "block": "GaussianDense",
+                "latent_features": latent_dims,
+                "weightnorm": False,
+            },
+        ]
+
+        deterministic_layers = [
+            [
+                {
+                    "block": "ResBlockConv2d",
+                    "out_channels": 256,
+                    "kernel_size": 5,
+                    "stride": 1,
+                    "weightnorm": False,
+                    "gated": False,
+                },
+                {
+                    "block": "ResBlockConv2d",
+                    "out_channels": 256,
+                    "kernel_size": 5,
+                    "stride": 1,
+                    "weightnorm": False,
+                    "gated": False,
+                },
+                {
+                    "block": "ResBlockConv2d",
+                    "out_channels": 256,
+                    "kernel_size": 5,
+                    "stride": 2,
+                    "weightnorm": False,
+                    "gated": False,
+                },
+            ],
+            [
+                {
+                    "block": "ResBlockConv2d",
+                    "out_channels": 256,
+                    "kernel_size": 3,
+                    "stride": 1,
+                    "weightnorm": False,
+                    "gated": False,
+                },
+                {
+                    "block": "ResBlockConv2d",
+                    "out_channels": 256,
+                    "kernel_size": 3,
+                    "stride": 1,
+                    "weightnorm": False,
+                    "gated": False,
+                },
+                {
+                    "block": "ResBlockConv2d",
+                    "out_channels": 256,
+                    "kernel_size": 3,
+                    "stride": 2,
+                    "weightnorm": False,
+                    "gated": False,
+                },
+            ],
+            [
+                {
+                    "block": "ResBlockConv2d",
+                    "out_channels": 256,
+                    "kernel_size": 3,
+                    "stride": 1,
+                    "weightnorm": False,
+                    "gated": False,
+                },
+                {
+                    "block": "ResBlockConv2d",
+                    "out_channels": 256,
+                    "kernel_size": 3,
+                    "stride": 1,
+                    "weightnorm": False,
+                    "gated": False,
+                },
+                {
+                    "block": "ResBlockConv2d",
+                    "out_channels": 256,
+                    "kernel_size": 3,
+                    "stride": 2,
+                    "weightnorm": False,
+                    "gated": False,
+                },
+            ],
+        ]
+
+        _stage_types = {
+            "BivaStage": BivaStage,
+            "VaeStage": VaeStage,
+        }
+
+        return DeepVAE(
+            Stage=_stage_types[stage_type],
+            input_shape=torch.Size([3, 32, 32]),
+            likelihood_module="DiscretizedLogisticMixLikelihoodConv2d",
+            config_deterministic=deterministic_layers,
+            config_stochastic=stochastic_layers,
+            q_dropout=dropout,
+            p_dropout=dropout,
+            activation="ReLU",
+            skip_stochastic=True,
+            padded_shape=None,
+        )
+
+    def make_classifier(self, latent_features: int, n_classes: int) -> nn.Module:
+        return ClassifierHead(latent_features, n_classes)
+
+
 class Average:
     def __init__(self) -> None:
         self.count = 0

@@ -90,7 +90,7 @@ class ExpConfig:
         self.architecture: t.Literal["AE", "VAE", "DeepVAE"]
         """Type of auto-encoder to use"""
         self.network_style: t.Literal[
-            "vanilla_cnn", "residual", "mlp", "DeepVAE_FMNIST"
+            "vanilla_cnn", "residual", "mlp", "DeepVAE_FMNIST", "DeepVAE_CIFAR"
         ]
         """Type of network to be used"""
         self.embedding_module: t.Literal[
@@ -339,16 +339,25 @@ class ExpConfig:
         self.classifier_loss_weight = 1.0
         self.total_task_epochs = 200
         self.retrain_epochs = 50
-        self.latent_dims = 8
 
         if self.dataset_name == "FMNIST":
-            self.learning_rate = 0.001
+            self.learning_rate = 0.0001
             self.batch_size = 256
             self.total_task_epochs = 200
             self.retrain_epochs = 50
             self.hvae_loss_kwargs["beta_warmup"] = 100
             self.network_style = "DeepVAE_FMNIST"
             self.network_cfg["base_channels"] = 64
+            self.latent_dims = 8
+        elif self.dataset_name == "CIFAR10" or self.dataset_name == "CIFAR100":
+            self.learning_rate = 0.0001
+            self.batch_size = 128
+            self.total_task_epochs = 200
+            self.retrain_epochs = 50
+            self.network_style = "DeepVAE_CIFAR"
+            self.network_cfg["base_channels"] = 256
+            self.latent_dims = 32
+
         return self
 
     def strategy_packnet(self: "ExpConfig") -> "ExpConfig":

@@ -8,7 +8,7 @@ from surprisenet.activation import (
 )
 from experiment.strategy import ForwardOutput
 from hvae.hvaeoodd.oodd.layers.linear import NormedDense, NormedLinear
-from network.deep_vae import FashionMNISTDeepVAE
+from network.deep_vae import CIFARDeepHVAE
 from network.trait import (
     AutoEncoder,
     Classifier,
@@ -338,7 +338,7 @@ class SurpriseNetDeepVAE(
 ):
     def __init__(
         self,
-        wrapped: FashionMNISTDeepVAE,
+        wrapped: CIFARDeepHVAE,
         task_inference_strategy: TaskInferenceStrategy,
         subset_activation_strategy: ActivationStrategy = NaiveSurpriseNetActivation(),
     ) -> None:

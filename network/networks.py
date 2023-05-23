@@ -1,5 +1,5 @@
 import typing as t
-from network.deep_vae import FashionMNISTDeepVAE
+from network.deep_vae import CIFARDeepHVAE, FashionMNISTDeepVAE
 from config.config import ExpConfig
 from network.mlp import (
     ClassifierHead,
@@ -30,6 +30,8 @@ def construct_network(cfg: ExpConfig):
         return FashionMNISTDeepVAE(
             cfg.n_classes, latent_dims=latent_dims, **cfg.network_cfg
         )
+    elif cfg.network_style == "DeepVAE_CIFAR":
+        return CIFARDeepHVAE(cfg.n_classes, latent_dims=latent_dims, **cfg.network_cfg)
 
     encoder_constructor = _NETWORK_ARCHITECTURES[cfg.network_style][0]
     decoder_constructor = _NETWORK_ARCHITECTURES[cfg.network_style][1]
