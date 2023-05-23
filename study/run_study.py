@@ -7,7 +7,6 @@ from study import vizier_client_via_ssh, vz
 from config.config import ExpConfig
 import click
 import os
-import torch
 
 
 @click.command()
@@ -15,7 +14,7 @@ import torch
 @click.option("--num-trials", type=int, default=1)
 @click.option("--test", is_flag=True)
 def main(log_directory: str, num_trials: int, test: bool):
-    name = "ScheduleSearch" + ("Test" if test else "")
+    name = "ScheduleSearchFixed" + ("Test" if test else "")
 
     cfg = ExpConfig()
     cfg.name = name

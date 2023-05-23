@@ -25,9 +25,16 @@ class SurpriseNetExperimenter(experimenters.Experimenter):
             print(f"  {dotpath}: {value}")
         print("=-" * 40)
 
+        # Create an experiment incorporating the suggested hyperparameters
+        for dotpath, value in suggestion.parameters.items():
+            cfg.set_dotpath(dotpath, value)
+        exp = Experiment(cfg)
+
+        # Add metadata to the trial
         repo = git.Repo(search_parent_directories=True)
         metadata = vz.Metadata(
             {
+                "ExperimentLabel": exp.label,
                 "GitCommit": repo.head.object.hexsha,
                 "GitCommitMessage": repo.head.object.message,
                 "GitCommitAuthor": repo.head.object.author.name,
@@ -36,11 +43,6 @@ class SurpriseNetExperimenter(experimenters.Experimenter):
             }
         )
         suggestion.update_metadata(metadata)
-
-        # Create an experiment incorporating the suggested hyperparameters
-        for dotpath, value in suggestion.parameters.items():
-            cfg.set_dotpath(dotpath, value)
-        exp = Experiment(cfg)
 
         # Add the hyperparameters to TensorBoard
         exp.logger.writer.add_hparams(
@@ -82,12 +84,11 @@ class SurpriseNetExperimenter(experimenters.Experimenter):
 
         # SEARCH SPACE --------------------------------------------------------
         search.add_discrete_param("classifier_loss_weight", [0.0])
-        search.add_discrete_param("total_task_epochs", [200, 400])
+        search.add_discrete_param("total_task_epochs", [200])
         search.add_float_param("learning_rate", 1e-6, 0.002)
         search.add_int_param("hvae_loss_kwargs.beta_warmup", 0, 200)
         search.add_int_param("hvae_loss_kwargs.free_nat_constant_epochs", 0, 100)
         search.add_int_param("hvae_loss_kwargs.free_nat_cooldown_epochs", 0, 100)
-        search.add_int_param("base_channels", 32, 128)
 
         # OBJECTIVES ----------------------------------------------------------
         problem.metric_information.append(

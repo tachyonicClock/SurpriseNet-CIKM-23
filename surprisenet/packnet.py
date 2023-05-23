@@ -203,7 +203,8 @@ class _TaskMaskParent(SurpriseNet, nn.Module):
 
     def __init__(self) -> None:
         super().__init__()
-        self._subset_count = 0
+        self._subset_count: Tensor
+        self.register_buffer("_subset_count", torch.tensor(0))
 
     def _pn_apply(self, func: t.Callable[["SurpriseNet"], None]):
         @torch.no_grad()

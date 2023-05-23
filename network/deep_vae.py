@@ -1,4 +1,5 @@
-from hvae.hvaeoodd.oodd.layers.stages import VaeStage
+import itertools
+from hvae.hvaeoodd.oodd.layers.stages import BivaStage, VaeStage
 from hvae.hvaeoodd.oodd.losses import ELBO
 from hvae.hvaeoodd.oodd.models.dvae import DeepVAE
 from hvae.hvaeoodd.oodd.variational.deterministic_warmup import (
@@ -25,7 +26,9 @@ import copy
 
 
 class HVAE(Classifier, Encoder, Decoder, Samplable, MultiOutputNetwork):
-    def __init__(self, n_classes: int, latent_dims: int, base_channels: int) -> None:
+    def __init__(
+        self, n_classes: int, latent_dims: int, base_channels: int, **kwargs
+    ) -> None:
         """A hierarchical variational autoencoder.
 
         :param n_classes: The number of classes in the dataset
@@ -33,12 +36,14 @@ class HVAE(Classifier, Encoder, Decoder, Samplable, MultiOutputNetwork):
         """
         super().__init__()
         self.dummy = nn.Parameter(torch.zeros(1))
-        self.hvae = self.make_hvae(latent_dims, int(base_channels))
+        self.hvae = self.make_hvae(
+            latent_dims, base_channels=int(base_channels), **kwargs
+        )
         """An underlying hierarchical variational autoencoder"""
         self.classifier = self.make_classifier(latent_dims, n_classes)
         """A classifier that takes the latent code as input"""
 
-    def make_hvae(self, latent_features: int) -> DeepVAE:
+    def make_hvae(self, latent_dims: int, base_channels: int, **kwargs) -> DeepVAE:
         raise NotImplementedError("HVAE is not implemented")
 
     def make_classifier(self, latent_features: int, n_classes: int) -> nn.Module:
@@ -98,7 +103,13 @@ class HVAE(Classifier, Encoder, Decoder, Samplable, MultiOutputNetwork):
 
 
 class FashionMNISTDeepVAE(HVAE):
-    def make_hvae(self, latent_dims: int = 8, base_channels=64):
+    def make_hvae(
+        self,
+        latent_dims: int,
+        base_channels: int,
+        dropout: float = 0.0,
+        stage_type: t.Literal["BivaStage", "VaeStage"] = "VaeStage",
+    ) -> DeepVAE:
         stochastic_layers = [
             {"block": "GaussianConv2d", "latent_features": 8, "weightnorm": False},
             {"block": "GaussianDense", "latent_features": 16, "weightnorm": False},
@@ -190,14 +201,19 @@ class FashionMNISTDeepVAE(HVAE):
             ],
         ]
 
+        _stage_types = {
+            "BivaStage": BivaStage,
+            "VaeStage": VaeStage,
+        }
+
         return DeepVAE(
-            Stage=VaeStage,
+            Stage=_stage_types[stage_type],
             input_shape=torch.Size([1, 32, 32]),
             likelihood_module="DiscretizedLogisticLikelihoodConv2d",
             config_deterministic=deterministic_layers,
             config_stochastic=stochastic_layers,
-            q_dropout=0.0,
-            p_dropout=0.0,
+            q_dropout=dropout,
+            p_dropout=dropout,
             activation="ReLU",
             skip_stochastic=True,
             padded_shape=None,
@@ -274,8 +290,8 @@ class DeepVAELoss(LossObjective, SupervisedPlugin):
         self,
         logger: av.logging.TensorboardLogger,
         beta_warmup: int,
-        free_nat_constant_epochs: int,
-        free_nat_cooldown_epochs: int,
+        free_nat_constant_epochs: t.Optional[int] = None,
+        free_nat_cooldown_epochs: t.Optional[int] = None,
     ) -> None:
         """Wrapper for ELBO loss for use with DeepVAE"""
         super().__init__(1.0)
@@ -288,12 +304,25 @@ class DeepVAELoss(LossObjective, SupervisedPlugin):
         self.beta: float = 0.0
 
         # Fee Nat Schedule
-        self.free_nat_schedule = FreeNatsCooldown(
-            constant_epochs=int(free_nat_constant_epochs),
-            cooldown_epochs=int(free_nat_cooldown_epochs),
-        )
-        self.free_nat_iterator: t.Optional[FreeNatsCooldown] = None
-        self.free_nats: float = 0.0
+        if free_nat_constant_epochs is not None or free_nat_cooldown_epochs is not None:
+            assert (
+                free_nat_constant_epochs is not None
+                and free_nat_cooldown_epochs is not None
+            ), (
+                "Both `free_nat_constant_epochs` and `free_nat_cooldown_epochs` "
+                + "must be specified"
+            )
+            self.free_nat_schedule = FreeNatsCooldown(
+                constant_epochs=int(free_nat_constant_epochs),
+                cooldown_epochs=int(free_nat_cooldown_epochs),
+                start_val=2.0,
+            )
+            self.free_nat_iterator: t.Optional[FreeNatsCooldown] = None
+            self.free_nats: float = 0.0
+        else:
+            self.free_nat_schedule = itertools.cycle([0.0])
+            self.free_nat_iterator: t.Optional[t.Iterable] = None
+            self.free_nats: float = 0.0
 
         self.bpd = Average()
         self.elbo_metric = Average()

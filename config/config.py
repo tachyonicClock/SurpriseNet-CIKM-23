@@ -82,7 +82,7 @@ class ExpConfig:
         """Weight of the VAE loss or Kullback-Leibler divergence strength. 
         None if VAE loss is not used"""
         self.mask_classifier_loss = False
-        self.hvae_loss_kwargs: t.Optional[dict] = None
+        self.hvae_loss_kwargs: t.Optional[dict] = {"beta_warmup": 1}
 
         # ARCHITECTURE
         self.latent_dims: int
@@ -328,7 +328,6 @@ class ExpConfig:
         self.reconstruction_loss_type = "DeepVAE_ELBO"
         self.reconstruction_loss_weight = 1.0
         self.classifier_loss_weight = 1.0
-        self.hvae_loss_kwargs = {}
         self.total_task_epochs = 200
         self.retrain_epochs = 50
         self.latent_dims = 8
@@ -338,7 +337,9 @@ class ExpConfig:
             self.batch_size = 256
             self.total_task_epochs = 200
             self.retrain_epochs = 50
+            self.hvae_loss_kwargs["beta_warmup"] = 100
             self.network_style = "DeepVAE_FMNIST"
+            self.network_cfg["base_channels"] = 64
         return self
 
     def strategy_packnet(self: "ExpConfig") -> "ExpConfig":
