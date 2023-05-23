@@ -1,11 +1,10 @@
 import typing as t
 
-import numpy as np
 from avalanche.core import SupervisedPlugin
 from click import secho
-from torch import nn
-
+from experiment.strategy import Strategy
 from network.trait import SurpriseNet
+from surprisenet.activation import NaiveSurpriseNetActivation, SurpriseNetTreeActivation
 
 
 def equal_capacity_prune_schedule(n_experiences: int) -> t.List[float]:
@@ -43,15 +42,29 @@ class SurpriseNetPlugin(SupervisedPlugin):
         self.capacity: float = 1.0
         """How much of the network is still trainable"""
 
-    def before_training_exp(self, strategy, **kwargs):
+    def before_training_exp(self, strategy: Strategy, **kwargs):
         network: SurpriseNet = strategy.model
+
+        if isinstance(network.subset_activation_strategy, SurpriseNetTreeActivation):
+            network.subset_activation_strategy.before_training_exp(strategy)
+        elif isinstance(network.subset_activation_strategy, NaiveSurpriseNetActivation):
+            pass
+        else:
+            raise ValueError(
+                "Network must have a SurpriseNetTreeActivation or "
+                + "NaivePackNetActivation"
+            )
+
         network.activate_task_id(network.subset_count())
 
     def after_training_exp(self, strategy, **kwargs):
         """Perform pruning"""
         if not self.enabled:
             return
-        network = strategy.model
+        network: SurpriseNet = strategy.model
+        assert isinstance(network, SurpriseNet), (
+            "Network must be a SurpriseNet" f" but is a {type(network)}"
+        )
 
         if isinstance(self.prune_amount, float):
             prune_proportion = self.prune_amount

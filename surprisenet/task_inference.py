@@ -90,18 +90,21 @@ class TaskReconstruction(TaskInferenceStrategy):
     ) -> ForwardOutput:
         model = self.experiment.strategy.model
         assert isinstance(model, SurpriseNet)
+        novelty_scores: t.Dict[int, Tensor] = {}
 
         # Initialize the best output using the first subset. Subsequent subsets
         # will be compared to this one
         model.activate_task_id(0)
         best_loss = torch.ones(x.shape[0]).to(x.device) * float("inf")
         best_loss, best_out = sample(forward_func, x)
+        novelty_scores[0] = best_loss
         best_out.pred_exp_id = torch.zeros(x.shape[0]).int()
 
         # Iterate over all subsets and compare them to the best subset
         for i in range(1, model.subset_count()):
             model.activate_task_id(i)
             new_loss, new_out = sample(forward_func, x)
+            novelty_scores[i] = new_loss
 
             # Update best_out if the current subset is better
             swap_mask = new_loss < best_loss
@@ -109,7 +112,7 @@ class TaskReconstruction(TaskInferenceStrategy):
             best_out.pred_exp_id[swap_mask] = i
             _swap_fields(best_out, new_out, swap_mask)
 
-        model.activate_task_id(model.subset_count())
+        best_out.novelty_scores = novelty_scores
         return best_out
 
 
@@ -238,6 +241,5 @@ class HierarchicalVAEOOD(TaskInferenceStrategy):
             best_out.pred_exp_id[swap_mask] = i
             _swap_fields(best_out, new_out, swap_mask)
 
-        self.model.activate_task_id(self.model.subset_count())
         best_out.novelty_scores = novelty_scores
         return best_out

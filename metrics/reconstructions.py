@@ -10,10 +10,7 @@ from avalanche.evaluation.metric_definitions import MetricValue
 from experiment.strategy import ForwardOutput, Strategy
 from matplotlib.axes import Axes
 from network.trait import (
-    AutoEncoder,
     Classifier,
-    Decoder,
-    Encoder,
     MultiOutputNetwork,
     Samplable,
 )
@@ -234,7 +231,7 @@ class GenerateSamples(PluginMetric):
         for task_id, rows in enumerate(axes):
             for ax in rows:
                 if self.rows_are_experiences:
-                    t_available = min(strategy.model.subset_count(), task_id)
+                    t_available = min(strategy.model.subset_count() - 1, task_id)
                     strategy.model.activate_task_id(t_available)
                     ax.set_ylabel(f"Subnet {t_available}")
                 self.add_image(ax, strategy.model)

@@ -1,8 +1,11 @@
-import math
 import typing as t
 
 import torch
 import torch.nn as nn
+from surprisenet.activation import (
+    ActivationStrategy,
+    NaiveSurpriseNetActivation,
+)
 from experiment.strategy import ForwardOutput
 from hvae.hvaeoodd.oodd.layers.linear import NormedDense, NormedLinear
 from network.deep_vae import FashionMNISTDeepVAE
@@ -247,14 +250,8 @@ class _TaskMaskParent(SurpriseNet, nn.Module):
         """
         self._pn_apply(lambda x: x.activate_subsets(subset_ids))
 
-    def activate_task_id(self, task_id: int):
-        if task_id == self.subset_count():
-            self.mutable_activate_subsets(list(range(task_id)))
-        else:
-            return self.activate_subsets(list(range(task_id + 1)))
-
     def subset_count(self) -> int:
-        return self._subset_count
+        return int(self._subset_count)
 
 
 class SurpriseNetAutoEncoder(InferTask, AutoEncoder, _TaskMaskParent):
@@ -264,12 +261,16 @@ class SurpriseNetAutoEncoder(InferTask, AutoEncoder, _TaskMaskParent):
     """
 
     def __init__(
-        self, auto_encoder: AutoEncoder, task_inference_strategy: TaskInferenceStrategy
+        self,
+        auto_encoder: AutoEncoder,
+        task_inference_strategy: TaskInferenceStrategy,
+        subset_activation_strategy: ActivationStrategy = NaiveSurpriseNetActivation(),
     ) -> None:
         super().__init__(
             auto_encoder._encoder, auto_encoder._decoder, auto_encoder._classifier
         )
         wrap(auto_encoder)
+        self.subset_activation_strategy = subset_activation_strategy
         self.task_inference_strategy = task_inference_strategy
 
     def multi_forward(self, x: Tensor) -> ForwardOutput:
@@ -297,6 +298,7 @@ class SurpriseNetVariationalAutoEncoder(
         self,
         auto_encoder: VariationalAutoEncoder,
         task_inference_strategy: TaskInferenceStrategy,
+        subset_activation_strategy: ActivationStrategy = NaiveSurpriseNetActivation(),
     ) -> None:
         super().__init__(
             auto_encoder._encoder,
@@ -306,6 +308,7 @@ class SurpriseNetVariationalAutoEncoder(
         )
         wrap(auto_encoder)
         self.task_inference_strategy = task_inference_strategy
+        self.subset_activation_strategy = subset_activation_strategy
 
     def multi_forward(self, x: Tensor) -> ForwardOutput:
         if self.training:
@@ -337,11 +340,13 @@ class SurpriseNetDeepVAE(
         self,
         wrapped: FashionMNISTDeepVAE,
         task_inference_strategy: TaskInferenceStrategy,
+        subset_activation_strategy: ActivationStrategy = NaiveSurpriseNetActivation(),
     ) -> None:
         super().__init__()
         self.wrapped = wrapped
         self.task_inference_strategy = task_inference_strategy
         self.task_inference_strategy.model = self
+        self.subset_activation_strategy = subset_activation_strategy
         wrap(wrapped)
 
     def forward(

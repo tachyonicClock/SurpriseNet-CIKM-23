@@ -125,6 +125,15 @@ class ExpConfig:
         """Type of task inference strategy to use"""
         self.task_inference_strategy_kwargs: t.Optional[t.Dict[str, t.Any]] = None
 
+        self.activation_strategy: t.Literal[
+            "NaiveSurpriseNetActivation", "SurpriseNetTreeActivation"
+        ] = "NaiveSurpriseNetActivation"
+        """The activation strategy defines how the network reuses previously
+        learned weights. The NaiveSurpriseNetActivation strategy reuses all
+        previously learned weights. The SurpriseNetTreeActivation strategy
+        inherits only from the least novel task.
+        """
+
         # OTHER STRATEGIES
         # Experience replay
         self.replay_buffer: t.Optional[int] = None

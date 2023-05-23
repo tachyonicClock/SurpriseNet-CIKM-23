@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from network.trait import SurpriseNet, ParameterMask
+from network.trait import ParameterMask
 
 
 class ModuleDecorator(nn.Module):
@@ -136,7 +136,7 @@ class WeightMask(ParameterMask, ModuleDecorator):
 
     def _is_subset_id_valid(self, subset_id: t.List[int]):
         assert (
-            0 <= subset_id < self._subset_count
+            0 <= subset_id <= self._subset_count
         ), f"Given Subset ID {subset_id} must be between 0 and {self._subset_count}"
 
     def mutable_activate_subsets(self, visible_subsets: t.List[int]):

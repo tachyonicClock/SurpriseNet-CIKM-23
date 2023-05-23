@@ -1,14 +1,11 @@
+import surprisenet.packnet as pn
+import torch
 from avalanche.benchmarks import NCScenario
 from avalanche.training.plugins import (
-    ReplayPlugin,
     LwFPlugin,
+    ReplayPlugin,
     SynapticIntelligencePlugin,
 )
-import torch
-from torch import nn
-from network.deep_vae import DeepVAELoss
-
-import surprisenet.packnet as pn
 from experiment.chf import CHF_SurpriseNet
 from experiment.experiment import BaseExperiment
 from experiment.loss import (
@@ -22,8 +19,14 @@ from experiment.loss import (
 )
 from experiment.scenario import gaussian_schedule_scenario, split_scenario
 from experiment.strategy import CumulativeTraining, Strategy
+from network.deep_vae import DeepVAELoss
 from network.feature_extractor import r18_extractor
 from network.networks import construct_network
+from surprisenet.activation import (
+    ActivationStrategy,
+    NaiveSurpriseNetActivation,
+    SurpriseNetTreeActivation,
+)
 from surprisenet.drift_detection import (
     ClockOracle,
     DriftDetector,
@@ -37,6 +40,7 @@ from surprisenet.task_inference import (
     TaskReconstruction,
     UseTaskOracle,
 )
+from torch import nn
 
 
 class Experiment(BaseExperiment):
@@ -69,6 +73,14 @@ class Experiment(BaseExperiment):
         elif self.cfg.task_inference_strategy == "task_oracle":
             return UseTaskOracle(self)
 
+    def make_activation_strategy(self) -> ActivationStrategy:
+        if self.cfg.activation_strategy == "SurpriseNetTreeActivation":
+            return SurpriseNetTreeActivation()
+        elif self.cfg.activation_strategy == "NaiveSurpriseNetActivation":
+            return NaiveSurpriseNetActivation()
+        else:
+            raise ValueError("Unknown activation strategy")
+
     def make_drift_detection_plugin(self) -> DriftDetectorPlugin:
         # Get the metric used for reconstruction loss
         metric: LossObjective
@@ -99,15 +111,21 @@ class Experiment(BaseExperiment):
         # Wrap network in packnet
         if self.cfg.architecture == "VAE":
             network = pn.SurpriseNetVariationalAutoEncoder(
-                network, self.make_task_inference_strategy()
+                network,
+                self.make_task_inference_strategy(),
+                self.make_activation_strategy(),
             )
         elif self.cfg.architecture == "AE":
             network = pn.SurpriseNetAutoEncoder(
-                network, self.make_task_inference_strategy()
+                network,
+                self.make_task_inference_strategy(),
+                self.make_activation_strategy(),
             )
         elif self.cfg.architecture == "DeepVAE":
             network = pn.SurpriseNetDeepVAE(
-                network, self.make_task_inference_strategy()
+                network,
+                self.make_task_inference_strategy(),
+                self.make_activation_strategy(),
             )
         else:
             raise ValueError("Unknown architecture")

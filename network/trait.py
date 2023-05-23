@@ -6,6 +6,10 @@ from avalanche.models.generator import Generator
 
 from experiment.strategy import ForwardOutput
 
+if t.TYPE_CHECKING:
+    from surprisenet.task_inference import TaskInferenceStrategy
+    from surprisenet.activation import ActivationStrategy
+
 
 class MultiOutputNetwork(ABC):
     """A network that can output multiple tensors"""
@@ -206,10 +210,18 @@ class ParameterMask(ABC):
         raise NotImplementedError("subset_count not implemented")
 
 
-class SurpriseNet(ParameterMask, ABC):
-    @abstractmethod
+class SurpriseNet(ParameterMask):
+    subset_activation_strategy: "ActivationStrategy" = None
+    task_inference_strategy: "TaskInferenceStrategy" = None
+
     def activate_task_id(self, task_id: int):
-        pass
+        task_ids = self.subset_activation_strategy.task_activation(task_id)
+        if task_id is self.subset_count():
+            # print(f"Activating frozen {task_ids}, allowing mutations to {task_id}")
+            self.mutable_activate_subsets(task_ids)
+        else:
+            # print(f"Activating frozen {task_ids}")
+            self.activate_subsets(task_ids)
 
 
 NETWORK_TRAITS = [

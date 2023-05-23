@@ -139,6 +139,13 @@ class TrainCommand(click.Group):
     is_flag=True,
     help="Use the standard order for task composition e.g class [0, 1], [2, 3], etc",
 )
+@click.option(
+    "--task-count",
+    type=int,
+    default=None,
+    help="The number of tasks to train on. Default varies based on the"
+    + " given scenario.",
+)
 @click.option("--log-directory", type=str, default=None)
 @click.argument("label", type=str)
 @click.argument("scenario", type=click.Choice(SCENARIOS.keys()), required=True)
@@ -157,6 +164,7 @@ def cli(
     no_reconstruction: bool,
     log_directory: str,
     batch_size: t.Optional[int],
+    task_count: t.Optional[int],
     std_order: bool,
     repeat: int,
     seed: t.Optional[int],
@@ -177,7 +185,7 @@ def cli(
         exit(1)
     elif ignore_dirty and project_repo.is_dirty():
         cfg.repo_hash += "D"
-        click.secho("Warning: running with uncommitted changes", fg="yellow")
+        click.secho("WARN: Running with uncommitted changes", fg="yellow")
 
     cfg = SCENARIOS[scenario](cfg)
     cfg = ARCHITECTURES[architecture](cfg)
@@ -202,6 +210,10 @@ def cli(
 
     if batch_size is not None:
         cfg.batch_size = batch_size
+
+    if task_count is not None:
+        click.secho(f"WARN: Overriding task count to {task_count}", fg="yellow")
+        cfg.n_experiences = task_count
 
     ctx.obj = cfg
 
@@ -287,6 +299,13 @@ def packNet(
     help="Override the default number of epochs to retrain the"
     + "network after pruning",
 )
+@click.option(
+    "--tree-activation",
+    is_flag=True,
+    default=False,
+    help="Enable tree activation for SurpriseNet. Determines the best subset to "
+    + "inherit from",
+)
 @click.pass_obj
 def surprise_net(
     cfg: ExpConfig,
@@ -294,6 +313,7 @@ def surprise_net(
     equal_prune: bool,
     chf: bool,
     retrain_epochs: t.Optional[int],
+    tree_activation: bool,
 ):
     """SurpriseNet performs the same pruning as PackNet,
     but uses anomaly detection inspired task inference to infer task labels,
@@ -310,9 +330,12 @@ def surprise_net(
         chf and prune_proportion is not None
     ), "Cannot use both CHF and prune proportion"
 
+    if tree_activation:
+        cfg.activation_strategy = "SurpriseNetTreeActivation"
+
     # Setup pruning scheme
     if prune_proportion is not None:
-        cfg.prune_proportion = prune_proportion if prune_proportion != None else 0.5
+        cfg.prune_proportion = prune_proportion if prune_proportion is not None else 0.5
     elif chf:
         cfg.prune_proportion = 0.95
         cfg.continual_hyperparameter_framework = True
