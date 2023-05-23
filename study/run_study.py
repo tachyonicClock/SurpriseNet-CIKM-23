@@ -14,7 +14,7 @@ import os
 @click.option("--num-trials", type=int, default=1)
 @click.option("--test", is_flag=True)
 def main(log_directory: str, num_trials: int, test: bool):
-    name = "ScheduleSearchFixed" + ("Test" if test else "")
+    name = "ScheduleSearchE400" + ("Test" if test else "")
 
     cfg = ExpConfig()
     cfg.name = name
