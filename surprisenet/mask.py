@@ -1,3 +1,4 @@
+import math
 import typing as t
 from enum import Enum
 
@@ -155,12 +156,23 @@ class WeightMask(ParameterMask, ModuleDecorator):
             self._is_subset_id_valid(subset_id)
             self.visiblity_mask = self.visiblity_mask | self.task_index.eq(subset_id)
 
+    def initialize_top(self):
+        """Re-initialize the top of the network"""
+        # He Weight Initialization
+        stddev = math.sqrt(2 / self.pruned_mask.count_nonzero())
+        dist = torch.distributions.Normal(0, stddev)
+        with torch.no_grad():
+            self.weight[self.pruned_mask] = dist.sample(
+                (self.pruned_mask.count_nonzero(),)
+            ).to(self.device)
+
     def push_pruned(self):
         self._state_guard([self.State.PRUNED_TOP], self.State.IMMUTABLE)
         # The top is now one higher up
         self._subset_count += 1
         # Move pruned weights to the top
         self.task_index[self.pruned_mask] = self._subset_count.item()
+        self.initialize_top()
         # Change the active z_index
         self.mutability_mask.zero_()
 
