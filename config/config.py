@@ -339,6 +339,7 @@ class ExpConfig:
         self.classifier_loss_weight = 1.0
         self.total_task_epochs = 200
         self.retrain_epochs = 50
+        self.task_inference_strategy = "log_likelihood_ratio"
 
         if self.dataset_name == "FMNIST":
             self.learning_rate = 0.0001

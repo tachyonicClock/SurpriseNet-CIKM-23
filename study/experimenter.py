@@ -84,11 +84,11 @@ class SurpriseNetExperimenter(experimenters.Experimenter):
 
         # SEARCH SPACE --------------------------------------------------------
         search.add_discrete_param("classifier_loss_weight", [0.0])
-        search.add_discrete_param("total_task_epochs", [400])
-        search.add_float_param("learning_rate", 1e-6, 0.002)
-        search.add_int_param("hvae_loss_kwargs.beta_warmup", 0, 400)
-        search.add_int_param("hvae_loss_kwargs.free_nat_constant_epochs", 0, 200)
-        search.add_int_param("hvae_loss_kwargs.free_nat_cooldown_epochs", 0, 200)
+        search.add_discrete_param("total_task_epochs", [500])
+        search.add_discrete_param("hvae_loss_kwargs.beta_warmup", [200])
+        search.add_discrete_param("retrain_epochs", [20])
+        search.add_float_param("learning_rate", 1e-6, 0.003)
+        search.add_float_param("prune_proportion", 0.0, 1.0)
 
         # OBJECTIVES ----------------------------------------------------------
         problem.metric_information.append(

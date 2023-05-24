@@ -147,10 +147,13 @@ class BaseExperiment:
         self.optimizer = self.make_optimizer(self.network.parameters())
         self.strategy = self.make_strategy()
 
-    def train(self):
+    def train(self, _early_finish_task_id: t.Optional[int] = None):
         self.preflight()
         results = []
         for i, exp in enumerate(self.scenario.train_stream):
+            if _early_finish_task_id is not None and i >= _early_finish_task_id:
+                break
+
             unique_classes = set(map(int, exp.classes_in_this_experience))
             print(f"Start of experience: {exp.current_experience}")
             print(f"Current Classes:     {unique_classes}")

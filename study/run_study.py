@@ -14,11 +14,11 @@ import os
 @click.option("--num-trials", type=int, default=1)
 @click.option("--test", is_flag=True)
 def main(log_directory: str, num_trials: int, test: bool):
-    name = "ScheduleSearchE400" + ("Test" if test else "")
+    name = "InitialCifar10" + ("Test" if test else "")
 
     cfg = ExpConfig()
     cfg.name = name
-    cfg.scenario_fmnist()
+    cfg.scenario_cifar10()
     cfg.arch_deep_vae()
     cfg.strategy_surprisenet()
     cfg.fixed_class_order = list(range(10))

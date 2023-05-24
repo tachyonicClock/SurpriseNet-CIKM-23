@@ -1,7 +1,7 @@
 from config.config import ExpConfig
 from train import Experiment
 
-root_path = "/local/scratch/antonlee/log/PruneProportion/0002_sweet-release.ecs.vuw.ac.nz_5663eb3fD_myExperiment_S-FMNIST_DeepVAE_surpriseNet/"
+root_path = "experiment_logs/BestDeepVAE"
 old_config = f"{root_path}/config.json"
 class_order = f"{root_path}/class_order.txt"
 
@@ -20,6 +20,9 @@ cfg.hvae_loss_kwargs["beta_warmup"] = 100
 cfg.fixed_class_order = task_comp
 
 cfg.network_cfg["base_channels"] = 64
+
+cfg.label = None
+cfg.name = "BestRecreationOldReInit"
 
 print("Fixed class order: ", cfg.fixed_class_order)
 Experiment(cfg).train()

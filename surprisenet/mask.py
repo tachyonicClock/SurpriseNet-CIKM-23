@@ -158,9 +158,7 @@ class WeightMask(ParameterMask, ModuleDecorator):
 
     def initialize_top(self):
         """Re-initialize the top of the network"""
-        # He Weight Initialization
-        stddev = math.sqrt(2 / self.pruned_mask.count_nonzero())
-        dist = torch.distributions.Normal(0, stddev)
+        dist = torch.distributions.Uniform(0.0, 0.5)
         with torch.no_grad():
             self.weight[self.pruned_mask] = dist.sample(
                 (self.pruned_mask.count_nonzero(),)
