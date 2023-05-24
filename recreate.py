@@ -18,11 +18,12 @@ cfg.hvae_loss_kwargs["free_nat_constant_epochs"] = 200 // 2
 cfg.hvae_loss_kwargs["free_nat_cooldown_epochs"] = 200 // 2
 cfg.hvae_loss_kwargs["beta_warmup"] = 100
 cfg.fixed_class_order = task_comp
+cfg.latent_dims = 8
 
 cfg.network_cfg["base_channels"] = 64
 
 cfg.label = None
-cfg.name = "BestRecreationOldReInit"
+cfg.name = "RecreationAttempt_NewCode"
 
 print("Fixed class order: ", cfg.fixed_class_order)
 Experiment(cfg).train()
