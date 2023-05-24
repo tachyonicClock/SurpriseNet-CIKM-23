@@ -13,6 +13,9 @@ with open(class_order, "r") as f:
 
 cfg = ExpConfig.from_json(old_config)
 
+
+cfg.task_inference_strategy = "log_likelihood_ratio"
+cfg.task_inference_strategy_kwargs = {}
 cfg.tensorboard_dir = "experiment_logs/BestRecreation"
 cfg.hvae_loss_kwargs["free_nat_constant_epochs"] = 200 // 2
 cfg.hvae_loss_kwargs["free_nat_cooldown_epochs"] = 200 // 2

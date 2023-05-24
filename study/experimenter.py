@@ -88,7 +88,7 @@ class SurpriseNetExperimenter(experimenters.Experimenter):
         search.add_discrete_param("hvae_loss_kwargs.beta_warmup", [200])
         search.add_discrete_param("retrain_epochs", [20])
         search.add_float_param("learning_rate", 1e-6, 0.003)
-        search.add_float_param("prune_proportion", 0.0, 1.0)
+        search.add_float_param("prune_proportion", 0.2, 0.8)
 
         # OBJECTIVES ----------------------------------------------------------
         problem.metric_information.append(

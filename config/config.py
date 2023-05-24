@@ -352,7 +352,7 @@ class ExpConfig:
             self.latent_dims = 8
         elif self.dataset_name == "CIFAR10" or self.dataset_name == "CIFAR100":
             self.learning_rate = 0.0001
-            self.batch_size = 128
+            self.batch_size = 256
             self.total_task_epochs = 200
             self.retrain_epochs = 50
             self.network_style = "DeepVAE_CIFAR"

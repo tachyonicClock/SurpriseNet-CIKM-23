@@ -74,7 +74,6 @@ TRAIN_TRANSFORMS = {
             T.ToTensor(),
             T.Resize((32, 32), antialias=True),
             T.RandomHorizontalFlip(),
-            T.RandomCrop(32, padding=4),
             dequantize,
         ]
     ),

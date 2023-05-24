@@ -51,5 +51,6 @@ def test_cifar10_hvae_surprisenet():
     cfg.scenario_cifar10()
     cfg.arch_deep_vae()
     cfg.strategy_surprisenet()
+    cfg.batch_size = 32
     cfg.name = "test_cifar10_hvae_surprisenet"
     _run_short(cfg)
