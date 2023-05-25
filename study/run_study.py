@@ -14,14 +14,14 @@ import os
 @click.option("--num-trials", type=int, default=1)
 @click.option("--test", is_flag=True)
 def main(log_directory: str, num_trials: int, test: bool):
-    name = "InitialCifar10" + ("Test" if test else "")
+    name = "S-CIFAR100_DeepVAE_0" + ("Test" if test else "")
 
     cfg = ExpConfig()
     cfg.name = name
-    cfg.scenario_cifar10()
+    cfg.scenario_cifar100()
     cfg.arch_deep_vae()
     cfg.strategy_surprisenet()
-    cfg.fixed_class_order = list(range(10))
+    cfg.fixed_class_order = list(range(cfg.n_classes))
     cfg.tensorboard_dir = log_directory
 
     if test:
