@@ -22,15 +22,17 @@ SERIES_TAGS = {
     "Accuracy given Good Task Identification": "Conditional/P(correct|correct_task_id)",
 }
 
+
 def extract_values(ea: EventAccumulator) -> dict:
     """
     Returns the final metrics from the event file.
     """
     result = {}
     for tag_name, tag in VALUE_TAGS.items():
-        if tag in ea.Tags()['scalars']:
+        if tag in ea.Tags()["scalars"]:
             result[tag_name] = ea.Scalars(tag)[-1].value
     return result
+
 
 def extract_series(ea: EventAccumulator) -> dict:
     result = {}
@@ -47,7 +49,9 @@ def extract_series(ea: EventAccumulator) -> dict:
 
 
 def match_listdir(directory, pattern) -> t.List[str]:
-    return list([x for x in os.listdir(os.path.join(directory)) if re.match(pattern, x)])
+    return list(
+        [x for x in os.listdir(os.path.join(directory)) if re.match(pattern, x)]
+    )
 
 
 def process_experiment(args) -> dict:
@@ -62,7 +66,7 @@ def process_experiment(args) -> dict:
         "strategy": strategy,
         "experiment_category": experiment_category,
         "id": i,
-        "repo_hash": repo_hash
+        "repo_hash": repo_hash,
     }
 
     experiment_path = os.path.join(log_dir, experiment)
@@ -82,7 +86,7 @@ def process_experiment(args) -> dict:
             record.update(config)
     except FileNotFoundError as e:
         print(f"Could not load config file '{experiment}/config.json'")
-    
+
     return record
 
 
@@ -93,7 +97,12 @@ def load_events_to_df(experiment_logs: str, pattern: str) -> pd.DataFrame:
     experiments = match_listdir(os.path.join(experiment_logs), pattern)
 
     with Pool(8) as p:
-        for record in tqdm(p.imap_unordered(process_experiment, zip(experiments, repeat(experiment_logs))), total=len(experiments)):
+        for record in tqdm(
+            p.imap_unordered(
+                process_experiment, zip(experiments, repeat(experiment_logs))
+            ),
+            total=len(experiments),
+        ):
             records.append(record)
 
     return pd.DataFrame.from_dict(records)
