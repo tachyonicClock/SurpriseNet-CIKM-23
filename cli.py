@@ -315,6 +315,17 @@ def packNet(
     help="Enable tree activation for SurpriseNet. Determines the best subset to "
     + "inherit from",
 )
+@click.option(
+    "-m", "--buffer-size", type=int, default=None, help="Size of the replay buffer"
+)
+@click.option(
+    "--relative-mse-loss",
+    type=bool,
+    default=False,
+    is_flag=True,
+    help="Relative MSE weights the MSE loss based on the previous task-specific"
+    + " subsets performance",
+)
 @click.pass_obj
 def surprise_net(
     cfg: ExpConfig,
@@ -323,6 +334,8 @@ def surprise_net(
     chf: bool,
     retrain_epochs: t.Optional[int],
     tree_activation: bool,
+    buffer_size: int,
+    relative_mse_loss: bool,
 ):
     """SurpriseNet performs the same pruning as PackNet,
     but uses anomaly detection inspired task inference to infer task labels,
@@ -330,6 +343,7 @@ def surprise_net(
     such that each task has the same number of parameters.
     """
     cfg.strategy_surprisenet()
+    cfg.replay_buffer = buffer_size or cfg.replay_buffer
 
     assert not (equal_prune and chf), "Cannot use both equal pruning and CHF"
     assert not (
@@ -341,6 +355,9 @@ def surprise_net(
 
     if tree_activation:
         cfg.activation_strategy = "SurpriseNetTreeActivation"
+
+    if relative_mse_loss:
+        cfg.reconstruction_loss_type = "RelativeMSE"
 
     # Setup pruning scheme
     if prune_proportion is not None:

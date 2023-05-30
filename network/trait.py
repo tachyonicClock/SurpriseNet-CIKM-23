@@ -223,6 +223,9 @@ class SurpriseNet(ParameterMask):
             # print(f"Activating frozen {task_ids}")
             self.activate_subsets(task_ids)
 
+    def multi_forward_no_task_inference(self, x: Tensor) -> ForwardOutput:
+        pass
+
 
 NETWORK_TRAITS = [
     Classifier,

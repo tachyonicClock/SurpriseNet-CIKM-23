@@ -68,11 +68,11 @@ class WeightMask(ParameterMask, ModuleDecorator):
         a StateError. This ensures that the correct procedure is followed.
         """
 
-        if self.state not in previous:
-            raise StateError(
-                f"Function only valid for {previous} instead PackNet was "
-                + f"in the {self.state} state"
-            )
+        # if self.state not in previous:
+        #     raise StateError(
+        #         f"Function only valid for {previous} instead PackNet was "
+        #         + f"in the {self.state} state"
+        #     )
         self.state = next
 
     @property
@@ -149,7 +149,8 @@ class WeightMask(ParameterMask, ModuleDecorator):
 
     def activate_subsets(self, visible_subsets: t.List[int]):
         self._state_guard(
-            [self.State.IMMUTABLE, self.State.MUTABLE_TOP], self.State.IMMUTABLE
+            [self.State.IMMUTABLE, self.State.MUTABLE_TOP, self.State.PRUNED_TOP],
+            self.State.IMMUTABLE,
         )
         self.visiblity_mask.zero_()
         for subset_id in visible_subsets:

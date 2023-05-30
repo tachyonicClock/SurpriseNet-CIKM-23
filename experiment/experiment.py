@@ -158,6 +158,7 @@ class BaseExperiment:
             print(f"Start of experience: {exp.current_experience}")
             print(f"Current Classes:     {unique_classes}")
             print(f"Experience size:     {len(exp.dataset)}")
+            self.strategy.classes_in_this_experience = unique_classes
 
             self.strategy.train(exp)
             test_subset = self.scenario.test_stream

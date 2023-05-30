@@ -40,6 +40,8 @@ class ForwardOutput:
     """The kl divergences for each stage of the HVAE"""
     novelty_scores: t.Optional[t.Dict[int, Tensor]] = None
     """Novelty scores for each task specific subset"""
+    task_classes: t.Optional[t.List[int]] = None
+    """What classes are present in the current task"""
 
 
 class Strategy(SupervisedTemplate):
@@ -59,6 +61,7 @@ class Strategy(SupervisedTemplate):
     Transform the input before passing it to the model. Used for generating
     embeddings on the fly.
     """
+    classes_in_this_experience: t.Optional[t.List[int]] = None
 
     def forward(self):
         """Compute the model's output given the current mini-batch."""
@@ -75,6 +78,7 @@ class Strategy(SupervisedTemplate):
         self.last_forward_output.exp_id = (
             torch.ones_like(self.mb_y) * self.experience.current_experience
         )
+        self.last_forward_output.task_classes = self.classes_in_this_experience
 
         return self.last_forward_output.y_hat
 

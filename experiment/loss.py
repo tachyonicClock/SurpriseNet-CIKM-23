@@ -4,7 +4,9 @@ from abc import ABC, abstractmethod
 import torch
 from torch import Tensor, nn
 from torch.nn import functional as F
-from experiment.strategy import ForwardOutput
+from experiment.strategy import ForwardOutput, Strategy
+from avalanche.core import SupervisedPlugin
+from network.trait import SurpriseNet
 
 
 class LossObjective(ABC):
@@ -68,6 +70,56 @@ class MSEReconstructionLoss(LossObjective):
 
     def update(self, out: ForwardOutput, target: Tensor = None):
         self.loss = F.mse_loss(out.x_hat, out.x)
+
+
+class RelativeMSELoss(LossObjective, SupervisedPlugin):
+    name = "RelativeReconstructionMSE"
+
+    def __init__(self, weighting: float = 1) -> None:
+        super().__init__(weighting)
+        self.mse_past = None
+
+    def before_training(self, strategy: Strategy, *args, **kwargs):
+        self.model: typing.Union[nn.Module, SurpriseNet] = strategy.model
+        assert isinstance(
+            self.model, SurpriseNet
+        ), "Model must be surprisenet for RelativeMSELoss"
+
+    @torch.no_grad()
+    def before_forward(self, strategy: Strategy, *args, **kwargs):
+        if strategy.clock.train_exp_counter == 0:
+            return
+        if not self.model.training:
+            return
+        x: Tensor = strategy.mb_x
+        self.model.eval()
+        self.model.activate_task_id(self.model.subset_count() - 1)
+        self.mse_past = (
+            F.mse_loss(
+                self.model.multi_forward_no_task_inference(x).x_hat, x, reduction="none"
+            )
+            .mean((1, 2, 3))
+            .detach()
+        )
+        self.model.activate_task_id(self.model.subset_count())
+        self.model.train()
+
+    def update(self, out: ForwardOutput, target: Tensor = None):
+        # The MSE of the previous task-specific subset
+        mse_past = self.mse_past if self.mse_past is not None else 1
+
+        # Binary cross entropy reduce CxWxH but not B
+        mse_present = F.mse_loss(out.x_hat, out.x, reduction="none").mean((1, 2, 3))
+
+        # We are not attempting to learn the AE using the replay buffer.
+        replay_mask = torch.zeros_like(mse_present)
+        for current_class in out.task_classes:
+            replay_mask[out.y.eq(current_class)] = True
+        mse_present = replay_mask * mse_present
+
+        # Loss is relative to the past MSE to promote avoiding task confusion
+        self.loss = (mse_present / (mse_past + 1e-7)).mean()
+        self.mse_past = None  # Ensure the same mse_past is not used multiple times
 
 
 class CrossEntropy(LossObjective):
