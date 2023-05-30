@@ -22,6 +22,19 @@ def _run_short(cfg: ExpConfig):
     return Experiment(cfg).train(_early_finish_task_id=2)
 
 
+def test_fmnist_ae_logitnorm():
+    """Test DeepVAE on FMNIST"""
+    _seed_all()
+    cfg = ExpConfig()
+    cfg.scenario_fmnist()
+    cfg.arch_autoencoder()
+    cfg.strategy_surprisenet()
+    cfg.classifier_loss_type = "LogitNorm"
+    cfg.classifier_loss_kwargs = {"temperature": 1.0}
+    cfg.name = "test_fmnist_hvae_surprisenet"
+    _run_short(cfg)
+
+
 def test_fmnist_hvae_surprisenet():
     """Test DeepVAE on FMNIST"""
     _seed_all()

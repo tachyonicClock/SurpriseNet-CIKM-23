@@ -10,8 +10,9 @@ from experiment.chf import CHF_SurpriseNet
 from experiment.experiment import BaseExperiment
 from experiment.loss import (
     BCEReconstructionLoss,
-    ClassifierLoss,
+    CrossEntropy,
     ClassifierLossMasked,
+    LogitNorm,
     LossObjective,
     MSEReconstructionLoss,
     MultipleObjectiveLoss,
@@ -143,10 +144,22 @@ class Experiment(BaseExperiment):
         loss = MultipleObjectiveLoss()
         # Add cross entropy loss
         if self.cfg.classifier_loss_weight:
-            if self.cfg.mask_classifier_loss:
-                loss.add(ClassifierLossMasked(self.cfg.classifier_loss_weight))
+            if self.cfg.classifier_loss_type == "LogitNorm":
+                loss.add(
+                    LogitNorm(
+                        self.cfg.classifier_loss_weight,
+                        **self.cfg.classifier_loss_kwargs,
+                    )
+                )
+            elif self.cfg.classifier_loss_type == "CrossEntropy":
+                loss.add(
+                    CrossEntropy(
+                        self.cfg.classifier_loss_weight,
+                        **self.cfg.classifier_loss_kwargs,
+                    )
+                )
             else:
-                loss.add(ClassifierLoss(self.cfg.classifier_loss_weight))
+                raise ValueError("Unknown classifier loss type")
 
         # Add reconstruction loss
         if self.cfg.reconstruction_loss_weight:

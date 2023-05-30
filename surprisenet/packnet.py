@@ -279,8 +279,11 @@ class SurpriseNetAutoEncoder(InferTask, AutoEncoder, _TaskMaskParent):
         else:
             """At eval time we need to try infer the task somehow?"""
             return self.task_inference_strategy.forward_with_task_inference(
-                super().multi_forward, x
+                self.multi_forward_no_task_inference, x
             )
+
+    def multi_forward_no_task_inference(self, x: Tensor) -> ForwardOutput:
+        return super().multi_forward(x)
 
     def forward(self, x: Tensor) -> Tensor:
         return self.multi_forward(x).y_hat

@@ -71,6 +71,12 @@ class ExpConfig:
         drift detector?"""
 
         # LOSS
+        self.classifier_loss_type: t.Literal[
+            "CrossEntropy", "LogitNorm"
+        ] = "CrossEntropy"
+        """Type of loss function to use"""
+        self.classifier_loss_kwargs: t.Dict[str, t.Any] = {}
+        """Kwargs to pass to the classifier loss"""
         self.classifier_loss_weight: t.Optional[float] = 1.0
         """Weight of the classifier loss. None if classifier loss is not used"""
         self.reconstruction_loss_type: t.Literal["mse", "bce", "DeepVAE_ELBO"] = "bce"
@@ -81,7 +87,6 @@ class ExpConfig:
         self.vae_loss_weight: t.Optional[float] = None
         """Weight of the VAE loss or Kullback-Leibler divergence strength. 
         None if VAE loss is not used"""
-        self.mask_classifier_loss = False
         self.hvae_loss_kwargs: t.Optional[dict] = {"beta_warmup": 1}
 
         # ARCHITECTURE
@@ -206,7 +211,6 @@ class ExpConfig:
         self.n_experiences = 5
         self.retrain_epochs = 5
         self.total_task_epochs = 20
-        self.batch_size = 128
         # self.mask_classifier_loss = True
         return self
 
@@ -430,3 +434,12 @@ class ExpConfig:
             else:
                 obj = getattr(obj, key)
         return obj
+
+    def set_task_order_from_txt(self, class_order_filename: str) -> "ExpConfig":
+        task_comp = []
+        with open(class_order_filename, "r") as f:
+            lines = f.readlines()
+            for line in lines:
+                task_comp.extend(line.split(","))
+        self.fixed_class_order = list(map(int, task_comp))
+        return self

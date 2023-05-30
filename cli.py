@@ -146,6 +146,12 @@ class TrainCommand(click.Group):
     help="The number of tasks to train on. Default varies based on the"
     + " given scenario.",
 )
+@click.option(
+    "--class-loss-type",
+    type=click.Choice(["CrossEntropy", "LogitNorm"]),
+    default="CrossEntropy",
+    help="The loss function to use for the classifier",
+)
 @click.option("--log-directory", type=str, default=None)
 @click.argument("label", type=str)
 @click.argument("scenario", type=click.Choice(SCENARIOS.keys()), required=True)
@@ -168,6 +174,7 @@ def cli(
     std_order: bool,
     repeat: int,
     seed: t.Optional[int],
+    class_loss_type: str,
 ):
     # Start building an experiment configuation
     cfg = ExpConfig()
@@ -214,6 +221,8 @@ def cli(
     if task_count is not None:
         click.secho(f"WARN: Overriding task count to {task_count}", fg="yellow")
         cfg.n_experiences = task_count
+
+    cfg.classifier_loss_type = class_loss_type
 
     ctx.obj = cfg
 
