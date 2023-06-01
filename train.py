@@ -42,6 +42,7 @@ from surprisenet.task_inference import (
     TaskReconstruction,
     UseTaskOracle,
 )
+from avalanche.training.storage_policy import ClassBalancedBuffer
 from torch import nn
 
 
@@ -211,7 +212,12 @@ class Experiment(BaseExperiment):
             self.plugins.append(LwFPlugin(cfg.lwf_alpha, temperature=2))
         if cfg.replay_buffer:
             print(f"! Using Experience Replay. Buffer size={cfg.replay_buffer}")
-            self.plugins.append(ReplayPlugin(cfg.replay_buffer))
+            self.plugins.append(
+                ReplayPlugin(
+                    cfg.replay_buffer,
+                    storage_policy=ClassBalancedBuffer(cfg.replay_buffer),
+                )
+            )
             # The replay buffer provides double the batch size. This
             # is because it provides a combined batch of old experiences and a
             # new experiences. To ensure that it fits on the GPU, we need to
