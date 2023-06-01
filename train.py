@@ -16,7 +16,7 @@ from experiment.loss import (
     LossObjective,
     MSEReconstructionLoss,
     MultipleObjectiveLoss,
-    RelativeMSELoss,
+    SurpriseNetLoss,
     VAELoss,
 )
 from experiment.scenario import gaussian_schedule_scenario, split_scenario
@@ -178,12 +178,15 @@ class Experiment(BaseExperiment):
                 # called at the end of each epoch
                 self.plugins.append(deep_vae_loss)
                 loss.add(deep_vae_loss)
-            elif self.cfg.reconstruction_loss_type == "RelativeMSE":
-                relative_mse = RelativeMSELoss(self.cfg.reconstruction_loss_weight)
+            elif self.cfg.reconstruction_loss_type == "SurpriseNetLoss":
+                relative_mse = SurpriseNetLoss(self.cfg.reconstruction_loss_weight)
                 loss.add(relative_mse)
                 self.plugins.append(relative_mse)
             else:
-                raise NotImplementedError("Unknown reconstruction loss type")
+                raise NotImplementedError(
+                    "Unknown reconstruction loss type",
+                    self.cfg.reconstruction_loss_type,
+                )
 
         # Add VAE loss
         if self.cfg.vae_loss_weight:

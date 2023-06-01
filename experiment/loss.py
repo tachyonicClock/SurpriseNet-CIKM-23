@@ -72,12 +72,13 @@ class MSEReconstructionLoss(LossObjective):
         self.loss = F.mse_loss(out.x_hat, out.x)
 
 
-class RelativeMSELoss(LossObjective, SupervisedPlugin):
-    name = "RelativeReconstructionMSE"
+class SurpriseNetLoss(LossObjective, SupervisedPlugin):
+    name = "SurpriseNetLoss"
 
-    def __init__(self, weighting: float = 1) -> None:
+    def __init__(self, weighting: float = 1, regularization_alpha: float = 0.0) -> None:
         super().__init__(weighting)
         self.mse_past = None
+        self.regularization_alpha = regularization_alpha
 
     def before_training(self, strategy: Strategy, *args, **kwargs):
         self.model: typing.Union[nn.Module, SurpriseNet] = strategy.model
@@ -89,37 +90,43 @@ class RelativeMSELoss(LossObjective, SupervisedPlugin):
     def before_forward(self, strategy: Strategy, *args, **kwargs):
         if strategy.clock.train_exp_counter == 0:
             return
-        if not self.model.training:
-            return
         x: Tensor = strategy.mb_x
         self.model.eval()
-        self.model.activate_task_id(self.model.subset_count() - 1)
+
+        # Select a random subset to replay from the past
+        replay_subset = self.model.subset_count() - 1
+        if replay_subset != 0:
+            replay_subset = torch.randint(replay_subset, (1,)).item()
+
+        self.model.activate_task_id(replay_subset)
+        out = self.model.multi_forward_no_task_inference(x)
         self.mse_past = (
-            F.mse_loss(
-                self.model.multi_forward_no_task_inference(x).x_hat, x, reduction="none"
-            )
-            .mean((1, 2, 3))
-            .detach()
+            F.mse_loss(out.x_hat, x, reduction="none").mean((1, 2, 3)).detach()
         )
+        self.logit_past = out.y_hat
         self.model.activate_task_id(self.model.subset_count())
         self.model.train()
 
     def update(self, out: ForwardOutput, target: Tensor = None):
-        # The MSE of the previous task-specific subset
-        mse_past = self.mse_past if self.mse_past is not None else 1
+        if self.mse_past is None:
+            self.loss = F.mse_loss(out.x_hat, out.x)
+            return
 
         # Binary cross entropy reduce CxWxH but not B
         mse_present = F.mse_loss(out.x_hat, out.x, reduction="none").mean((1, 2, 3))
 
         # We are not attempting to learn the AE using the replay buffer.
-        replay_mask = torch.zeros_like(mse_present)
+        task_mask = torch.zeros_like(mse_present).bool()
         for current_class in out.task_classes:
-            replay_mask[out.y.eq(current_class)] = True
-        mse_present = replay_mask * mse_present
+            task_mask[out.y.eq(current_class)] = True
 
-        # Loss is relative to the past MSE to promote avoiding task confusion
-        self.loss = (mse_present / (mse_past + 1e-7)).mean()
-        self.mse_past = None  # Ensure the same mse_past is not used multiple times
+        self.loss = (
+            task_mask * (mse_present / self.mse_past)
+            + ~task_mask * (self.mse_past / mse_present)
+        ).mean()
+
+        self.mse_past = None  # Ensure that the wrong mse_past is not used
+        self.logit_past = None
 
 
 class CrossEntropy(LossObjective):

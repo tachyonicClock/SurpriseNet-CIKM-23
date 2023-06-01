@@ -80,7 +80,7 @@ class ExpConfig:
         self.classifier_loss_weight: t.Optional[float] = 1.0
         """Weight of the classifier loss. None if classifier loss is not used"""
         self.reconstruction_loss_type: t.Literal[
-            "mse", "bce", "DeepVAE_ELBO", "RelativeMSE"
+            "mse", "bce", "DeepVAE_ELBO", "SurpriseNetLoss"
         ] = "bce"
         """Type of loss function to use"""
         self.reconstruction_loss_weight: t.Optional[float] = None

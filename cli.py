@@ -319,7 +319,7 @@ def packNet(
     "-m", "--buffer-size", type=int, default=None, help="Size of the replay buffer"
 )
 @click.option(
-    "--relative-mse-loss",
+    "--surprisenet-loss",
     type=bool,
     default=False,
     is_flag=True,
@@ -335,7 +335,7 @@ def surprise_net(
     retrain_epochs: t.Optional[int],
     tree_activation: bool,
     buffer_size: int,
-    relative_mse_loss: bool,
+    surprisenet_loss: bool,
 ):
     """SurpriseNet performs the same pruning as PackNet,
     but uses anomaly detection inspired task inference to infer task labels,
@@ -356,8 +356,8 @@ def surprise_net(
     if tree_activation:
         cfg.activation_strategy = "SurpriseNetTreeActivation"
 
-    if relative_mse_loss:
-        cfg.reconstruction_loss_type = "RelativeMSE"
+    if surprisenet_loss:
+        cfg.reconstruction_loss_type = "SurpriseNetLoss"
 
     # Setup pruning scheme
     if prune_proportion is not None:
