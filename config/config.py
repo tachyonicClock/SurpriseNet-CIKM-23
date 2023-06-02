@@ -50,6 +50,7 @@ class ExpConfig:
         they are reconstructed using BCE loss, which expects data scaled to
         between 0 and 1.
         """
+        self.loader_workers: int = 0
 
         # GAUSSIAN SCHEDULE
         self.task_free = False
@@ -287,6 +288,19 @@ class ExpConfig:
         self.normalize = True
         self.retrain_epochs = 2
         self.total_task_epochs = 10
+        return self
+
+    def scenario_dsads(self) -> "ExpConfig":
+        self._network_mlp()
+        self.dataset_name = "DSADS"
+        self.input_shape = (405,)
+        self.is_image_data = False
+        self.n_classes = 19
+        self.n_experiences = 9
+        self.total_task_epochs = 10
+        self.retrain_epochs = 2
+        self.reconstruction_loss_type = "mse"
+        self.latent_dims = 64
         return self
 
     def scenario_gaussian_schedule_mnist(self: "ExpConfig") -> "ExpConfig":

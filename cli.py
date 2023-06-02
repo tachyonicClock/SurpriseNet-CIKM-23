@@ -25,6 +25,7 @@ SCENARIOS: t.Dict[str, t.Callable[[ExpConfig], ExpConfig]] = {
     "SE-CIFAR100": ExpConfig.scenario_embedded_cifar100,
     "SE-CORe50": ExpConfig.scenario_embedded_core50,
     "GS-MNIST": ExpConfig.scenario_gaussian_schedule_mnist,
+    "S-DSADS": ExpConfig.scenario_dsads,
 }
 
 ARCHITECTURES: t.Dict[str, t.Callable[[ExpConfig], ExpConfig]] = {

@@ -63,6 +63,8 @@ class Strategy(SupervisedTemplate):
     """
     classes_in_this_experience: t.Optional[t.List[int]] = None
 
+    loader_workers: int = 0
+
     def forward(self):
         """Compute the model's output given the current mini-batch."""
 
@@ -92,7 +94,7 @@ class Strategy(SupervisedTemplate):
 
     def make_train_dataloader(self, *args, **kwargs):
         return super().make_train_dataloader(
-            num_workers=cpu_count() - 1, *args, **kwargs
+            num_workers=self.loader_workers, *args, **kwargs
         )
 
 

@@ -259,6 +259,7 @@ class Experiment(BaseExperiment):
             plugins=[self, *self.plugins],
             evaluator=self.evaluator,
         )
+        strategy.loader_workers = cfg.loader_workers
 
         # Set CHF parameters
         if isinstance(strategy, CHF_SurpriseNet):

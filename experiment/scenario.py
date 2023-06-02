@@ -12,6 +12,7 @@ from avalanche.benchmarks.datasets import CORe50Dataset
 from torchvision.datasets import MNIST
 
 from experiment.gaussian_schedule import gaussian_schedule_dataset
+from scenarios.dsads import avalanche_DSADS
 
 MEAN_AND_STD = {
     "FMNIST": ((0.2861), (0.3530)),
@@ -50,6 +51,11 @@ EVAL_TRANSFORM = {
         ]
     ),
     "M_CORe50_NC": T.Compose(
+        [
+            T.ToTensor(),
+        ]
+    ),
+    "DSADS": T.Compose(
         [
             T.ToTensor(),
         ]
@@ -116,12 +122,17 @@ TRAIN_TRANSFORMS = {
             dequantize,
         ]
     ),
+    "DSADS": T.Compose(
+        [
+            T.ToTensor(),
+        ]
+    ),
 }
 
 
 def split_scenario(
     dataset: t.Literal[
-        "FMNIST", "CIFAR10", "CIFAR100", "M_CORe50_NC", "MNIST", "CORe50_NC"
+        "FMNIST", "CIFAR10", "CIFAR100", "M_CORe50_NC", "MNIST", "CORe50_NC", "DSADS"
     ],
     dataset_root: str,
     n_experiences: int,
@@ -172,6 +183,12 @@ def split_scenario(
             train_transform=train_transform,
             eval_transform=eval_transform,
             dataset_root=dataset_root,
+        )
+    elif dataset == "DSADS":
+        return avalanche_DSADS(
+            dataset_root,
+            n_experiences,
+            fixed_class_order=supplied_class_order,
         )
     elif dataset == "M_CORe50_NC" or dataset == "CORe50_NC":
         # Determine if we are using the mini version of CORe50

@@ -23,6 +23,7 @@ def tmp_log_dir():
 
 
 ROOT_LOG_DIR = tmp_log_dir()
+DATASET_ROOT = os.environ["DATASETS"]
 
 print("=" * 80)
 print("ROOT_LOG_DIR:", ROOT_LOG_DIR)
