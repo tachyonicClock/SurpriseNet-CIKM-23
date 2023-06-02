@@ -5,8 +5,10 @@ import torch
 from avalanche.benchmarks.generators.benchmark_generators import dataset_benchmark
 import typing as t
 from random import shuffle
-
+import random
 from torch.utils import data
+import numpy as np
+from scipy.io import loadmat
 
 
 def _partition(lst: t.List[t.Any], size: int) -> t.List[t.List[t.Any]]:
@@ -73,8 +75,13 @@ def _class_sampled_validation_split(
     # Determine indices for the split
     targets: t.List[int] = dataset.targets  # type: ignore
     indices = _get_indices(targets)  # type: ignore
+
+    state = random.getstate()
+    # Ensure the same split is used each time
+    random.seed(0)
     for _, idx in indices.items():
         shuffle(idx)
+    random.setstate(state)
 
     # Determine the splits for each class
     train_indices, val_indices = [], []
@@ -110,17 +117,51 @@ class DSADS(Dataset):
     def __init__(self, root: str) -> None:
         super().__init__()
         self.root = root
-        self.data_filename = os.path.join(self.root, "HAR", "DSADS", "dsads.feat")
-        df = pd.read_csv(self.data_filename)
+        self.data_filename = os.path.join(self.root, "HAR", "DSADS", "dsads.mat")
 
-        # Turn the ActivityName column into a categorical variable
-        df["ActivityName"] = df["ActivityName"].astype("category")
-        self.class_names: t.List[str] = df["ActivityName"].cat.categories.tolist()
-        # Replace the column with the categorical variable
-        df["ActivityName"] = df["ActivityName"].cat.codes
+        self.class_names = [
+            "ascending stairs",
+            "cycling on an exercise bike in horizontal positions",
+            "cycling on an exercise bike in vertical positions",
+            "descending stairs",
+            "exercising on a cross trainer",
+            "exercising on a stepper",
+            "jumping",
+            "lying on back side",
+            "lying on right side",
+            "moving around in an elevator",
+            "playing basketball",
+            "rowing",
+            "running on a treadmill3",
+            "sitting",
+            "standing",
+            "standing in an elevator still",
+            "walking in a parking lot",
+            "walking on a treadmill1",
+            "walking on a treadmill2",
+        ]
 
-        self.dataset_features = torch.Tensor(df.values[:, :-1])
-        self.targets = list(map(int, df.values[:, -1]))
+        """
+        dsads.mat: 9120 * 408.
+        Columns 0->404 are features, listed in the order of 'Torso', 'Right Arm',
+        'Left Arm', 'Right Leg', and 'Left Leg'. Each position contains 81
+        columns of features.
+        Columns 405->407 are labels.
+        Column 405 is the activity sequence indicating the executing of
+        activities (usually not used in experiments).
+        Column 406 is the activity label (1~19).
+        Column 407 denotes the person (1~8).
+        """
+
+        mat = loadmat("/local/scratch/antonlee/datasets/HAR/DSADS/dsads.mat")
+        np_data = mat["data_dsads"]
+        # Remove column 405->407 because they are label information
+        label = np_data[:, 406] - 1.0
+        self.participants = np_data[:, 407].astype(int)
+        np_data = np.delete(np_data, [405, 406, 407], axis=1)
+
+        self.dataset_features = torch.from_numpy(np_data).float()
+        self.targets = list(map(int, label))
         self.memory_usage_bytes = (
             self.dataset_features.element_size() * self.dataset_features.nelement()
             + 4 * len(self.targets)
@@ -133,8 +174,20 @@ class DSADS(Dataset):
 def split_DSADS(
     dsads: DSADS, task_count: int, fixed_class_order: t.Optional[t.List[int]] = None
 ) -> t.Tuple[t.List[data.Dataset], t.List[data.Dataset]]:
-    """Split DSADS into a continual learning training and testing set."""
-    train_dataset, val_dataset = _class_sampled_validation_split(dsads, 0.3)
+    """
+    Split DSADS into a continual learning training and testing set.
+    """
+
+    # Split into training and testing sets based using stratified sampling
+    # based on participants
+    test_mask = np.isin(dsads.participants, [8, 9])
+    test_idx = np.where(test_mask)[0]
+    train_idx = np.where(~test_mask)[0]
+    train_dataset = data.Subset(dsads, train_idx.tolist())
+    train_dataset.targets = [dsads.targets[i] for i in train_idx.tolist()]
+    val_dataset = data.Subset(dsads, test_idx.tolist())
+    val_dataset.targets = [dsads.targets[i] for i in test_idx.tolist()]
+
     train_class_dataset = _split_dataset_by_class(train_dataset, train_dataset.targets)
     test_class_dataset = _split_dataset_by_class(val_dataset, val_dataset.targets)
 
