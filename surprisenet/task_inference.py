@@ -97,14 +97,14 @@ class TaskReconstruction(TaskInferenceStrategy):
         model.activate_task_id(0)
         best_loss = torch.ones(x.shape[0]).to(x.device) * float("inf")
         best_loss, best_out = sample(forward_func, x)
-        novelty_scores[0] = best_loss
+        novelty_scores[0] = best_loss.detach().cpu()
         best_out.pred_exp_id = torch.zeros(x.shape[0]).int()
 
         # Iterate over all subsets and compare them to the best subset
         for i in range(1, model.subset_count()):
             model.activate_task_id(i)
             new_loss, new_out = sample(forward_func, x)
-            novelty_scores[i] = new_loss
+            novelty_scores[i] = new_loss.detach().cpu()
 
             # Update best_out if the current subset is better
             swap_mask = new_loss < best_loss

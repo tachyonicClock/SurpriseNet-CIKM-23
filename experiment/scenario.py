@@ -12,7 +12,7 @@ from avalanche.benchmarks.datasets import CORe50Dataset
 from torchvision.datasets import MNIST
 
 from experiment.gaussian_schedule import gaussian_schedule_dataset
-from scenarios.dsads import avalanche_DSADS
+from scenarios.human_activity_recognition import avalanche_DSADS, avalanche_PAMAP2
 
 MEAN_AND_STD = {
     "FMNIST": ((0.2861), (0.3530)),
@@ -56,6 +56,11 @@ EVAL_TRANSFORM = {
         ]
     ),
     "DSADS": T.Compose(
+        [
+            T.ToTensor(),
+        ]
+    ),
+    "PAMAP2": T.Compose(
         [
             T.ToTensor(),
         ]
@@ -127,6 +132,11 @@ TRAIN_TRANSFORMS = {
             T.ToTensor(),
         ]
     ),
+    "PAMAP2": T.Compose(
+        [
+            T.ToTensor(),
+        ]
+    ),
 }
 
 
@@ -186,6 +196,12 @@ def split_scenario(
         )
     elif dataset == "DSADS":
         return avalanche_DSADS(
+            dataset_root,
+            n_experiences,
+            fixed_class_order=supplied_class_order,
+        )
+    elif dataset == "PAMAP2":
+        return avalanche_PAMAP2(
             dataset_root,
             n_experiences,
             fixed_class_order=supplied_class_order,

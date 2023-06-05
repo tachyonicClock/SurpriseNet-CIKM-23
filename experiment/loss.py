@@ -59,7 +59,7 @@ class BCEReconstructionLoss(LossObjective):
         super().__init__(weighting)
 
     def update(self, out: ForwardOutput, target: Tensor = None):
-        self.loss = F.binary_cross_entropy(out.x_hat, out.x)
+        self.loss = F.binary_cross_entropy(out.x_hat.clamp(0, 1), out.x.clamp(0, 1))
 
 
 class MSEReconstructionLoss(LossObjective):

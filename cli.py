@@ -10,6 +10,11 @@ import torch
 from config.config import ExpConfig
 from surprisenet.plugin import equal_capacity_prune_schedule
 from train import Experiment
+from matplotlib import pyplot as plt
+
+# Use non interactive backend
+plt.switch_backend("agg")
+plt.ioff()
 
 
 def get_experiment_name(repo_hash, experiment, scenario, architecture, strategy):
@@ -26,6 +31,7 @@ SCENARIOS: t.Dict[str, t.Callable[[ExpConfig], ExpConfig]] = {
     "SE-CORe50": ExpConfig.scenario_embedded_core50,
     "GS-MNIST": ExpConfig.scenario_gaussian_schedule_mnist,
     "S-DSADS": ExpConfig.scenario_dsads,
+    "S-PAMAP2": ExpConfig.scenario_pamap2,
 }
 
 ARCHITECTURES: t.Dict[str, t.Callable[[ExpConfig], ExpConfig]] = {

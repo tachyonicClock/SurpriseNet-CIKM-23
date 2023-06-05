@@ -141,9 +141,7 @@ class BaseExperiment:
         self.class_order = self._class_order()
         self.objective = self.make_objective()
         self.network = self.make_network().to(self.cfg.device)
-        self.evaluator = self.make_evaluator(
-            [self.logger, StdoutLog()], self.scenario.n_classes
-        )
+        self.evaluator = self.make_evaluator([self.logger], self.scenario.n_classes)
         self.optimizer = self.make_optimizer(self.network.parameters())
         self.strategy = self.make_strategy()
 
@@ -153,6 +151,7 @@ class BaseExperiment:
         for i, exp in enumerate(self.scenario.train_stream):
             if _early_finish_task_id is not None and i >= _early_finish_task_id:
                 break
+            plt.close("all")
 
             unique_classes = set(map(int, exp.classes_in_this_experience))
             print(f"Start of experience: {exp.current_experience}")
@@ -162,9 +161,7 @@ class BaseExperiment:
 
             self.strategy.train(exp)
             test_subset = self.scenario.test_stream
-
-            if (i + 1) % self.cfg.test_every == 0:
-                results.append(self.strategy.eval(test_subset))
+            results.append(self.strategy.eval(test_subset))
 
         self.logger.writer.flush()
         self.post_flight(results)
@@ -266,6 +263,7 @@ class BaseExperiment:
 
     def preflight(self):
         print(f"Network: {type(self.network)}")
+        print(self.network)
         print(f"Traits:")
         for trait in NETWORK_TRAITS:
             if isinstance(self.network, trait):

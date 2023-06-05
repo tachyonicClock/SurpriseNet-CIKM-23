@@ -226,6 +226,9 @@ class SurpriseNet(ParameterMask):
     def multi_forward_no_task_inference(self, x: Tensor) -> ForwardOutput:
         pass
 
+    def use_top_subset(self):
+        self.activate_task_id(self.subset_count())
+
 
 NETWORK_TRAITS = [
     Classifier,

@@ -59,11 +59,8 @@ class ExpConfig:
         """In a task-free scenario, how many instances should be used per task"""
         self.task_free_width: float = 1 / 20
         """In a task-free scenario, how wide should the gaussian be"""
-        self.test_every: int = 1
-        """Limit how often the test set is evaluated. This is useful for 
-        microtasks where there are lots of tasks and the test set is relatively
-        large.
-        """
+        self.eval_every: int = -1
+        """How many epochs should pass between evaluations"""
         # DRIFT DETECTION
         self.task_free_drift_detector: t.Optional[t.Literal["clock_oracle"]] = None
         """If the scenario is task-free, what drift detector should be used?"""
@@ -292,15 +289,38 @@ class ExpConfig:
 
     def scenario_dsads(self) -> "ExpConfig":
         self._network_mlp()
+        self.batch_size = 1024
+        self.network_cfg["width"] = 1024
+        self.latent_dims = 32
+        self.network_cfg["layer_count"] = 4
+        self.network_cfg["dropout"] = 0.5
+        self.lr = 0.001
         self.dataset_name = "DSADS"
         self.input_shape = (405,)
         self.is_image_data = False
         self.n_classes = 19
         self.n_experiences = 9
-        self.total_task_epochs = 10
-        self.retrain_epochs = 2
-        self.reconstruction_loss_type = "mse"
-        self.latent_dims = 64
+        self.total_task_epochs = 200
+        self.retrain_epochs = 100
+        self.reconstruction_loss_type = "bce"
+        return self
+
+    def scenario_pamap2(self) -> "ExpConfig":
+        self._network_mlp()
+        self.batch_size = 1024
+        self.network_cfg["width"] = 512
+        self.latent_dims = 32
+        self.network_cfg["layer_count"] = 4
+        self.network_cfg["dropout"] = 0.5
+        self.lr = 0.001
+        self.dataset_name = "PAMAP2"
+        self.input_shape = (243,)
+        self.is_image_data = False
+        self.n_classes = 12
+        self.n_experiences = 6
+        self.total_task_epochs = 200
+        self.retrain_epochs = 100
+        self.reconstruction_loss_type = "bce"
         return self
 
     def scenario_gaussian_schedule_mnist(self: "ExpConfig") -> "ExpConfig":
@@ -323,7 +343,6 @@ class ExpConfig:
         self.task_free_instances_in_task = self.batch_size * 10
         self.task_free_width = 1 / 20
 
-        self.test_every = self.n_experiences / self.n_classes
         self.retrain_epochs = 0
         self.total_task_epochs = 1
 
