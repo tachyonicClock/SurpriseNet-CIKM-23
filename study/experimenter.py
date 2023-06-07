@@ -10,6 +10,8 @@ from vizier.benchmarks import experimenters
 from vizier.client.client_abc import TrialInterface
 
 ACC_TID = "TaskIdAccuracy"
+ACC_FINAL = "Accuracy_On_Trained_Experiences/eval_phase/test_stream/Task000"
+ACC_FINAL_SHORT = "Accuracy"
 
 
 class SurpriseNetExperimenter(experimenters.Experimenter):
@@ -47,11 +49,9 @@ class SurpriseNetExperimenter(experimenters.Experimenter):
         # Add the hyperparameters to TensorBoard
         exp.logger.writer.add_hparams(
             suggestion.parameters,
-            {
-                ACC_TID: 0.0,
-            },
+            {ACC_TID: 0.0, ACC_FINAL: 0.0},
         )
-        final_measurement = vz.Measurement({ACC_TID: 0.0})
+        final_measurement = vz.Measurement({ACC_TID: 0.0, ACC_FINAL_SHORT: 0.0})
 
         start_time = time.time()
         try:
@@ -69,6 +69,7 @@ class SurpriseNetExperimenter(experimenters.Experimenter):
 
         final_measurement.elapsed_secs = time.time() - start_time
         final_measurement.metrics[ACC_TID] = result[-1][ACC_TID]
+        final_measurement.metrics[ACC_FINAL_SHORT] = result[-1][ACC_FINAL]
         suggestion.complete(final_measurement)
 
     def evaluate(self, suggestions: t.Sequence[vz.Trial]):
@@ -83,12 +84,12 @@ class SurpriseNetExperimenter(experimenters.Experimenter):
         search = problem.search_space.root
 
         # SEARCH SPACE --------------------------------------------------------
-        search.add_discrete_param("classifier_loss_weight", [1.0])
-        search.add_discrete_param("total_task_epochs", [200])
-        search.add_discrete_param("hvae_loss_kwargs.beta_warmup", [50])
-        search.add_discrete_param("retrain_epochs", [10])
-        search.add_float_param("learning_rate", 1e-6, 0.002)
-        search.add_float_param("prune_proportion", 0.2, 0.8)
+        search.add_discrete_param("network_cfg.layer_growth", [1.0])
+        search.add_discrete_param("batch_size", [500])
+        search.add_float_param("learning_rate", 1e-6, 0.001)
+        search.add_float_param("network_cfg.dropout", 0.1, 0.5)
+        search.add_int_param("latent_dims", 8, 256)
+        search.add_float_param("prune_proportion", 0.6, 0.8)
 
         # OBJECTIVES ----------------------------------------------------------
         problem.metric_information.append(

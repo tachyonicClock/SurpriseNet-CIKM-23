@@ -14,9 +14,9 @@ VIZIER_HOST = os.environ.get("VIZIER_HOST", None)
 VIZIER_PORT = os.environ.get("VIZIER_PORT", None)
 
 
-def _via_ssh(
-    vizier_host: t.Optional[str],
-    vizier_port: t.Union[int, str, None],
+def via_ssh(
+    vizier_host: t.Optional[str] = VIZIER_HOST,
+    vizier_port: t.Union[int, str, None] = VIZIER_PORT,
 ):
     if vizier_port is None or vizier_host is None:
         raise ValueError(
@@ -32,14 +32,13 @@ def _via_ssh(
     server.start()
     address, port = server.local_bind_address
     clients.environment_variables.server_endpoint = f"{address}:{port}"
+    return f"{address}:{port}"
 
 
-def vizier_client_via_ssh(
+def vizier_client(
     owner: str,
     study_id: str,
     study_config: t.Optional[vz.StudyConfig] = None,
-    vizier_host: t.Optional[str] = VIZIER_HOST,
-    vizier_port: t.Union[int, str, None] = VIZIER_PORT,
 ) -> clients.Study:
     """Create a Vizier client via SSH.
 
@@ -50,7 +49,6 @@ def vizier_client_via_ssh(
     :param vizier_port: The port of the Vizier server to be forwarded.
     :return: A Vizier client for the study.
     """
-    _via_ssh(vizier_host, vizier_port)
     if study_config is None:
         return clients.Study.from_owner_and_id(owner=owner, study_id=study_id)
     else:
