@@ -1,3 +1,4 @@
+import pandas as pd
 from torch.utils.data import Dataset
 import os
 import torch
@@ -9,6 +10,7 @@ import random
 from torch.utils import data
 import numpy as np
 from scipy.io import loadmat
+import zipfile
 
 
 def _partition(lst: t.List[t.Any], size: int) -> t.List[t.List[t.Any]]:
@@ -182,6 +184,86 @@ class DSADS(Dataset):
         return self.data[index], int(self.targets[index])
 
 
+class CASAS_CSH101(Dataset):
+    """
+    CASAS CSH101 dataset from
+    https://archive.ics.uci.edu/ml/datasets/Human%2BActivity%2BRecognition%2Bfrom%2BContinuous%2BAmbient%2BSensor%2BData
+
+    The dataset is split into 80% train and 20% test.
+
+    To make the dataset more balanced, we under sample the majority classes and
+    over sample the minority classes. Each class should have 2565 samples in
+    the train set and 513 samples in the test set. (2565 is the median number
+    of samples per class).
+    """
+
+    def __init__(self, root: str, train: bool = False) -> None:
+        super().__init__()
+        rand = np.random.default_rng(42)
+        filename = os.path.join(root, "CASAS_csh101.ann.features.zip")
+        if not os.path.exists(filename):
+            raise FileNotFoundError(f"{filename} not found")
+        with zipfile.ZipFile(filename, "r") as z:
+            with z.open("csh101.ann.features.csv", "r") as f:
+                data = pd.read_csv(f)
+
+        # "activity" to categorical
+        data["activity"] = pd.Categorical(data["activity"])
+        self.class_names = data["activity"].cat.categories
+        data["activity"] = data["activity"].cat.codes
+
+        self.targets = torch.tensor(data["activity"].astype(int)).long()
+        self.data = torch.tensor(data.drop(columns=["activity"]).values.astype(float))
+        # Standardize each column
+        self.data = (self.data - self.data.mean(axis=0)) / (
+            self.data.std(axis=0) + 1e-6
+        )
+
+        # Split into train and test sets
+        rand = np.random.default_rng(42)
+        mask = rand.choice([True, False], size=len(self.data), p=[0.2, 0.8])
+        if train:
+            mask = ~mask
+
+        self.data = self.data[mask]
+        self.targets = self.targets[mask]
+
+        # Shuffle data and targets in unison
+        idx = rand.permutation(len(self.data))
+        self.data = self.data[idx]
+        self.targets = self.targets[idx]
+
+        if train:
+            class_size = 2565
+        else:
+            class_size = 513
+
+        for label, counts in zip(*self.targets.unique(return_counts=True)):
+            mask = self.targets == label
+            # Under sample
+            if counts > class_size:
+                under_sampled_data = self.data[mask][:class_size]
+                under_sampled_targets = self.targets[mask][:class_size]
+                self.data = torch.cat([self.data[~mask], under_sampled_data])
+                self.targets = torch.cat([self.targets[~mask], under_sampled_targets])
+            # Over sample
+            elif counts < class_size:
+                repeat = class_size // counts + 1
+                over_sampled_data = self.data[mask].repeat(repeat, 1)[:class_size]
+                over_sampled_targets = self.targets[mask].repeat(repeat)[:class_size]
+                self.data = torch.cat([self.data[~mask], over_sampled_data])
+                self.targets = torch.cat([self.targets[~mask], over_sampled_targets])
+
+        self.data = self.data.float()
+        self.targets = self.targets.long()
+
+    def __len__(self) -> int:
+        return len(self.targets)
+
+    def __getitem__(self, index: int) -> t.Tuple[Tensor, Tensor]:
+        return self.data[index], self.targets[index]
+
+
 class PANMAP2(Dataset):
     def __init__(self, root: str, train=True) -> None:
         super().__init__()
@@ -285,4 +367,18 @@ def avalanche_PAMAP2(
         *split_HAR(pamap2_train, pamap2_test, task_count, fixed_class_order)
     )
     scenario.n_classes = pamap2_test.n_classes
+    return scenario
+
+
+def avalanche_CASAS1(
+    root: str,
+    task_count: int,
+    fixed_class_order: t.Optional[t.List[int]] = None,
+):
+    casas_train = CASAS_CSH101(root, train=True)
+    casas_test = CASAS_CSH101(root, train=False)
+    scenario = dataset_benchmark(
+        *split_HAR(casas_train, casas_test, task_count, fixed_class_order)
+    )
+    scenario.n_classes = len(casas_test.class_names)
     return scenario

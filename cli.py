@@ -32,6 +32,7 @@ SCENARIOS: t.Dict[str, t.Callable[[ExpConfig], ExpConfig]] = {
     "GS-MNIST": ExpConfig.scenario_gaussian_schedule_mnist,
     "S-DSADS": ExpConfig.scenario_dsads,
     "S-PAMAP2": ExpConfig.scenario_pamap2,
+    "S-CASAS1": ExpConfig.scenario_casas1,
 }
 
 ARCHITECTURES: t.Dict[str, t.Callable[[ExpConfig], ExpConfig]] = {

@@ -5,6 +5,7 @@ import click
 from tqdm import tqdm
 import typing as t
 import os
+import numpy as np
 
 
 class StdoutLog(SupervisedPlugin, BaseLogger):
@@ -26,7 +27,7 @@ class StdoutLog(SupervisedPlugin, BaseLogger):
 
     def before_training_exp(self, strategy: SupervisedTemplate, *args, **kwargs):
         i_exp = strategy.experience.current_experience
-        classes = strategy.experience.classes_in_this_experience
+        classes = np.unique(strategy.experience.classes_in_this_experience)
         self.echo_header("-" * 80)
         self.echo_header(f"Experience {i_exp} containing the classes: {classes}")
 
