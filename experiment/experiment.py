@@ -141,7 +141,9 @@ class BaseExperiment:
         self.class_order = self._class_order()
         self.objective = self.make_objective()
         self.network = self.make_network().to(self.cfg.device)
-        self.evaluator = self.make_evaluator([self.logger], self.scenario.n_classes)
+        self.evaluator = self.make_evaluator(
+            [self.logger, StdoutLog()], self.scenario.n_classes
+        )
         self.optimizer = self.make_optimizer(self.network.parameters())
         self.strategy = self.make_strategy()
 

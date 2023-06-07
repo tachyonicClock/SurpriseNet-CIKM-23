@@ -178,12 +178,6 @@ class DSADS(Dataset):
             self.targets = np.array(self.targets)[test_mask]
             self.participants = self.participants[test_mask]
 
-        # Scale the data to [0, 1]
-        self.data: Tensor = (self.data - self.data.min()) / (
-            self.data.max() - self.data.min()
-        )
-        self.data = self.data.clamp(0.0, 1.0)
-
     def __getitem__(self, index: int) -> t.Tuple[torch.Tensor, torch.Tensor]:
         return self.data[index], int(self.targets[index])
 
@@ -224,12 +218,6 @@ class PANMAP2(Dataset):
         self.data = self.data[mask]
         self.targets = self.targets[mask].tolist()
         self.person = self.person[mask]
-
-        # Scale the data to [0, 1]
-        self.data: Tensor = (self.data - self.data.min()) / (
-            self.data.max() - self.data.min()
-        )
-        self.data = self.data.clamp(0.0, 1.0)
 
     def __len__(self) -> int:
         return len(self.targets)

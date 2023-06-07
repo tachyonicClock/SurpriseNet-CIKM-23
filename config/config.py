@@ -289,12 +289,13 @@ class ExpConfig:
 
     def scenario_dsads(self) -> "ExpConfig":
         self._network_mlp()
-        self.batch_size = 1024
-        self.network_cfg["width"] = 1024
-        self.latent_dims = 32
-        self.network_cfg["layer_count"] = 4
-        self.network_cfg["dropout"] = 0.5
-        self.lr = 0.001
+        self.batch_size = 500
+        self.network_cfg["width"] = 512
+        self.latent_dims = 128
+        self.network_cfg["layer_count"] = 5
+        self.network_cfg["layer_growth"] = 1.0
+        self.network_cfg["dropout"] = 0.2
+        self.learning_rate = 0.0008
         self.dataset_name = "DSADS"
         self.input_shape = (405,)
         self.is_image_data = False
@@ -302,7 +303,7 @@ class ExpConfig:
         self.n_experiences = 9
         self.total_task_epochs = 200
         self.retrain_epochs = 100
-        self.reconstruction_loss_type = "bce"
+        self.reconstruction_loss_type = "mse"
         return self
 
     def scenario_pamap2(self) -> "ExpConfig":
