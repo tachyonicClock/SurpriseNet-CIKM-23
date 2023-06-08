@@ -307,10 +307,6 @@ class ExpConfig:
         return self
 
     def scenario_pamap2(self) -> "ExpConfig":
-        raise ValueError("PAMAP2 is not supported yet")
-        return self
-
-    def scenario_casas1(self) -> "ExpConfig":
         self._network_mlp()
         self.batch_size = 500
         self.network_cfg["width"] = 512
@@ -319,15 +315,18 @@ class ExpConfig:
         self.network_cfg["layer_growth"] = 1.0
         self.network_cfg["dropout"] = 0.2
         self.learning_rate = 0.0008
-        self.dataset_name = "CASAS1"
-        self.input_shape = (36,)
+        self.dataset_name = "PAMAP2"
+        self.input_shape = (243,)
         self.is_image_data = False
-        self.n_classes = 34
-        self.n_experiences = 7
+        self.n_classes = 12
+        self.n_experiences = 6
         self.total_task_epochs = 200
         self.retrain_epochs = 100
         self.reconstruction_loss_type = "mse"
         return self
+
+    def scenario_casas1(self) -> "ExpConfig":
+        raise NotImplementedError("CASAS1 is not implemented")
 
     def scenario_gaussian_schedule_mnist(self: "ExpConfig") -> "ExpConfig":
         """Configure the experiment for the Fashion-MNIST dataset with a

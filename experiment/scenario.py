@@ -15,7 +15,6 @@ from experiment.gaussian_schedule import gaussian_schedule_dataset
 from scenarios.human_activity_recognition import (
     avalanche_DSADS,
     avalanche_PAMAP2,
-    avalanche_CASAS1,
 )
 
 MEAN_AND_STD = {
