@@ -1,16 +1,14 @@
-import pandas as pd
-from torch.utils.data import Dataset
 import os
-import torch
-from torch import Tensor
-from avalanche.benchmarks.generators.benchmark_generators import dataset_benchmark
 import typing as t
 from random import shuffle
-import random
-from torch.utils import data
+
 import numpy as np
+import torch
+from avalanche.benchmarks.generators.benchmark_generators import dataset_benchmark
 from scipy.io import loadmat
-import zipfile
+from torch import Tensor
+from torch.utils import data
+from torch.utils.data import Dataset
 
 
 def _partition(lst: t.List[t.Any], size: int) -> t.List[t.List[t.Any]]:
@@ -53,53 +51,6 @@ def _random_task_classes(
     if drop_remainder and class_count % task_count != 0:
         class_order = class_order[: -(class_count % task_count)]
     return _partition(class_order, class_count // task_count)
-
-
-def _class_sampled_validation_split(
-    dataset: data.Dataset, validation_split: float
-) -> t.Tuple[data.Dataset, t.Optional[data.Dataset]]:
-    """Split a dataset into a training and validation set. Where the validation
-    set is sampled from the training set so that each class is represented
-    the same amount in both training and validation sets.
-    """
-    # Require `targets` attribute on `dataset`
-    if not hasattr(dataset, "targets"):
-        raise ValueError("Dataset must have a `targets` attribute.")
-    if not (0.0 <= validation_split < 1.0):
-        raise ValueError("Validation split must be between 0 and 1, or 0.")
-    if not hasattr(dataset, "targets") or not isinstance(
-        dataset.targets, list  # type: ignore
-    ):
-        raise ValueError("Dataset must have a `targets` attribute that is a list.")
-    if validation_split == 0.0:
-        return dataset, None
-
-    # Determine indices for the split
-    targets: t.List[int] = dataset.targets  # type: ignore
-    indices = _get_indices(targets)  # type: ignore
-
-    state = random.getstate()
-    # Ensure the same split is used each time
-    random.seed(0)
-    for _, idx in indices.items():
-        shuffle(idx)
-    random.setstate(state)
-
-    # Determine the splits for each class
-    train_indices, val_indices = [], []
-    for _, idx in indices.items():
-        split_index = int(len(idx) * validation_split)
-        train_indices.extend(idx[split_index:])
-        val_indices.extend(idx[:split_index])
-
-    # Split the dataset
-    train_dataset = data.Subset(dataset, train_indices)
-    val_dataset = data.Subset(dataset, val_indices)
-
-    # Update the targets
-    train_dataset.targets = [targets[i] for i in train_indices]  # type: ignore
-    val_dataset.targets = [targets[i] for i in val_indices]  # type: ignore
-    return train_dataset, val_dataset
 
 
 def _split_dataset_by_class(
@@ -169,7 +120,8 @@ class DSADS(Dataset):
             self.data.element_size() * self.data.nelement() + 4 * len(self.targets)
         )
 
-        # Remove participants 7 and 8 from the training set to be used for testing
+        # Remove participants 7 and 8 from the training set so they can be used
+        # for testing. The choice of participants is arbitrary in this case.
         test_mask = np.isin(self.participants, [7, 8])
         if train:
             self.data = self.data[~test_mask]
@@ -213,9 +165,8 @@ class PAMAP2(Dataset):
         self.n_classes = 12
 
         # Remove participant 7,8 from the training set so they can be used
-        # for testing.
-        # Because these participants have the most measurements in the most
-        # activities.
+        # for testing, because these participants have the most measurements
+        # in the most activities.
         mask = torch.isin(self.person, torch.tensor([7, 8]))
         if train:
             mask = ~mask
@@ -291,17 +242,3 @@ def avalanche_PAMAP2(
     )
     scenario.n_classes = pamap2_test.n_classes
     return scenario
-
-
-# def avalanche_CASAS1(
-#     root: str,
-#     task_count: int,
-#     fixed_class_order: t.Optional[t.List[int]] = None,
-# ):
-#     casas_train = CASAS_CSH101(root, train=True)
-#     casas_test = CASAS_CSH101(root, train=False)
-#     scenario = dataset_benchmark(
-#         *split_HAR(casas_train, casas_test, task_count, fixed_class_order)
-#     )
-#     scenario.n_classes = len(casas_test.class_names)
-#     return scenario
