@@ -227,7 +227,7 @@ def split_scenario(
             fixed_class_order=supplied_class_order,
         )
     elif dataset == "CASAS1":
-        return avalanche_CASAS1(
+        return avalanche_DSADS(
             dataset_root,
             n_experiences,
             fixed_class_order=supplied_class_order,

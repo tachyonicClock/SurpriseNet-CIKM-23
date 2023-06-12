@@ -294,7 +294,7 @@ class ExpConfig:
         self.latent_dims = 128
         self.network_cfg["layer_count"] = 5
         self.network_cfg["layer_growth"] = 1.0
-        self.network_cfg["dropout"] = 0.2
+        self.network_cfg["dropout"] = 0.1
         self.learning_rate = 0.0008
         self.dataset_name = "DSADS"
         self.input_shape = (405,)
@@ -309,11 +309,11 @@ class ExpConfig:
     def scenario_pamap2(self) -> "ExpConfig":
         self._network_mlp()
         self.batch_size = 500
-        self.network_cfg["width"] = 512
-        self.latent_dims = 128
+        self.network_cfg["width"] = 256
+        self.latent_dims = 64
         self.network_cfg["layer_count"] = 5
         self.network_cfg["layer_growth"] = 1.0
-        self.network_cfg["dropout"] = 0.2
+        self.network_cfg["dropout"] = 0.1
         self.learning_rate = 0.0008
         self.dataset_name = "PAMAP2"
         self.input_shape = (243,)
