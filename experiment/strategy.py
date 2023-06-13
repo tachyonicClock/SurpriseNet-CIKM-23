@@ -6,7 +6,6 @@ from avalanche.training import Cumulative
 from avalanche.training.templates import SupervisedTemplate
 from torch import Tensor, nn
 import typing as t
-from os import cpu_count
 
 
 @dataclass

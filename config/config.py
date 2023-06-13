@@ -253,14 +253,62 @@ class ExpConfig:
         self.total_task_epochs = 10
         return self
 
+    def scenario_embedded_fmnist(self: "ExpConfig") -> "ExpConfig":
+        # Dataset configuration
+        self.dataset_name = "FMNIST"
+        self.n_classes = 10
+        self.n_experiences = 5
+        self.embedding_module = "ResNet18"
+        self.normalize = True
+        self.is_image_data = False
+
+        # Network configuration
+        self.network_style = "mlp"
+        self.latent_dims = 128
+        self.input_shape = (512,)
+        self.network_cfg["width"] = 512
+        self.network_cfg["layer_count"] = 5
+        self.network_cfg["layer_growth"] = 1.0
+        self.network_cfg["dropout"] = 0.1
+
+        # Training configuration
+        self.batch_size = 128
+        self.reconstruction_loss_type = "mse"
+        self.retrain_epochs = 5
+        self.total_task_epochs = 20
+        return self
+
+    def scenario_embedded_cifar10(self: "ExpConfig") -> "ExpConfig":
+        # Dataset configuration
+        self.dataset_name = "CIFAR10"
+        self.n_classes = 10
+        self.n_experiences = 5
+        self.embedding_module = "ResNet18"
+        self.normalize = True
+        self.is_image_data = False
+
+        # Network configuration
+        self.network_style = "mlp"
+        self.latent_dims = 128
+        self.input_shape = (512,)
+        self.network_cfg["width"] = 512
+        self.network_cfg["layer_count"] = 5
+        self.network_cfg["layer_growth"] = 1.0
+        self.network_cfg["dropout"] = 0.1
+
+        # Training configuration
+        self.batch_size = 128
+        self.reconstruction_loss_type = "mse"
+        self.retrain_epochs = 5
+        self.total_task_epochs = 20
+        return self
+
     def scenario_embedded_cifar100(self: "ExpConfig") -> "ExpConfig":
         """Configure the experiment to use the embedded CIFAR100 dataset"""
         self._network_mlp()
         self.dataset_name = "CIFAR100"
         self.embedding_module = "ResNet18"
-        self.input_shape = (512,)
         self.is_image_data = False
-        self.latent_dims = 256
         self.n_classes = 100
         self.n_experiences = 10
         self.prune_proportion = 0.5
@@ -268,6 +316,15 @@ class ExpConfig:
         self.normalize = True
         self.retrain_epochs = 30
         self.total_task_epochs = 100
+
+        # Network configuration
+        self.network_style = "mlp"
+        self.latent_dims = 128
+        self.input_shape = (512,)
+        self.network_cfg["width"] = 512
+        self.network_cfg["layer_count"] = 5
+        self.network_cfg["layer_growth"] = 1.0
+        self.network_cfg["dropout"] = 0.1
         return self
 
     def scenario_embedded_core50(self: "ExpConfig") -> "ExpConfig":
@@ -275,9 +332,7 @@ class ExpConfig:
         self._network_mlp()
         self.dataset_name = "CORe50_NC"
         self.embedding_module = "ResNet18"
-        self.input_shape = (512,)
         self.is_image_data = False
-        self.latent_dims = 512
         self.n_classes = 50
         self.n_experiences = 10
         self.prune_proportion = 0.5
@@ -285,13 +340,22 @@ class ExpConfig:
         self.normalize = True
         self.retrain_epochs = 2
         self.total_task_epochs = 10
+
+        # Network configuration
+        self.network_style = "mlp"
+        self.latent_dims = 128
+        self.input_shape = (512,)
+        self.network_cfg["width"] = 512
+        self.network_cfg["layer_count"] = 5
+        self.network_cfg["layer_growth"] = 1.0
+        self.network_cfg["dropout"] = 0.1
         return self
 
     def scenario_dsads(self) -> "ExpConfig":
         self._network_mlp()
         self.batch_size = 500
-        self.network_cfg["width"] = 512
         self.latent_dims = 128
+        self.network_cfg["width"] = 512
         self.network_cfg["layer_count"] = 5
         self.network_cfg["layer_growth"] = 1.0
         self.network_cfg["dropout"] = 0.1
