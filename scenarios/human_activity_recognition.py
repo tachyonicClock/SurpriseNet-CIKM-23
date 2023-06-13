@@ -135,6 +135,9 @@ class DSADS(Dataset):
     def __getitem__(self, index: int) -> t.Tuple[torch.Tensor, torch.Tensor]:
         return self.data[index], int(self.targets[index])
 
+    def __len__(self) -> int:
+        return len(self.targets)
+
 
 class PAMAP2(Dataset):
     def __init__(self, root: str, train=True) -> None:

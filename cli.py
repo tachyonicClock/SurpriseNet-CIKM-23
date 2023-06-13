@@ -24,11 +24,13 @@ def get_experiment_name(repo_hash, experiment, scenario, architecture, strategy)
 
 SCENARIOS: t.Dict[str, t.Callable[[ExpConfig], ExpConfig]] = {
     "S-FMNIST": ExpConfig.scenario_fmnist,
+    "SE-FMNIST": ExpConfig.scenario_embedded_fmnist,
     "S-CIFAR10": ExpConfig.scenario_cifar10,
+    "SE-CIFAR10": ExpConfig.scenario_embedded_cifar10,
     "S-CIFAR100": ExpConfig.scenario_cifar100,
-    "S-CORe50": ExpConfig.scenario_core50,
+    "S-CORE50": ExpConfig.scenario_core50,
     "SE-CIFAR100": ExpConfig.scenario_embedded_cifar100,
-    "SE-CORe50": ExpConfig.scenario_embedded_core50,
+    "SE-CORE50": ExpConfig.scenario_embedded_core50,
     "GS-MNIST": ExpConfig.scenario_gaussian_schedule_mnist,
     "S-DSADS": ExpConfig.scenario_dsads,
     "S-PAMAP2": ExpConfig.scenario_pamap2,
@@ -160,6 +162,9 @@ class TrainCommand(click.Group):
     default="CrossEntropy",
     help="The loss function to use for the classifier",
 )
+@click.option(
+    "--loader-workers", type=int, default=None, help="Number of workers for the loader"
+)
 @click.option("--log-directory", type=str, default=None)
 @click.argument("label", type=str)
 @click.argument("scenario", type=click.Choice(SCENARIOS.keys()), required=True)
@@ -183,10 +188,20 @@ def cli(
     repeat: int,
     seed: t.Optional[int],
     class_loss_type: str,
+    loader_workers: t.Optional[int],
 ):
     # Start building an experiment configuation
     cfg = ExpConfig()
     cfg.log_mini_batch = log_mini_batches
+
+    if loader_workers is not None:
+        cfg.loader_workers = loader_workers
+    else:
+        # Default to half the number of cores to avoid overloading the system
+        # with too many processes. This is conservative, but it is better to
+        # be safe than sorry. You can always override this with the
+        # --loader-workers flag.
+        cfg.loader_workers = os.cpu_count() // 2
 
     # Abort on dirty?
     # Store the repository version
@@ -194,7 +209,8 @@ def cli(
     cfg.repo_hash = project_repo.head.commit.hexsha[:8]
     if project_repo.is_dirty() and not ignore_dirty:
         click.echo(
-            "Please commit your changes before running experiments. This is best practice"
+            "Please commit your changes before running experiments. This is best"
+            + " practice"
         )
         click.echo("Use --ignore-dirty to ignore this")
         exit(1)
@@ -273,7 +289,7 @@ def packNet(
     cfg.strategy_packnet()
     # Setup pruning scheme
     if not equal_prune:
-        cfg.prune_proportion = prune_proportion if prune_proportion != None else 0.5
+        cfg.prune_proportion = prune_proportion if prune_proportion is not None else 0.5
     else:
         if prune_proportion is not None:
             click.secho(

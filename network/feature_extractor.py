@@ -19,6 +19,10 @@ def r18_extractor() -> nn.Module:
 
     @torch.no_grad()
     def _forward(x: Tensor) -> Tensor:
+        # If the images is black and white, convert to RGB
+        if x.shape[1] == 1:
+            x = x.repeat(1, 3, 1, 1)
+
         x = F.interpolate(x, size=(224, 224), mode="bilinear", align_corners=False)
         return model._forward_impl(x).detach()
 
