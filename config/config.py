@@ -276,6 +276,7 @@ class ExpConfig:
         self.reconstruction_loss_type = "mse"
         self.retrain_epochs = 5
         self.total_task_epochs = 20
+        self.learning_rate = 0.0008
         return self
 
     def scenario_embedded_cifar10(self: "ExpConfig") -> "ExpConfig":
@@ -301,6 +302,7 @@ class ExpConfig:
         self.reconstruction_loss_type = "mse"
         self.retrain_epochs = 25
         self.total_task_epochs = 50
+        self.learning_rate = 0.0008
         return self
 
     def scenario_embedded_cifar100(self: "ExpConfig") -> "ExpConfig":
@@ -325,6 +327,7 @@ class ExpConfig:
         self.network_cfg["layer_count"] = 5
         self.network_cfg["layer_growth"] = 1.0
         self.network_cfg["dropout"] = 0.1
+        self.learning_rate = 0.0008
         return self
 
     def scenario_embedded_core50(self: "ExpConfig") -> "ExpConfig":
@@ -349,6 +352,7 @@ class ExpConfig:
         self.network_cfg["layer_count"] = 5
         self.network_cfg["layer_growth"] = 1.0
         self.network_cfg["dropout"] = 0.1
+        self.learning_rate = 0.0008
         return self
 
     def scenario_dsads(self) -> "ExpConfig":
