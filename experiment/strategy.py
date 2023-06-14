@@ -92,6 +92,7 @@ class Strategy(SupervisedTemplate):
         self.optimizer.state = defaultdict(dict)
 
     def make_train_dataloader(self, *args, **kwargs):
+        print("Using {} workers".format(self.loader_workers))
         return super().make_train_dataloader(
             num_workers=self.loader_workers, *args, **kwargs
         )
