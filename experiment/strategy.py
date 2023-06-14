@@ -93,9 +93,7 @@ class Strategy(SupervisedTemplate):
 
     def make_train_dataloader(self, *args, **kwargs):
         print("Using {} workers".format(self.loader_workers))
-        return super().make_train_dataloader(
-            num_workers=self.loader_workers, *args, **kwargs
-        )
+        return super().make_train_dataloader(*args, **kwargs)
 
 
 class CumulativeTraining(Cumulative, Strategy):
