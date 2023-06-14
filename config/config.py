@@ -249,8 +249,8 @@ class ExpConfig:
         self.latent_dims = 512
         self.n_classes = 50
         self.n_experiences = 10
-        self.retrain_epochs = 2
-        self.total_task_epochs = 10
+        self.retrain_epochs = 25
+        self.total_task_epochs = 50
         return self
 
     def scenario_embedded_fmnist(self: "ExpConfig") -> "ExpConfig":
@@ -299,8 +299,8 @@ class ExpConfig:
         # Training configuration
         self.batch_size = 128
         self.reconstruction_loss_type = "mse"
-        self.retrain_epochs = 5
-        self.total_task_epochs = 20
+        self.retrain_epochs = 25
+        self.total_task_epochs = 50
         return self
 
     def scenario_embedded_cifar100(self: "ExpConfig") -> "ExpConfig":
@@ -338,8 +338,8 @@ class ExpConfig:
         self.prune_proportion = 0.5
         self.reconstruction_loss_type = "mse"
         self.normalize = True
-        self.retrain_epochs = 2
-        self.total_task_epochs = 10
+        self.retrain_epochs = 25
+        self.total_task_epochs = 50
 
         # Network configuration
         self.network_style = "mlp"
