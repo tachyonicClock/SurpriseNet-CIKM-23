@@ -50,23 +50,6 @@ class ExpConfig:
         they are reconstructed using BCE loss, which expects data scaled to
         between 0 and 1.
         """
-        self.loader_workers: int = 0
-
-        # GAUSSIAN SCHEDULE
-        self.task_free = False
-        """Should a task-free scenario be used?"""
-        self.task_free_instances_in_task: t.Optional[int] = None
-        """In a task-free scenario, how many instances should be used per task"""
-        self.task_free_width: float = 1 / 20
-        """In a task-free scenario, how wide should the gaussian be"""
-        self.eval_every: int = -1
-        """How many epochs should pass between evaluations"""
-        # DRIFT DETECTION
-        self.task_free_drift_detector: t.Optional[t.Literal["clock_oracle"]] = None
-        """If the scenario is task-free, what drift detector should be used?"""
-        self.task_free_drift_detector_kwargs: t.Optional[t.Dict[str, t.Any]] = None
-        """If the scenario is task-free, what kwargs should be passed to the
-        drift detector?"""
 
         # LOSS
         self.classifier_loss_type: t.Literal[
@@ -77,9 +60,7 @@ class ExpConfig:
         """Kwargs to pass to the classifier loss"""
         self.classifier_loss_weight: t.Optional[float] = 1.0
         """Weight of the classifier loss. None if classifier loss is not used"""
-        self.reconstruction_loss_type: t.Literal[
-            "mse", "bce", "DeepVAE_ELBO", "SurpriseNetLoss"
-        ] = "bce"
+        self.reconstruction_loss_type: t.Literal["mse", "bce"] = "bce"
         """Type of loss function to use"""
         self.reconstruction_loss_weight: t.Optional[float] = None
         """Weight of the reconstruction loss. None if reconstruction loss is
@@ -87,7 +68,6 @@ class ExpConfig:
         self.vae_loss_weight: t.Optional[float] = None
         """Weight of the VAE loss or Kullback-Leibler divergence strength. 
         None if VAE loss is not used"""
-        self.hvae_loss_kwargs: t.Optional[dict] = {"beta_warmup": 1}
 
         # ARCHITECTURE
         self.latent_dims: int
@@ -125,51 +105,10 @@ class ExpConfig:
         self.retrain_epochs: int
         """Number of epochs post-pruning to retrain the network"""
         self.task_inference_strategy: t.Literal[
-            "task_oracle", "task_reconstruction_loss", "log_likelihood_ratio"
+            "task_oracle", "task_reconstruction_loss"
         ]
         """Type of task inference strategy to use"""
         self.task_inference_strategy_kwargs: t.Optional[t.Dict[str, t.Any]] = None
-
-        self.activation_strategy: t.Literal[
-            "NaiveSurpriseNetActivation", "SurpriseNetTreeActivation"
-        ] = "NaiveSurpriseNetActivation"
-        """The activation strategy defines how the network reuses previously
-        learned weights. The NaiveSurpriseNetActivation strategy reuses all
-        previously learned weights. The SurpriseNetTreeActivation strategy
-        inherits only from the least novel task.
-        """
-
-        # OTHER STRATEGIES
-        # Experience replay
-        self.replay_buffer: t.Optional[int] = None
-        """Number of instances to store in the replay buffer. If 0 or None, no
-        replay buffer is used.
-        """
-        # Synaptic intelligence
-        self.si_lambda: t.Optional[float] = None
-        """Synaptic Intelligence Lambda. If 0 or None, no
-        synaptic intelligence is used."""
-
-        self.lwf_alpha: t.Optional[float] = None
-        """Learning without Forgetting alpha. If None LWF is not used"""
-
-        self.log_mini_batch: bool = False
-        """Log the loss and accuracy of each minibatch"""
-
-        self.cumulative: bool = False
-
-        # CONTINUAL HYPERPARAMETER FRAMEWORK
-        self.continual_hyperparameter_framework: bool = False
-        """Whether to use the continual hyperparameter framework"""
-        self.chf_validation_split_proportion: float = 0.2
-        """What fraction of the experience should be used for validation"""
-        self.chf_lr_grid = [0.00005, 0.0001, 0.0005, 0.001]
-        """Learning rate grid to search over during maximal plasticity search"""
-        self.chf_accuracy_drop_threshold = 0.1
-        """Threshold for acceptable accuracy drop"""
-        self.chf_stability_decay = 0.9
-        """How quickly the stability decays during stability decay search"""
-
         self.optimizer: t.Literal["Adam", "SGD"] = "Adam"
 
     def toJSON(self):
@@ -393,42 +332,6 @@ class ExpConfig:
         self.reconstruction_loss_type = "mse"
         return self
 
-    def scenario_casas1(self) -> "ExpConfig":
-        raise NotImplementedError("CASAS1 is not implemented")
-
-    def scenario_gaussian_schedule_mnist(self: "ExpConfig") -> "ExpConfig":
-        """Configure the experiment for the Fashion-MNIST dataset with a
-        Gaussian schedule"""
-        self._network_cnn()
-        # self.learning_rate = 0.01
-        self.dataset_name = "MNIST"
-        self.input_shape = (1, 32, 32)
-        self.is_image_data = True
-        self.latent_dims = 4
-        self.n_classes = 10
-
-        # self.mask_classifier_loss = True
-        self.classifier_loss_weight = None
-
-        # Setup the schedule
-        self.n_experiences = 200
-        self.task_free = True
-        self.task_free_instances_in_task = self.batch_size * 10
-        self.task_free_width = 1 / 20
-
-        self.retrain_epochs = 0
-        self.total_task_epochs = 1
-
-        self.task_free_drift_detector = "clock_oracle"
-        self.task_free_drift_detector_kwargs = dict(
-            drift_period=self.n_experiences / self.n_classes,
-            warn_in_advance=5,
-            drift_in_advance=1,
-        )
-
-        self.optimizer = "Adam"
-        return self
-
     def arch_autoencoder(self: "ExpConfig") -> "ExpConfig":
         """Configure the experiment to use an AutoEncoder"""
         self.architecture = "AE"
@@ -441,36 +344,6 @@ class ExpConfig:
         self.architecture = "VAE"
         self.reconstruction_loss_weight = 1.0
         self.vae_loss_weight = 0.001
-        return self
-
-    def arch_deep_vae(self: "ExpConfig") -> "ExpConfig":
-        """Configure the experiment to use a deep VAE"""
-        self.architecture = "DeepVAE"
-        self.reconstruction_loss_type = "DeepVAE_ELBO"
-        self.reconstruction_loss_weight = 1.0
-        self.classifier_loss_weight = 1.0
-        self.total_task_epochs = 200
-        self.retrain_epochs = 50
-        self.task_inference_strategy = "log_likelihood_ratio"
-
-        if self.dataset_name == "FMNIST":
-            self.learning_rate = 0.0001
-            self.batch_size = 256
-            self.total_task_epochs = 200
-            self.retrain_epochs = 50
-            self.hvae_loss_kwargs["beta_warmup"] = 100
-            self.network_style = "DeepVAE_FMNIST"
-            self.network_cfg["base_channels"] = 64
-            self.latent_dims = 8
-        elif self.dataset_name == "CIFAR10" or self.dataset_name == "CIFAR100":
-            self.learning_rate = 0.0001
-            self.batch_size = 256
-            self.total_task_epochs = 200
-            self.retrain_epochs = 50
-            self.network_style = "DeepVAE_CIFAR"
-            self.network_cfg["base_channels"] = 256
-            self.latent_dims = 32
-
         return self
 
     def strategy_packnet(self: "ExpConfig") -> "ExpConfig":

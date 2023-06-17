@@ -8,7 +8,6 @@ from experiment.strategy import ForwardOutput
 
 if t.TYPE_CHECKING:
     from surprisenet.task_inference import TaskInferenceStrategy
-    from surprisenet.activation import ActivationStrategy
 
 
 class MultiOutputNetwork(ABC):
@@ -215,13 +214,10 @@ class SurpriseNet(ParameterMask):
     task_inference_strategy: "TaskInferenceStrategy" = None
 
     def activate_task_id(self, task_id: int):
-        task_ids = self.subset_activation_strategy.task_activation(task_id)
         if task_id is self.subset_count():
-            # print(f"Activating frozen {task_ids}, allowing mutations to {task_id}")
-            self.mutable_activate_subsets(task_ids)
+            self.mutable_activate_subsets(list(range(0, task_id)))
         else:
-            # print(f"Activating frozen {task_ids}")
-            self.activate_subsets(task_ids)
+            self.activate_subsets(list(range(0, task_id)))
 
     def multi_forward_no_task_inference(self, x: Tensor) -> ForwardOutput:
         pass

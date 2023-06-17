@@ -4,7 +4,6 @@ from avalanche.core import SupervisedPlugin
 from click import secho
 from experiment.strategy import Strategy
 from network.trait import SurpriseNet
-from surprisenet.activation import NaiveSurpriseNetActivation, SurpriseNetTreeActivation
 
 
 def equal_capacity_prune_schedule(n_experiences: int) -> t.List[float]:
@@ -44,17 +43,6 @@ class SurpriseNetPlugin(SupervisedPlugin):
 
     def before_training_exp(self, strategy: Strategy, **kwargs):
         network: SurpriseNet = strategy.model
-
-        if isinstance(network.subset_activation_strategy, SurpriseNetTreeActivation):
-            network.subset_activation_strategy.before_training_exp(strategy)
-        elif isinstance(network.subset_activation_strategy, NaiveSurpriseNetActivation):
-            pass
-        else:
-            raise ValueError(
-                "Network must have a SurpriseNetTreeActivation or "
-                + "NaivePackNetActivation"
-            )
-
         network.activate_task_id(network.subset_count())
 
     def after_training_exp(self, strategy, **kwargs):

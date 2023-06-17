@@ -3,7 +3,6 @@ from avalanche.logging import BaseLogger
 from avalanche.training.templates import SupervisedTemplate
 import click
 from tqdm import tqdm
-import typing as t
 import os
 import numpy as np
 

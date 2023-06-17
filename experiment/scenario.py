@@ -12,7 +12,6 @@ from avalanche.benchmarks.classic import (
 from avalanche.benchmarks.datasets import CORe50Dataset
 from torchvision.datasets import MNIST
 
-from experiment.gaussian_schedule import gaussian_schedule_dataset
 from scenarios.human_activity_recognition import (
     avalanche_DSADS,
     avalanche_PAMAP2,
@@ -65,11 +64,6 @@ EVAL_TRANSFORM = {
         ]
     ),
     "PAMAP2": T.Compose(
-        [
-            T.ToTensor(),
-        ]
-    ),
-    "CASAS1": T.Compose(
         [
             T.ToTensor(),
         ]
@@ -146,11 +140,6 @@ TRAIN_TRANSFORMS = {
             T.ToTensor(),
         ]
     ),
-    "CASAS1": T.Compose(
-        [
-            T.ToTensor(),
-        ]
-    ),
 }
 
 
@@ -163,7 +152,6 @@ def split_scenario(
         "MNIST",
         "CORe50_NC",
         "DSADS",
-        "CASAS_CSH101",
     ],
     dataset_root: str,
     n_experiences: int,
@@ -227,12 +215,6 @@ def split_scenario(
             n_experiences,
             fixed_class_order=supplied_class_order,
         )
-    elif dataset == "CASAS1":
-        return avalanche_DSADS(
-            dataset_root,
-            n_experiences,
-            fixed_class_order=supplied_class_order,
-        )
     elif dataset == "M_CORe50_NC" or dataset == "CORe50_NC":
         # Determine if we are using the mini version of CORe50
         core_mini = dataset == "M_CORe50_NC"
@@ -256,38 +238,5 @@ def split_scenario(
             n_experiences=n_experiences,
             fixed_class_order=supplied_class_order,
         )
-    else:
-        raise NotImplementedError("Dataset not implemented")
-
-
-def gaussian_schedule_scenario(
-    dataset_root: str,
-    dataset: t.Literal["FMNIST", "CIFAR10", "CIFAR100"],
-    instances_in_task: int,
-    width: int,
-    microtask_count: int,
-    normalize: bool,
-):
-    eval_transform = EVAL_TRANSFORM[dataset]
-    train_transform = TRAIN_TRANSFORMS[dataset]
-    if normalize:
-        eval_transform.transforms.append(T.Normalize(*MEAN_AND_STD[dataset]))
-        train_transform.transforms.append(T.Normalize(*MEAN_AND_STD[dataset]))
-
-    if dataset == "MNIST":
-        train_dataset = MNIST(dataset_root, train=True, download=True)
-        test_dataset = MNIST(dataset_root, train=False, download=True)
-        scenario = gaussian_schedule_dataset(
-            train_dataset.targets,
-            train_dataset,
-            test_dataset,
-            width,
-            microtask_count,
-            instances_in_task,
-            eval_transform,
-            train_transform,
-        )
-        scenario.n_classes = 10
-        return scenario
     else:
         raise NotImplementedError("Dataset not implemented")

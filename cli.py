@@ -31,16 +31,13 @@ SCENARIOS: t.Dict[str, t.Callable[[ExpConfig], ExpConfig]] = {
     "S-CORE50": ExpConfig.scenario_core50,
     "SE-CIFAR100": ExpConfig.scenario_embedded_cifar100,
     "SE-CORE50": ExpConfig.scenario_embedded_core50,
-    "GS-MNIST": ExpConfig.scenario_gaussian_schedule_mnist,
     "S-DSADS": ExpConfig.scenario_dsads,
     "S-PAMAP2": ExpConfig.scenario_pamap2,
-    "S-CASAS1": ExpConfig.scenario_casas1,
 }
 
 ARCHITECTURES: t.Dict[str, t.Callable[[ExpConfig], ExpConfig]] = {
     "AE": ExpConfig.arch_autoencoder,
     "VAE": ExpConfig.arch_variational_auto_encoder,
-    "DeepVAE": ExpConfig.arch_deep_vae,
 }
 
 
@@ -52,50 +49,7 @@ def run(cfg: ExpConfig):
     experiment.train()
 
 
-class TrainCommand(click.Group):
-    def invoke(self, ctx):
-        n = ctx.params["repeat"]
-        seed = ctx.params["seed"] or torch.initial_seed()
-
-        if n == 1:
-            super().invoke(ctx)
-        else:
-            # Sub-processes ensure nothing is shared between runs, such as
-            # singletons, global variables, etc. I don't know why this is
-            # necessary. I don't think it is an issue with avalanche-cli but
-            # rather with avalanche itself, at least for some of the
-            # strategies.
-            for i in range(n):
-                click.secho(f"Running experiment {i+1}/{n}", fg="green")
-                click.secho("=" * 80, fg="green")
-
-                if os.fork() == 0:
-                    # Set seeds for all experiments
-                    seed = (seed + i) % 2**32
-                    click.secho(f"Setting seed to {seed}", fg="green")
-                    torch.manual_seed(seed)
-                    np.random.seed(seed)
-                    random.seed(seed)
-
-                    # Child process
-                    super(TrainCommand, self).invoke(ctx)
-                    break
-                else:
-                    # Parent process
-                    child_exit = os.wait()
-                    if child_exit[1] != 0:
-                        click.secho(f"Experiment {i+1}/{n} failed", fg="red")
-                        exit(1)
-                    click.secho("=" * 80, fg="green")
-
-
-@click.group(cls=TrainCommand)
-@click.option(
-    "-r", "--repeat", type=int, default=1, help="Repeat the experiment N times"
-)
-@click.option(
-    "-s", "--seed", type=int, default=None, help="Seed for the random number generator"
-)
+@click.group()
 @click.option(
     "--ignore-dirty",
     is_flag=True,
@@ -162,9 +116,6 @@ class TrainCommand(click.Group):
     default="CrossEntropy",
     help="The loss function to use for the classifier",
 )
-@click.option(
-    "--loader-workers", type=int, default=None, help="Number of workers for the loader"
-)
 @click.option("--log-directory", type=str, default=None)
 @click.argument("label", type=str)
 @click.argument("scenario", type=click.Choice(SCENARIOS.keys()), required=True)
@@ -185,23 +136,11 @@ def cli(
     batch_size: t.Optional[int],
     task_count: t.Optional[int],
     std_order: bool,
-    repeat: int,
-    seed: t.Optional[int],
     class_loss_type: str,
-    loader_workers: t.Optional[int],
 ):
     # Start building an experiment configuation
     cfg = ExpConfig()
     cfg.log_mini_batch = log_mini_batches
-
-    if loader_workers is not None:
-        cfg.loader_workers = loader_workers
-    else:
-        # Default to half the number of cores to avoid overloading the system
-        # with too many processes. This is conservative, but it is better to
-        # be safe than sorry. You can always override this with the
-        # --loader-workers flag.
-        cfg.loader_workers = os.cpu_count() // 2
 
     # Abort on dirty?
     # Store the repository version
@@ -256,8 +195,8 @@ def cli(
     "-p",
     "--prune-proportion",
     type=float,
-    default=0.5,
-    help="PackNet prunes the network to this proportion each experience",
+    default=None,
+    help="SurpriseNet prunes the network to this proportion each experience",
 )
 @click.option(
     "--equal-prune",
@@ -271,131 +210,29 @@ def cli(
     default=None,
     help="Override the default number of epochs to retrain the"
     + "network after pruning",
-)
-@click.pass_obj
-def packNet(
-    cfg: ExpConfig,
-    prune_proportion: float,
-    equal_prune: bool,
-    retrain_epochs: t.Optional[int],
-):
-    """Use task incremental PackNet
-
-    Mallya, A., & Lazebnik, S. (2018). PackNet: Adding Multiple Tasks to a
-    Single Network by Iterative Pruning. 2018 IEEE/CVF Conference on Computer
-    Vision and Pattern Recognition, 7765–7773.
-    https://doi.org/10.1109/CVPR.2018.00810
-    """
-    cfg.strategy_packnet()
-    # Setup pruning scheme
-    if not equal_prune:
-        cfg.prune_proportion = prune_proportion if prune_proportion is not None else 0.5
-    else:
-        if prune_proportion is not None:
-            click.secho(
-                "Warning: --prune-proportion is ignored when using equal pruning",
-                fg="yellow",
-            )
-        cfg.prune_proportion = equal_capacity_prune_schedule(cfg.n_experiences)
-
-    cfg.retrain_epochs = retrain_epochs or cfg.retrain_epochs
-    cfg.name = get_experiment_name(
-        cfg.repo_hash, cfg.label, cfg.scenario_name, cfg.architecture, "taskOracle"
-    )
-    run(cfg)
-
-
-@cli.command()
-@click.option(
-    "-p",
-    "--prune-proportion",
-    type=float,
-    default=None,
-    help="PackNet prunes the network to this proportion each experience",
-)
-@click.option(
-    "--equal-prune",
-    is_flag=True,
-    default=False,
-    help="Prune such that each task has the same number of parameters",
-)
-@click.option(
-    "--chf",
-    is_flag=True,
-    default=False,
-    help="Whether to use the continual hyperparameter framework (Delange et al., 2021)",
-)
-@click.option(
-    "--retrain-epochs",
-    type=int,
-    default=None,
-    help="Override the default number of epochs to retrain the"
-    + "network after pruning",
-)
-@click.option(
-    "--tree-activation",
-    is_flag=True,
-    default=False,
-    help="Enable tree activation for SurpriseNet. Determines the best subset to "
-    + "inherit from",
-)
-@click.option(
-    "-m", "--buffer-size", type=int, default=None, help="Size of the replay buffer"
-)
-@click.option(
-    "--surprisenet-loss",
-    type=bool,
-    default=False,
-    is_flag=True,
-    help="Relative MSE weights the MSE loss based on the previous task-specific"
-    + " subsets performance",
 )
 @click.pass_obj
 def surprise_net(
     cfg: ExpConfig,
     prune_proportion: float,
     equal_prune: bool,
-    chf: bool,
     retrain_epochs: t.Optional[int],
-    tree_activation: bool,
-    buffer_size: int,
-    surprisenet_loss: bool,
 ):
-    """SurpriseNet performs the same pruning as PackNet,
-    but uses anomaly detection inspired task inference to infer task labels,
-    removing the reliance on a task oracle. Additionally it can be pruned
-    such that each task has the same number of parameters.
+    """SurpriseNet uses anomaly detection inspired task inference to infer task labels,
+    removing the reliance on a task oracle.
     """
     cfg.strategy_surprisenet()
-    cfg.replay_buffer = buffer_size or cfg.replay_buffer
-
-    assert not (equal_prune and chf), "Cannot use both equal pruning and CHF"
     assert not (
         equal_prune and prune_proportion is not None
     ), "Cannot use both equal pruning and prune proportion"
-    assert not (
-        chf and prune_proportion is not None
-    ), "Cannot use both CHF and prune proportion"
-
-    if tree_activation:
-        cfg.activation_strategy = "SurpriseNetTreeActivation"
-
-    if surprisenet_loss:
-        cfg.reconstruction_loss_type = "SurpriseNetLoss"
 
     # Setup pruning scheme
     if prune_proportion is not None:
         cfg.prune_proportion = prune_proportion if prune_proportion is not None else 0.5
-    elif chf:
-        cfg.prune_proportion = 0.95
-        cfg.continual_hyperparameter_framework = True
     elif equal_prune:
         cfg.prune_proportion = equal_capacity_prune_schedule(cfg.n_experiences)
     else:
-        click.secho(
-            "Warning: No pruning schedule specified, using default", fg="yellow"
-        )
-        cfg.prune_proportion = 0.5
+        raise ValueError("Must specify either prune proportion or equal prune schedule")
 
     if retrain_epochs is not None:
         click.secho("INFO: Overriding default retrain epochs", fg="yellow")
@@ -410,64 +247,6 @@ def surprise_net(
         cfg.repo_hash, cfg.label, cfg.scenario_name, cfg.architecture, "surpriseNet"
     )
     run(cfg)
-
-
-@cli.command()
-@click.option(
-    "-m", "--buffer-size", type=int, default=1000, help="Size of the replay buffer"
-)
-@click.pass_obj
-def replay(cfg: ExpConfig, buffer_size: int):
-    """Use replay buffer strategy, where the network is trained using a
-    replay buffer of previous experiences.
-    """
-    cfg.strategy_replay()
-    cfg.replay_buffer = buffer_size
-    cfg.name = get_experiment_name(
-        cfg.repo_hash, cfg.label, cfg.scenario_name, cfg.architecture, "replay"
-    )
-    run(cfg)
-
-
-@cli.command()
-@click.pass_obj
-def non_continual(cfg: ExpConfig):
-    """Train a model on all experiences at once. This is a baseline for
-    comparison with continual learning methods.
-    """
-    cfg.strategy_not_cl()
-    cfg.name = get_experiment_name(
-        cfg.repo_hash, cfg.label, cfg.scenario_name, cfg.architecture, "nonContinual"
-    )
-    run(cfg)
-
-
-@cli.command()
-@click.pass_obj
-def cumulative(cfg: ExpConfig):
-    cfg.cumulative = True
-    cfg.name = get_experiment_name(
-        cfg.repo_hash, cfg.label, cfg.scenario_name, cfg.architecture, "cumulative"
-    )
-    run(cfg)
-
-
-@cli.command()
-@click.pass_obj
-def finetuning(cfg: ExpConfig):
-    """Train a model on all experiences at once. This is a baseline for
-    comparison with continual learning methods.
-    """
-    cfg.name = get_experiment_name(
-        cfg.repo_hash, cfg.label, cfg.scenario_name, cfg.architecture, "finetuning"
-    )
-    run(cfg)
-
-
-@cli.command()
-@click.pass_obj
-def dummy(cfg: ExpConfig):
-    print("Dummy command")
 
 
 if __name__ == "__main__":
