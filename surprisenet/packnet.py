@@ -2,13 +2,7 @@ import typing as t
 
 import torch
 import torch.nn as nn
-from surprisenet.activation import (
-    ActivationStrategy,
-    NaiveSurpriseNetActivation,
-)
 from experiment.strategy import ForwardOutput
-from hvae.hvaeoodd.oodd.layers.linear import NormedDense, NormedLinear
-from network.deep_vae import CIFARDeepHVAE
 from network.trait import (
     AutoEncoder,
     Classifier,
@@ -173,9 +167,6 @@ def wrap(wrappee: nn.Module):
     # Remove Weight Norm
     if hasattr(wrappee, "weight_g") and hasattr(wrappee, "weight_v"):
         torch.nn.utils.remove_weight_norm(wrappee)
-    if isinstance(wrappee, (NormedLinear, NormedDense)):
-        wrappee.weightnorm = False
-
     # Recursive cases
     if isinstance(wrappee, nn.Linear):
         return _PnLinear(wrappee)
@@ -264,13 +255,11 @@ class SurpriseNetAutoEncoder(InferTask, AutoEncoder, _TaskMaskParent):
         self,
         auto_encoder: AutoEncoder,
         task_inference_strategy: TaskInferenceStrategy,
-        subset_activation_strategy: ActivationStrategy = NaiveSurpriseNetActivation(),
     ) -> None:
         super().__init__(
             auto_encoder._encoder, auto_encoder._decoder, auto_encoder._classifier
         )
         wrap(auto_encoder)
-        self.subset_activation_strategy = subset_activation_strategy
         self.task_inference_strategy = task_inference_strategy
 
     def multi_forward(self, x: Tensor) -> ForwardOutput:
@@ -301,7 +290,6 @@ class SurpriseNetVariationalAutoEncoder(
         self,
         auto_encoder: VariationalAutoEncoder,
         task_inference_strategy: TaskInferenceStrategy,
-        subset_activation_strategy: ActivationStrategy = NaiveSurpriseNetActivation(),
     ) -> None:
         super().__init__(
             auto_encoder._encoder,
@@ -311,7 +299,6 @@ class SurpriseNetVariationalAutoEncoder(
         )
         wrap(auto_encoder)
         self.task_inference_strategy = task_inference_strategy
-        self.subset_activation_strategy = subset_activation_strategy
 
     def multi_forward(self, x: Tensor) -> ForwardOutput:
         if self.training:
@@ -328,64 +315,3 @@ class SurpriseNetVariationalAutoEncoder(
     def conditioned_sample(self, n: int = 1, given_task: int = 0) -> Tensor:
         self.activate_task_id(given_task)
         return self.sample(n)
-
-
-class SurpriseNetDeepVAE(
-    Classifier,
-    InferTask,
-    Encoder,
-    Decoder,
-    Samplable,
-    MultiOutputNetwork,
-    _TaskMaskParent,
-):
-    def __init__(
-        self,
-        wrapped: CIFARDeepHVAE,
-        task_inference_strategy: TaskInferenceStrategy,
-        subset_activation_strategy: ActivationStrategy = NaiveSurpriseNetActivation(),
-    ) -> None:
-        super().__init__()
-        self.wrapped = wrapped
-        self.task_inference_strategy = task_inference_strategy
-        self.task_inference_strategy.model = self
-        self.subset_activation_strategy = subset_activation_strategy
-        wrap(wrapped)
-
-    def forward(
-        self,
-        x: Tensor,
-        n_posterior_samples: int = 1,
-        use_mode: bool | t.List[bool] = False,
-        decode_from_p: bool | t.List[bool] = False,
-        **stage_kwargs: t.Any,
-    ):
-        return self.wrapped(
-            x, n_posterior_samples, use_mode, decode_from_p, **stage_kwargs
-        )
-
-    def sample(self, n: int = 1) -> Tensor:
-        return self.wrapped.sample(n)
-
-    def decode(self, embedding: Tensor) -> Tensor:
-        return self.wrapped.decode(embedding)
-
-    def encode(self, x: Tensor) -> Tensor:
-        return self.wrapped.encode(x)
-
-    def classify(self, x: Tensor) -> Tensor:
-        out = self.multi_forward(x)
-        return out.y_hat
-
-    def multi_forward(self, x: Tensor) -> ForwardOutput:
-        if self.training:
-            return self.wrapped.multi_forward(x)
-        else:
-            """At eval time we need to try infer the task somehow?"""
-            return self.task_inference_strategy.forward_with_task_inference(
-                self.wrapped.multi_forward, x
-            )
-
-    @property
-    def n_latents(self) -> int:
-        return self.wrapped.n_latents

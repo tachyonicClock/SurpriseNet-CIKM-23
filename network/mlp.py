@@ -1,6 +1,6 @@
 import math
 import typing as t
-from torch import nn, Tensor, Size
+from torch import nn, Tensor
 from network.trait import Classifier, Decoder, Encoder, Sampler
 
 

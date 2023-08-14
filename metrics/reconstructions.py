@@ -123,7 +123,7 @@ class GenerateReconstruction(PluginMetric):
         return patterns
 
     @torch.no_grad()
-    def after_eval(self, strategy: Strategy) -> "MetricResult":
+    def after_eval(self, strategy: Strategy):
         model = strategy.model
         assert isinstance(model, MultiOutputNetwork)
 
@@ -216,7 +216,7 @@ class GenerateSamples(PluginMetric):
         axes.set_title(f"Prediction {gen_y}")
 
     @torch.no_grad()
-    def after_eval(self, strategy: "BaseStrategy") -> "MetricResult":
+    def after_eval(self, strategy: Strategy):
         assert isinstance(strategy.model, Samplable), "Network must be `Samplable`"
 
         self.device = strategy.device

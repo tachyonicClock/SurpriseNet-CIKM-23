@@ -15,9 +15,21 @@ from anomaly detection to gain cross-task knowledge without replay.
 > the context of continual learning, this is the process of identifying
 > instances that belong to different tasks. *Hence, SurpriseNet*.
 
+## Othermethods 
+Most other method were implemented using the [mammoth](https://github.com/aimagelab/mammoth) codebase.
+S-FMNIST, S-DSADS and S-PAMAP2 are added by us to mammoth codebase. Furthermore, we added class order 
+shuffling. For all methods we performed a grid search over the hyperparameters.
 
+BIR, and GR were implemented using [brain-inspired replay](https://github.com/GMvandeVen/brain-inspired-replay)
+codebase. We added class order shuffling and S-DSADS, S-PAMAP2, S-FMNIST datasets. For their methods, we used the 
+default hyperparameters. For S-DSADS and S-PAMAP2, we performed a grid search over the hyperparameters.
 
+Finally CLOM was implemented using [CLOM](https://github.com/k-gyuhak/clom) codebase. 
+We added class order shuffling and S-FMNIST datasets. However, their method does not support
+S-DSADS and S-PAMAP2 datasets. For their methods, we used the default hyperparameters but had
+to adjust the epoch budgets.
 
+The results of our grid search can be found in `SurpriseNet Hyperprarameters.ods` or `SurpriseNet Hyperprarameters.xlsx`.
 ## Usage
 
 The CLI follows the following basic structure:
@@ -27,13 +39,19 @@ python cli.py [OPTIONS] LABEL SCENARIO {AE|VAE} STRATEGY
 - `OPTIONS` - Override default configurations. Set seed etc
 - `LABEL` - A short title for the experiment. This helps differentiate experiments
 but is only meaningful to you.
-- `SCENARIO` - Choose between: `S-FMNIST`, `S-CIFAR10`, `S-CIFAR100`, `S-CORe50`, `SE-CIFAR100`, or `SE-CORe50`.
+- `SCENARIO` - Choose between: `S-DSADS`, `S-PAMAP2`, `S-FMNIST`, `S-CIFAR10`, `S-CIFAR100`
+   to enable SurpriseNetE you can use `SE-FMNIST`, `SE-CIFAR10`, `SE-CIFAR100`, attaching
+   a feature extractor before an MLP SurpriseNet.
 - `AE|VAE` - Choose between an autoencoder or variational autoencoder
-- `STRATEGY` - Choose a continual learning strategy, where `surpriseNet` is our approach
+- `STRATEGY` - Choose a continual learning strategy, where `surprise-net` is our approach
 
 Ensure you setup the `DATASETS` environment variable:
 ```sh
 export DATASETS=/path/to/datasets
+```
+Make sure you extract the S-DSADS and S-PAMAP2 datasets from the zip file. 
+```
+ unzip HAR.zip -d $DATASETS
 ```
 
 
@@ -63,56 +81,11 @@ the configuration is saved to the tensorboard file and to a JSON file in
 `experiment_logs/[EXPERIMENT]/config.json`.
 
 ### Examples
-
-Train and test a non-continual model.
-```
-python cli.py myExperiment S-FMNIST AE non-continual
-```
-Fine-tuning:
-```
-python cli.py myExperiment SE-CIFAR100 AE finetuning
-```
 SurpriseNet with a specific prune proportion:
 ```
 python cli.py myExperiment SE-CIFAR100 VAE surprise-net -p 0.5
 ```
-Experience replay:
-```
-python cli.py myExperiment S-CORe50 AE replay -m 1000
-```
-
 Equal prune:
 ```
 python cli.py myExperiment S-CIFAR100 AE surprise-net --equal-prune
 ```
-
-Continual hyper-parameter framework (slow):
-```
-python cli.py myExperiment SE-CIFAR100 VAE surprise-net --chf
-```
-
-## Areas of interest
-
-- `packnet/packnet.py` contains our implementation of PackNet. We employ the
-decorator pattern to implement PackNet. We define multiple decorator classes
-to wrap neural network primitive modules with PackNet logic. For example,
-the `packnet._PnLinear` class is a decorator for `nn.Linear` that adds the necessary
-functionality to make it PackNet compatible. The decorated class is then
-used in place of the original object. The pattern allows us to easily convert
-any neural network into a PackNet. We simply wrap the network with the
-`packnet.wrap`. The method returns a new network with the same architecture
-but with each module wrapped with the appropriate PackNet decorator.
-- `packnet/task_inference.py` contains the code responsible for task inference,
-which is the process of determining which task a instance belongs to. This is done
-by activating each task-specific-subset of the network and comparing the
-reconstruction errors. The task with the lowest reconstruction error is considered
-the task the instance belongs to.
-
-- `train.py` contains the code responsible for creating the neural network and
-attaching all the necessary components before training.
-
-
-
-
-
-

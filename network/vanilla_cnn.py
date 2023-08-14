@@ -1,7 +1,7 @@
 import torch
 import typing as t
 from torch import nn, Tensor
-from .trait import Classifier, Decoder, Encoder, Sampler
+from .trait import Decoder, Encoder
 
 
 class ConvUpSample(nn.Module):
