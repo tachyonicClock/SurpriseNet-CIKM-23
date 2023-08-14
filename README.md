@@ -1,4 +1,5 @@
 # SurpriseNet
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8247906.svg)](https://doi.org/10.5281/zenodo.8247906)
 
 The field of continual learning strives to create neural networks that can
 accumulate knowledge and skills throughout their lifetime without forgetting.
