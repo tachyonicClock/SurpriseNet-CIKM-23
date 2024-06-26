@@ -4,7 +4,7 @@ import typing
 import matplotlib.pyplot as plt
 import numpy.random as random
 import torch
-from avalanche.benchmarks.scenarios.new_classes.nc_scenario import NCExperience
+from avalanche.benchmarks.scenarios.deprecated.new_classes.nc_scenario import NCExperience
 from avalanche.evaluation import PluginMetric
 from avalanche.evaluation.metric_definitions import MetricValue
 from experiment.strategy import ForwardOutput, Strategy

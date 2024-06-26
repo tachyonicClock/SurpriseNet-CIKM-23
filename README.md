@@ -16,6 +16,36 @@ from anomaly detection to gain cross-task knowledge without replay.
 > the context of continual learning, this is the process of identifying
 > instances that belong to different tasks. *Hence, SurpriseNet*.
 
+```bibtex
+@inproceedings{DBLP:conf/cikm/LeeZGBP23,
+  author       = {Anton Lee and
+                  Yaqian Zhang and
+                  Heitor Murilo Gomes and
+                  Albert Bifet and
+                  Bernhard Pfahringer},
+  editor       = {Ingo Frommholz and
+                  Frank Hopfgartner and
+                  Mark Lee and
+                  Michael Oakes and
+                  Mounia Lalmas and
+                  Min Zhang and
+                  Rodrygo L. T. Santos},
+  title        = {Look At Me, No Replay! SurpriseNet: Anomaly Detection Inspired Class
+                  Incremental Learning},
+  booktitle    = {Proceedings of the 32nd {ACM} International Conference on Information
+                  and Knowledge Management, {CIKM} 2023, Birmingham, United Kingdom,
+                  October 21-25, 2023},
+  pages        = {4038--4042},
+  publisher    = {{ACM}},
+  year         = {2023},
+  url          = {https://doi.org/10.1145/3583780.3615236},
+  doi          = {10.1145/3583780.3615236},
+  timestamp    = {Fri, 27 Oct 2023 20:40:47 +0200},
+  biburl       = {https://dblp.org/rec/conf/cikm/LeeZGBP23.bib},
+  bibsource    = {dblp computer science bibliography, https://dblp.org}
+}
+```
+
 ## Othermethods 
 Most other method were implemented using the [mammoth](https://github.com/aimagelab/mammoth) codebase.
 S-FMNIST, S-DSADS and S-PAMAP2 are added by us to mammoth codebase. Furthermore, we added class order 
@@ -31,6 +61,17 @@ S-DSADS and S-PAMAP2 datasets. For their methods, we used the default hyperparam
 to adjust the epoch budgets.
 
 The results of our grid search can be found in `SurpriseNet Hyperprarameters.ods` or `SurpriseNet Hyperprarameters.xlsx`.
+
+## Installation
+
+I recommend using conda to install the dependencies. You can create a new environment
+with the following command:
+
+```
+conda env create -f environment.yaml
+conda activate surprisenet
+```
+
 ## Usage
 
 The CLI follows the following basic structure:

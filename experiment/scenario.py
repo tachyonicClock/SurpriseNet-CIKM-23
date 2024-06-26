@@ -1,7 +1,7 @@
 import typing as t
 import torch
 import torchvision.transforms as T
-from avalanche.benchmarks.utils import make_classification_dataset
+from avalanche.benchmarks import nc_benchmark
 from avalanche.benchmarks import NCScenario
 from avalanche.benchmarks.classic import (
     SplitCIFAR10,
@@ -218,13 +218,13 @@ def split_scenario(
     elif dataset == "M_CORe50_NC" or dataset == "CORe50_NC":
         # Determine if we are using the mini version of CORe50
         core_mini = dataset == "M_CORe50_NC"
-        train_set = make_classification_dataset(
+        train_set = nc_benchmark(
             CORe50Dataset(
                 root=dataset_root, train=True, transform=train_transform, mini=core_mini
             )
         )
         assert hasattr(train_set, "targets"), "Targets not found"
-        test_set = make_classification_dataset(
+        test_set = nc_benchmark(
             CORe50Dataset(
                 root=dataset_root, train=False, transform=eval_transform, mini=core_mini
             )

@@ -4,7 +4,7 @@ from random import shuffle
 
 import numpy as np
 import torch
-from avalanche.benchmarks.generators.benchmark_generators import dataset_benchmark
+from avalanche.benchmarks.scenarios.deprecated.generators import dataset_benchmark
 from scipy.io import loadmat
 from torch import Tensor
 from torch.utils import data
