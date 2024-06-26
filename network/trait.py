@@ -210,7 +210,6 @@ class ParameterMask(ABC):
 
 
 class SurpriseNet(ParameterMask):
-    subset_activation_strategy: "ActivationStrategy" = None
     task_inference_strategy: "TaskInferenceStrategy" = None
 
     def activate_task_id(self, task_id: int):

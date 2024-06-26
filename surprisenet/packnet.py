@@ -5,15 +5,10 @@ import torch.nn as nn
 from experiment.strategy import ForwardOutput
 from network.trait import (
     AutoEncoder,
-    Classifier,
     ConditionedSample,
-    Decoder,
-    Encoder,
     InferTask,
-    MultiOutputNetwork,
     ParameterMask,
     SurpriseNet,
-    Samplable,
     VariationalAutoEncoder,
 )
 from surprisenet.mask import ModuleDecorator, WeightMask

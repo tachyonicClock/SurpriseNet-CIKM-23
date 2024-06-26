@@ -28,9 +28,7 @@ from metrics.reconstructions import GenerateReconstruction, GenerateSamples
 from metrics.stdout_log import StdoutLog
 from network.trait import (
     NETWORK_TRAITS,
-    AutoEncoder,
     Classifier,
-    ConditionedSample,
     Decoder,
     Encoder,
     InferTask,
@@ -44,8 +42,6 @@ from matplotlib import pyplot as plt
 
 from experiment.loss import MultipleObjectiveLoss
 from experiment.strategy import ForwardOutput, Strategy
-import matplotlib
-import matplotlib.pyplot as plt
 from tensorboard.summary import Writer as SummaryWriter
 from torch.utils.tensorboard.summary import hparams
 
@@ -90,7 +86,7 @@ def count_parameters(model, verbose=True):
 
 def add_hparams(tb: SummaryWriter, hparam_dict, metric_dict):
     torch._C._log_api_usage_once("tensorboard.logging.add_hparams")
-    if type(hparam_dict) is not dict or type(metric_dict) is not dict:
+    if isinstance(hparam_dict, dict) or isinstance(metric_dict, dict):
         raise TypeError("hparam_dict and metric_dict should be dictionary.")
     exp, ssi, sei = hparams(hparam_dict, metric_dict)
 
@@ -266,11 +262,11 @@ class BaseExperiment:
     def preflight(self):
         print(f"Network: {type(self.network)}")
         print(self.network)
-        print(f"Traits:")
+        print("Traits:")
         for trait in NETWORK_TRAITS:
             if isinstance(self.network, trait):
                 print(f" > Has the `{trait.__name__}` trait")
-        print(f"Objectives:")
+        print("Objectives:")
         for name, _ in self.objective:
             print(f" > Has the `{name}` objective")
         print("Plugins:")
@@ -304,7 +300,7 @@ class BaseExperiment:
             torch.save(self.network.state_dict(), f)
 
     def make_network(self) -> nn.Module:
-        raise NotImplemented
+        raise NotImplementedError
 
     def make_dependent_variables(self):
         return {
@@ -315,10 +311,10 @@ class BaseExperiment:
         }
 
     def make_optimizer(self, parameters) -> torch.optim.Optimizer:
-        raise NotImplemented
+        raise NotImplementedError
 
     def make_scenario(self) -> av.benchmarks.NCScenario:
-        raise NotImplemented
+        raise NotImplementedError
 
     @property
     def lr(self) -> float:

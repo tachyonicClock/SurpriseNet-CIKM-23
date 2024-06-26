@@ -9,7 +9,7 @@ from torch import Tensor
 from torch.nn import functional as F
 
 if t.TYPE_CHECKING:
-    from surprisenet.packnet import StageData
+    pass
 
 
 class TaskInferenceStrategy:
@@ -60,7 +60,7 @@ def _swap_fields(dest: ForwardOutput, src: ForwardOutput, swap_mask: Tensor):
     for field in fields(ForwardOutput):
         dest_value: t.Any = getattr(dest, field.name)
         src_value: t.Any = getattr(src, field.name)
-        if dest_value == None or src_value == None:
+        if dest_value is None or src_value is None:
             # Skip
             continue
         elif field.name == "kl_divergences":

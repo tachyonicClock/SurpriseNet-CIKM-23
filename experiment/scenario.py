@@ -10,7 +10,6 @@ from avalanche.benchmarks.classic import (
     SplitMNIST,
 )
 from avalanche.benchmarks.datasets import CORe50Dataset
-from torchvision.datasets import MNIST
 
 from scenarios.human_activity_recognition import (
     avalanche_DSADS,

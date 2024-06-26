@@ -4,7 +4,9 @@ import typing
 import matplotlib.pyplot as plt
 import numpy.random as random
 import torch
-from avalanche.benchmarks.scenarios.deprecated.new_classes.nc_scenario import NCExperience
+from avalanche.benchmarks.scenarios.deprecated.new_classes.nc_scenario import (
+    NCExperience,
+)
 from avalanche.evaluation import PluginMetric
 from avalanche.evaluation.metric_definitions import MetricValue
 from experiment.strategy import ForwardOutput, Strategy
@@ -83,7 +85,7 @@ class GenerateReconstruction(PluginMetric):
     ):
         axes[0].set_ylabel(f"Class={label}")
         axes[1].set_ylabel(f"{pred} using {pred_exp}")
-        axes[0].set_title(f"Input")
+        axes[0].set_title("Input")
         loss = float(MRAE(input.reshape(output.shape), output))
         axes[1].set_title(f"Loss={loss:.04}")
 
@@ -159,11 +161,11 @@ class GenerateReconstruction(PluginMetric):
                 out: ForwardOutput = strategy.model.multi_forward(x.unsqueeze(0))
 
                 class_prediction = "NA"
-                if out.y_hat != None:
+                if out.y_hat is not None:
                     class_prediction = torch.argmax(out.y_hat)
 
                 experience_prediction = "NA"
-                if out.pred_exp_id != None:
+                if out.pred_exp_id is not None:
                     experience_prediction = int(out.pred_exp_id)
 
                 self.add_image(

@@ -52,9 +52,9 @@ class ExpConfig:
         """
 
         # LOSS
-        self.classifier_loss_type: t.Literal[
-            "CrossEntropy", "LogitNorm"
-        ] = "CrossEntropy"
+        self.classifier_loss_type: t.Literal["CrossEntropy", "LogitNorm"] = (
+            "CrossEntropy"
+        )
         """Type of loss function to use"""
         self.classifier_loss_kwargs: t.Dict[str, t.Any] = {}
         """Kwargs to pass to the classifier loss"""

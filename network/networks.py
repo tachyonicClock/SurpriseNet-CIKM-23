@@ -1,9 +1,6 @@
-import typing as t
 from config.config import ExpConfig
 from network.mlp import (
     ClassifierHead,
-    MLPDecoder,
-    MLPEncoder,
     MLPDecoder,
     MLPEncoder,
     VAEBottleneck,

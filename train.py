@@ -1,11 +1,5 @@
 import torch
 from avalanche.benchmarks import NCScenario
-from avalanche.training.plugins import (
-    LwFPlugin,
-    ReplayPlugin,
-    SynapticIntelligencePlugin,
-)
-from avalanche.training.storage_policy import ClassBalancedBuffer
 from torch import nn
 
 import surprisenet.packnet as pn

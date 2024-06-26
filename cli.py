@@ -1,11 +1,8 @@
 import os
-import random
 import typing as t
 
 import click
 import git
-import numpy as np
-import torch
 
 from config.config import ExpConfig
 from surprisenet.plugin import equal_capacity_prune_schedule
