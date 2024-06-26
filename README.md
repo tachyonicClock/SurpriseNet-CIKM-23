@@ -16,6 +16,9 @@ from anomaly detection to gain cross-task knowledge without replay.
 > the context of continual learning, this is the process of identifying
 > instances that belong to different tasks. *Hence, SurpriseNet*.
 
+Read the paper [on arxiv](https://arxiv.org/abs/2310.20052) or 
+[the definitive version in the ACM digital library](https://doi.org/10.1145/3583780.3615236). Please cite our work if you use it in your research:
+
 ```bibtex
 @inproceedings{DBLP:conf/cikm/LeeZGBP23,
   author       = {Anton Lee and
